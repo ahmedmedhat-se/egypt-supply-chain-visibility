@@ -1,6 +1,6 @@
 # Egypt Supply Chain Visibility (ESCV)
 
-> Developed by **Ahmed Medhat**, **Ebram Samy**, **Lojain Mohammed**, **Menna Elgody**, **Sondos Aamer** & **Rana Gaballa**
+> Developed by **Ahmed Medhat**, **Ebram Samy**, **Ahmed Tarek**, & **Lucas Monir**
 
 <div align="center">
   <img src="./docs/assets/escv-logo.png" alt="ESCV Logo" width="800" />
