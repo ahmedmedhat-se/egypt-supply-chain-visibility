@@ -8,23 +8,35 @@
 
 ---
 # Table of Contents
-- Overview
-- Database Philosophy
-- Design Principles
-- Why PostgreSQL?
-- Entity Relationship Diagram (ERD)
-- Naming Conventions
-- Primary Key Strategy
-- Normalization Strategy
-- Database Modules
-- Table Overview
-- Constraints
-- Indexing Strategy
-- Audit Trail
-- Soft Delete Strategy
-- Security Considerations
-- Future Scalability
-- Directory Structure
+- [Overview](#overview)
+- [Database Philosophy](#database-philosophy)
+- [Design Principles](#design-principles)
+- [Why PostgreSQL?](#why-postgresql)
+- [Entity Relationship Diagram (ERD)](#entity-relationship-diagram-erd)
+- [Naming Conventions](#naming-conventions)
+  - [Tables](#tables)
+  - [Columns](#columns)
+  - [Foreign Keys](#foreign-keys)
+- [Primary Key Strategy](#primary-key-strategy)
+- [Normalization Strategy](#normalization-strategy)
+- [Database Modules](#database-modules)
+  - [Authentication](#authentication)
+  - [Organizations](#organizations)
+  - [Shipment Management](#shipment-management)
+  - [Tracking](#tracking)
+  - [Routes](#routes)
+  - [Checkpoints](#checkpoints)
+  - [Alerts](#alerts)
+  - [Audit Logs](#audit-logs)
+- [Table Overview](#table-overview)
+- [Constraints](#constraints)
+- [Indexing Strategy](#indexing-strategy)
+- [Audit Trail](#audit-trail)
+- [Soft Delete Strategy](#soft-delete-strategy)
+- [Security Considerations](#security-considerations)
+- [Future Scalability](#future-scalability)
+- [Directory Structure](#directory-structure)
+- [License](#license)
 
 ---
 # Overview
