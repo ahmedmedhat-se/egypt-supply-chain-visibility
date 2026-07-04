@@ -3,7 +3,7 @@
 > Production-grade PostgreSQL database designed for the Egypt Supply Chain Visibility (ESCV) platform.
 
 <div align="center">
-  <img src="./erd/escv-database-erd.png" alt="ESCV Database ERD" width="800"/>
+  <img src="../docs/assets/escv-logo.png" alt="ESCV Logo" width="800" />
 </div>
 
 ---
