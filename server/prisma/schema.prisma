@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  organization_id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_name        String   @db.VarChar(255)
+  organization_type        String   @db.VarChar(50)
+  organization_email       String   @unique @db.VarChar(255)
+  organization_phone       String?  @db.VarChar(30)
+  organization_address     String?
+  organization_country     String   @default("Egypt") @db.VarChar(100)
+  organization_is_active   Boolean  @default(true)
+  organization_created_at  DateTime @default(now()) @db.Timestamptz()
+  organization_updated_at  DateTime @updatedAt @db.Timestamptz()
+
+  users             User[]
+  shipper_shipments Shipment[] @relation("ShipperOrganization")
+  carrier_shipments Shipment[] @relation("CarrierOrganization")
+
+  @@map("organization")
+}
+
+model User {
+  user_id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id    String    @db.Uuid
+  user_email         String    @unique @db.VarChar(255)
+  user_password_hash String    @db.VarChar(255)
+  user_first_name    String    @db.VarChar(100)
+  user_last_name     String    @db.VarChar(100)
+  user_role          String    @db.VarChar(50)
+  user_phone         String?   @db.VarChar(30)
+  user_is_active     Boolean   @default(true)
+  user_last_login_at DateTime? @db.Timestamptz()
+  user_created_at    DateTime  @default(now()) @db.Timestamptz()
+  user_updated_at    DateTime  @updatedAt @db.Timestamptz()
+
+  organization     Organization   @relation(fields: [organization_id], references: [organization_id])
+  refresh_tokens   RefreshToken[]
+  created_shipments Shipment[]    @relation("CreatedByUser")
+  recorded_events  ShipmentEvent[]
+  user_alerts      UserAlert[]
+  audit_logs       AuditLog[]
+  reports          Report[]
+
+  @@map("user")
+}
+
+model RefreshToken {
+  refresh_token_id String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String   @db.Uuid
+  token_hash       String   @unique @db.VarChar(255)
+  token_expires_at DateTime @db.Timestamptz()
+  token_ip_address String?  @db.VarChar(50)
+  token_created_at DateTime @default(now()) @db.Timestamptz()
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("refresh_token")
+}
+
+model Checkpoint {
+  checkpoint_id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  checkpoint_name       String   @db.VarChar(255)
+  checkpoint_code       String   @unique @db.VarChar(20)
+  checkpoint_type       String   @db.VarChar(50)
+  checkpoint_city       String   @db.VarChar(100)
+  checkpoint_latitude   Decimal  @db.Decimal(10, 7)
+  checkpoint_longitude  Decimal  @db.Decimal(10, 7)
+  checkpoint_is_active  Boolean  @default(true)
+  checkpoint_created_at DateTime @default(now()) @db.Timestamptz()
+  checkpoint_updated_at DateTime @updatedAt @db.Timestamptz()
+
+  route_checkpoints   RouteCheckpoint[]
+  current_shipments   Shipment[]
+  shipment_events     ShipmentEvent[]
+
+  @@map("checkpoint")
+}
+
+model Route {
+  route_id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  route_name             String   @db.VarChar(255)
+  route_code             String   @unique @db.VarChar(50)
+  route_origin_city      String   @db.VarChar(100)
+  route_destination_city String   @db.VarChar(100)
+  route_estimated_days   Int?
+  route_is_active        Boolean  @default(true)
+  route_created_at       DateTime @default(now()) @db.Timestamptz()
+  route_updated_at       DateTime @updatedAt @db.Timestamptz()
+
+  route_checkpoints RouteCheckpoint[]
+  shipments         Shipment[]
+
+  @@map("route")
+}
+
+model RouteCheckpoint {
+  route_checkpoint_id    String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  route_id               String  @db.Uuid
+  checkpoint_id          String  @db.Uuid
+  sequence_order         Int
+  checkpoint_is_optional Boolean @default(false)
+
+  route      Route      @relation(fields: [route_id], references: [route_id], onDelete: Cascade)
+  checkpoint Checkpoint @relation(fields: [checkpoint_id], references: [checkpoint_id])
+
+  @@unique([route_id, sequence_order])
+  @@map("route_checkpoint")
+}
+
+model Shipment {
+  shipment_id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipper_organization_id          String    @db.Uuid
+  carrier_organization_id          String?   @db.Uuid
+  route_id                         String?   @db.Uuid
+  created_by_user_id               String    @db.Uuid
+  shipment_reference_number        String    @unique @db.VarChar(100)
+  shipment_status                  String    @default("draft") @db.VarChar(50)
+  shipment_description             String?
+  shipment_cargo_type              String?   @db.VarChar(100)
+  shipment_weight_kg               Decimal?  @db.Decimal(10, 2)
+  shipment_volume_m3               Decimal?  @db.Decimal(10, 3)
+  shipment_origin_address          String
+  shipment_destination_address     String
+  shipment_origin_city             String    @db.VarChar(100)
+  shipment_destination_city        String    @db.VarChar(100)
+  shipment_estimated_departure_at  DateTime? @db.Timestamptz()
+  shipment_estimated_arrival_at    DateTime? @db.Timestamptz()
+  shipment_actual_departure_at     DateTime? @db.Timestamptz()
+  shipment_actual_arrival_at       DateTime? @db.Timestamptz()
+  shipment_current_checkpoint_id   String?   @db.Uuid
+  shipment_current_latitude        Decimal?  @db.Decimal(10, 7)
+  shipment_current_longitude       Decimal?  @db.Decimal(10, 7)
+  shipment_notes                   String?
+  shipment_created_at              DateTime  @default(now()) @db.Timestamptz()
+  shipment_updated_at              DateTime  @updatedAt @db.Timestamptz()
+
+  shipper_organization   Organization  @relation("ShipperOrganization", fields: [shipper_organization_id], references: [organization_id])
+  carrier_organization   Organization? @relation("CarrierOrganization", fields: [carrier_organization_id], references: [organization_id])
+  route                  Route?        @relation(fields: [route_id], references: [route_id])
+  created_by             User          @relation("CreatedByUser", fields: [created_by_user_id], references: [user_id])
+  current_checkpoint     Checkpoint?   @relation(fields: [shipment_current_checkpoint_id], references: [checkpoint_id])
+  events                 ShipmentEvent[]
+  alerts                 Alert[]
+
+  @@map("shipment")
+}
+
+model ShipmentEvent {
+  shipment_event_id    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipment_id          String   @db.Uuid
+  checkpoint_id        String?  @db.Uuid
+  recorded_by_user_id  String?  @db.Uuid
+  event_type           String   @db.VarChar(100)
+  event_status         String   @db.VarChar(50)
+  event_description    String?
+  event_latitude       Decimal? @db.Decimal(10, 7)
+  event_longitude      Decimal? @db.Decimal(10, 7)
+  event_occurred_at    DateTime @default(now()) @db.Timestamptz()
+  event_metadata       Json?
+
+  shipment     Shipment    @relation(fields: [shipment_id], references: [shipment_id])
+  checkpoint   Checkpoint? @relation(fields: [checkpoint_id], references: [checkpoint_id])
+  recorded_by  User?       @relation(fields: [recorded_by_user_id], references: [user_id])
+  alerts       Alert[]
+
+  @@map("shipment_event")
+}
+
+model Alert {
+  alert_id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipment_id           String?   @db.Uuid
+  triggered_by_event_id String?   @db.Uuid
+  alert_type            String    @db.VarChar(100)
+  alert_severity        String    @default("info") @db.VarChar(20)
+  alert_title           String    @db.VarChar(255)
+  alert_message         String
+  alert_target_role     String?   @db.VarChar(50)
+  alert_is_resolved     Boolean   @default(false)
+  alert_resolved_at     DateTime? @db.Timestamptz()
+  alert_created_at      DateTime  @default(now()) @db.Timestamptz()
+  alert_metadata        Json?
+
+  shipment     Shipment?      @relation(fields: [shipment_id], references: [shipment_id], onDelete: Cascade)
+  triggered_by ShipmentEvent? @relation(fields: [triggered_by_event_id], references: [shipment_event_id])
+  user_alerts  UserAlert[]
+
+  @@map("alert")
+}
+
+model UserAlert {
+  user_alert_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  alert_id      String    @db.Uuid
+  user_id       String    @db.Uuid
+  is_read       Boolean   @default(false)
+  read_at       DateTime? @db.Timestamptz()
+  notified_at   DateTime  @default(now()) @db.Timestamptz()
+
+  alert Alert @relation(fields: [alert_id], references: [alert_id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@unique([alert_id, user_id])
+  @@map("user_alert")
+}
+
+model AuditLog {
+  audit_log_id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String?  @db.Uuid
+  audit_action        String   @db.VarChar(100)
+  audit_resource_type String   @db.VarChar(100)
+  audit_resource_id   String?  @db.Uuid
+  audit_old_value     Json?
+  audit_new_value     Json?
+  audit_ip_address    String?  @db.VarChar(50)
+  audit_user_agent    String?
+  audit_performed_at  DateTime @default(now()) @db.Timestamptz()
+  audit_metadata      Json?
+
+  user User? @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
+
+  @@map("audit_log")
+}
+
+model Report {
+  report_id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requested_by_user_id   String?   @db.Uuid
+  report_type            String    @db.VarChar(100)
+  report_status          String    @default("pending") @db.VarChar(50)
+  report_parameters      Json?
+  report_file_path       String?
+  report_generated_at    DateTime? @db.Timestamptz()
+  report_expires_at      DateTime? @db.Timestamptz()
+  report_error_message   String?
+  report_created_at      DateTime  @default(now()) @db.Timestamptz()
+
+  requested_by User? @relation(fields: [requested_by_user_id], references: [user_id], onDelete: SetNull)
+
+  @@map("report")
+}
