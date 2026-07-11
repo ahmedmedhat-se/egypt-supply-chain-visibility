@@ -11,9 +11,10 @@ import { validationSchema } from './config/validation';
       isGlobal: true,
       load: [configuration],
       validationSchema,
+      envFilePath: '.env',
     }),
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {};
+export class AppModule {}
