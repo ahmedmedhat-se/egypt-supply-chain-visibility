@@ -18,10 +18,12 @@ model Organization {
   organization_created_at  DateTime @default(now()) @db.Timestamptz()
   organization_updated_at  DateTime @updatedAt @db.Timestamptz()
 
-  users             User[]
-  shipper_shipments Shipment[] @relation("ShipperOrganization")
-  carrier_shipments Shipment[] @relation("CarrierOrganization")
+  users              User[]
+  shipper_shipments  Shipment[] @relation("ShipperOrganization")
+  carrier_shipments  Shipment[] @relation("CarrierOrganization")
 
+  @@index([organization_type])
+  @@index([organization_is_active])
   @@map("organization")
 }
 
@@ -39,27 +41,35 @@ model User {
   user_created_at    DateTime  @default(now()) @db.Timestamptz()
   user_updated_at    DateTime  @updatedAt @db.Timestamptz()
 
-  organization     Organization   @relation(fields: [organization_id], references: [organization_id])
-  refresh_tokens   RefreshToken[]
-  created_shipments Shipment[]    @relation("CreatedByUser")
-  recorded_events  ShipmentEvent[]
-  user_alerts      UserAlert[]
-  audit_logs       AuditLog[]
-  reports          Report[]
+  organization      Organization    @relation(fields: [organization_id], references: [organization_id])
+  refresh_tokens    RefreshToken[]
+  created_shipments Shipment[]      @relation("CreatedByUser")
+  recorded_events   ShipmentEvent[]
+  user_alerts       UserAlert[]
+  audit_logs        AuditLog[]
+  reports           Report[]
 
+  @@index([organization_id])
+  @@index([user_role])
+  @@index([user_is_active])
   @@map("user")
 }
 
 model RefreshToken {
-  refresh_token_id String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id          String   @db.Uuid
-  token_hash       String   @unique @db.VarChar(255)
-  token_expires_at DateTime @db.Timestamptz()
-  token_ip_address String?  @db.VarChar(50)
-  token_created_at DateTime @default(now()) @db.Timestamptz()
+  refresh_token_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String    @db.Uuid
+  token_hash       String    @unique @db.VarChar(255)   // SHA-256 of the JWT token string
+  token_family     String    @db.Uuid                    // Family ID for rotation
+  token_version    Int                                   // Version number within family
+  token_expires_at DateTime  @db.Timestamptz()
+  token_ip_address String?   @db.VarChar(50)
+  token_is_revoked Boolean   @default(false)
+  token_created_at DateTime  @default(now()) @db.Timestamptz()
 
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
+  @@index([user_id])
+  @@index([token_family, token_version])
   @@map("refresh_token")
 }
 
@@ -75,10 +85,12 @@ model Checkpoint {
   checkpoint_created_at DateTime @default(now()) @db.Timestamptz()
   checkpoint_updated_at DateTime @updatedAt @db.Timestamptz()
 
-  route_checkpoints   RouteCheckpoint[]
-  current_shipments   Shipment[]
-  shipment_events     ShipmentEvent[]
+  route_checkpoints  RouteCheckpoint[]
+  current_shipments  Shipment[]
+  shipment_events    ShipmentEvent[]
 
+  @@index([checkpoint_type])
+  @@index([checkpoint_city])
   @@map("checkpoint")
 }
 
@@ -96,6 +108,7 @@ model Route {
   route_checkpoints RouteCheckpoint[]
   shipments         Shipment[]
 
+  @@index([route_origin_city, route_destination_city])
   @@map("route")
 }
 
@@ -110,6 +123,8 @@ model RouteCheckpoint {
   checkpoint Checkpoint @relation(fields: [checkpoint_id], references: [checkpoint_id])
 
   @@unique([route_id, sequence_order])
+  @@index([route_id])
+  @@index([checkpoint_id])
   @@map("route_checkpoint")
 }
 
@@ -140,14 +155,20 @@ model Shipment {
   shipment_created_at              DateTime  @default(now()) @db.Timestamptz()
   shipment_updated_at              DateTime  @updatedAt @db.Timestamptz()
 
-  shipper_organization   Organization  @relation("ShipperOrganization", fields: [shipper_organization_id], references: [organization_id])
-  carrier_organization   Organization? @relation("CarrierOrganization", fields: [carrier_organization_id], references: [organization_id])
-  route                  Route?        @relation(fields: [route_id], references: [route_id])
-  created_by             User          @relation("CreatedByUser", fields: [created_by_user_id], references: [user_id])
-  current_checkpoint     Checkpoint?   @relation(fields: [shipment_current_checkpoint_id], references: [checkpoint_id])
+  shipper_organization   Organization   @relation("ShipperOrganization", fields: [shipper_organization_id], references: [organization_id])
+  carrier_organization   Organization?  @relation("CarrierOrganization", fields: [carrier_organization_id], references: [organization_id])
+  route                  Route?         @relation(fields: [route_id], references: [route_id])
+  created_by             User           @relation("CreatedByUser", fields: [created_by_user_id], references: [user_id])
+  current_checkpoint     Checkpoint?    @relation(fields: [shipment_current_checkpoint_id], references: [checkpoint_id])
   events                 ShipmentEvent[]
   alerts                 Alert[]
 
+  @@index([shipper_organization_id])
+  @@index([carrier_organization_id])
+  @@index([shipment_status])
+  @@index([shipment_current_checkpoint_id])
+  @@index([shipment_created_at(sort: Desc)])
+  @@index([shipment_status, shipper_organization_id])
   @@map("shipment")
 }
 
@@ -169,6 +190,10 @@ model ShipmentEvent {
   recorded_by  User?       @relation(fields: [recorded_by_user_id], references: [user_id])
   alerts       Alert[]
 
+  @@index([shipment_id])
+  @@index([event_occurred_at(sort: Desc)])
+  @@index([event_type])
+  @@index([shipment_id, event_occurred_at(sort: Desc)])
   @@map("shipment_event")
 }
 
@@ -190,6 +215,10 @@ model Alert {
   triggered_by ShipmentEvent? @relation(fields: [triggered_by_event_id], references: [shipment_event_id])
   user_alerts  UserAlert[]
 
+  @@index([shipment_id])
+  @@index([alert_severity])
+  @@index([alert_target_role])
+  @@index([alert_is_resolved])
   @@map("alert")
 }
 
@@ -205,6 +234,8 @@ model UserAlert {
   user  User  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@unique([alert_id, user_id])
+  @@index([user_id])
+  @@index([user_id, is_read])
   @@map("user_alert")
 }
 
@@ -223,6 +254,9 @@ model AuditLog {
 
   user User? @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
 
+  @@index([user_id])
+  @@index([audit_resource_type, audit_resource_id])
+  @@index([audit_performed_at(sort: Desc)])
   @@map("audit_log")
 }
 
@@ -240,5 +274,7 @@ model Report {
 
   requested_by User? @relation(fields: [requested_by_user_id], references: [user_id], onDelete: SetNull)
 
+  @@index([requested_by_user_id])
+  @@index([report_status])
   @@map("report")
 }
