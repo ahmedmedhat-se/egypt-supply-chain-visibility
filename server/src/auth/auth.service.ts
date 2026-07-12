@@ -31,19 +31,20 @@ export class AuthService {
     firstName: string;
     lastName: string;
     role: string;
-    organizationId: string;
     phone?: string;
+    organizationName: string;
+    organizationType: string;
+    organizationEmail: string;
+    organizationCountry?: string;
   }) {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) throw new ConflictException('Email already registered');
 
-    const org = await this.prisma.organization.findUnique({
-      where: { organization_id: dto.organizationId },
-      select: { organization_is_active: true },
+    // Check if organization email is already taken
+    const existingOrg = await this.prisma.organization.findUnique({
+      where: { organization_email: dto.organizationEmail },
     });
-    if (!org || !org.organization_is_active) {
-      throw new UnauthorizedException('Invalid or inactive organization');
-    }
+    if (existingOrg) throw new ConflictException('Organization email already registered');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = await this.prisma.user.create({
@@ -53,8 +54,15 @@ export class AuthService {
         user_first_name: dto.firstName,
         user_last_name: dto.lastName,
         user_role: dto.role,
-        organization_id: dto.organizationId,
         user_phone: dto.phone,
+        organization: {
+          create: {
+            organization_name: dto.organizationName,
+            organization_type: dto.organizationType,
+            organization_email: dto.organizationEmail,
+            organization_country: dto.organizationCountry ?? 'Egypt',
+          },
+        },
       },
     });
 
