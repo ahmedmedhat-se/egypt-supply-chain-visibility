@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -25,18 +26,7 @@ export class AuthService {
   ) {}
 
   // ---------- Registration ----------
-  async register(dto: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    role: string;
-    phone?: string;
-    organizationName: string;
-    organizationType: string;
-    organizationEmail: string;
-    organizationCountry?: string;
-  }) {
+  async register(dto: RegisterDto) {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) throw new ConflictException('Email already registered');
 

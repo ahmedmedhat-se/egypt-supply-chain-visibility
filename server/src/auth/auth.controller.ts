@@ -11,15 +11,21 @@ import {
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @ApiOperation({ summary: 'Register a new organization and user' })
+  @ApiResponse({ status: 201, description: 'Successfully registered.' })
   @Post('register')
   async register(
-    @Body() dto: any,
+    @Body() dto: RegisterDto,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const result = await this.authService.register(dto);
@@ -32,14 +38,15 @@ export class AuthController {
   }
 
   @Public()
+  @ApiOperation({ summary: 'Login to an existing account' })
+  @ApiResponse({ status: 200, description: 'Successfully logged in.' })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
-    @Body('email') email: string,
-    @Body('password') password: string,
+    @Body() dto: LoginDto,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const result = await this.authService.login(email, password);
+    const result = await this.authService.login(dto.email, dto.password);
 
     this.setRefreshCookie(reply, result.refreshToken);
     return {
@@ -49,6 +56,7 @@ export class AuthController {
   }
 
   @Public()
+  @ApiOperation({ summary: 'Refresh access token' })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(
@@ -64,6 +72,7 @@ export class AuthController {
     return { accessToken: result.accessToken };
   }
 
+  @ApiOperation({ summary: 'Logout and invalidate refresh token' })
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
