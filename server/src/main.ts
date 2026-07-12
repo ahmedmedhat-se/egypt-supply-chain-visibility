@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from '@fastify/helmet';
 import {
   FastifyAdapter,
   NestFastifyApplication,
@@ -14,6 +15,8 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter({ logger: true }),
   );
+
+  await app.register(helmet);
 
   app.useGlobalPipes(
     new ValidationPipe({
