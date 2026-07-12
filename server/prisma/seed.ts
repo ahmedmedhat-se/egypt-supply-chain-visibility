@@ -1,33 +1,37 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL,
-});
+const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding...');
-
-  const org = await prisma.organization.create({
-    data: {
-      organization_name: 'Egypt Supply Chain',
-      organization_type: 'shipper',
-      organization_email: 'admin@escv.com',
+  const adminOrg = await prisma.organization.upsert({
+    where: { organization_email: 'admin@escv' },
+    update: {},
+    create: {
+      organization_name: 'ESCV Administration',
+      organization_type: 'admin',
+      organization_email: 'admin@escv',
       organization_country: 'Egypt',
+      organization_is_active: true,
     },
   });
 
-  await prisma.user.create({
-    data: {
-      organization_id: org.organization_id,
-      user_email: 'admin@escv.com',
-      user_password_hash: 'hashed_password',
-      user_first_name: 'Admin',
-      user_last_name: 'User',
+  const passwordHash = await bcrypt.hash('Admin@123', 12);
+  await prisma.user.upsert({
+    where: { user_email: 'admin@escv' },
+    update: {},
+    create: {
+      organization_id: adminOrg.organization_id,
+      user_email: 'admin@escv',
+      user_password_hash: passwordHash,
+      user_first_name: 'Super',
+      user_last_name: 'Admin',
       user_role: 'admin',
+      user_is_active: true,
     },
   });
 
-  console.log('Seeding complete!');
+  console.log('✅ Seed completed');
 }
 
 main()
@@ -35,4 +39,6 @@ main()
     console.error(e);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
