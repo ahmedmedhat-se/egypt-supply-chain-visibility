@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import {
   FastifyAdapter,
   NestFastifyApplication,
@@ -31,6 +32,15 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
     credentials: true,
   });
+
+  const config = new DocumentBuilder()
+    .setTitle('Egypt Supply Chain Visibility API')
+    .setDescription('API documentation for the supply chain visibility platform')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 8081);
