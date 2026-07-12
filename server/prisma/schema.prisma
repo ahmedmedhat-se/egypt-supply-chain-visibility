@@ -42,7 +42,6 @@ model User {
   user_updated_at    DateTime  @updatedAt @db.Timestamptz()
 
   organization      Organization    @relation(fields: [organization_id], references: [organization_id])
-  refresh_tokens    RefreshToken[]
   created_shipments Shipment[]      @relation("CreatedByUser")
   recorded_events   ShipmentEvent[]
   user_alerts       UserAlert[]
@@ -53,24 +52,6 @@ model User {
   @@index([user_role])
   @@index([user_is_active])
   @@map("user")
-}
-
-model RefreshToken {
-  refresh_token_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id          String    @db.Uuid
-  token_hash       String    @unique @db.VarChar(255)   // SHA-256 of the JWT token string
-  token_family     String    @db.Uuid                    // Family ID for rotation
-  token_version    Int                                   // Version number within family
-  token_expires_at DateTime  @db.Timestamptz()
-  token_ip_address String?   @db.VarChar(50)
-  token_is_revoked Boolean   @default(false)
-  token_created_at DateTime  @default(now()) @db.Timestamptz()
-
-  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-
-  @@index([user_id])
-  @@index([token_family, token_version])
-  @@map("refresh_token")
 }
 
 model Checkpoint {
