@@ -8,6 +8,9 @@ import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { OrganizationsModule } from './organizations/organizations.module';
+import { MailModule } from './mail/mail.module';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
@@ -21,6 +24,9 @@ import { AuthModule } from './auth/auth.module';
     RedisModule,
     UsersModule,
     AuthModule,
+    OrganizationsModule,
+    MailModule,
+    QueueModule,
   ],
   controllers: [AppController],
   providers: [AppService],
