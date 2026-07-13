@@ -3,6 +3,7 @@ import {
   ConflictException,
   UnauthorizedException,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +13,7 @@ import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 
 @Injectable()
 export class AuthService {
@@ -34,7 +36,8 @@ export class AuthService {
     const existingOrg = await this.prisma.organization.findUnique({
       where: { organization_email: dto.organizationEmail },
     });
-    if (existingOrg) throw new ConflictException('Organization email already registered');
+    if (existingOrg)
+      throw new ConflictException('Organization email already registered');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = await this.prisma.user.create({
@@ -56,7 +59,7 @@ export class AuthService {
       },
     });
 
-    const tokens = await this.createTokenPair(user.user_id, user.user_role);
+    const tokens = await this.createTokenPair(user.user_id);
 
     return {
       user: {
@@ -79,7 +82,7 @@ export class AuthService {
     const valid = await bcrypt.compare(password, user.user_password_hash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    const tokens = await this.createTokenPair(user.user_id, user.user_role);
+    const tokens = await this.createTokenPair(user.user_id);
 
     return {
       user: {
@@ -144,14 +147,74 @@ export class AuthService {
     }
   }
 
+  async acceptInvitation(dto: AcceptInvitationDto) {
+    // 1. Find invitation
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { token: dto.token },
+    });
+
+    if (!invitation || invitation.status !== 'pending') {
+      throw new BadRequestException('Invalid or expired invitation');
+    }
+
+    if (invitation.expires_at < new Date()) {
+      await this.prisma.invitation.update({
+        where: { invitation_id: invitation.invitation_id },
+        data: { status: 'expired' },
+      });
+      throw new BadRequestException('Invitation has expired');
+    }
+
+    // 2. Email match test
+    if (invitation.invited_email.toLowerCase() !== dto.email.toLowerCase()) {
+      throw new BadRequestException('Email does not match the invitation');
+    }
+
+    // 3. Check duplicate
+    const existingUser = await this.usersService.findByEmail(dto.email);
+    if (existingUser) {
+      throw new ConflictException('User already exists');
+    }
+
+    // 4. Create user
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const user = await this.prisma.user.create({
+      data: {
+        user_email: dto.email,
+        user_password_hash: passwordHash,
+        user_first_name: dto.firstName,
+        user_last_name: dto.lastName,
+        user_role: invitation.invited_role,
+        organization_id: invitation.organization_id,
+      },
+    });
+
+    // 5. Mark invitation accepted
+    await this.prisma.invitation.update({
+      where: { invitation_id: invitation.invitation_id },
+      data: { status: 'accepted' },
+    });
+
+    const tokens = await this.createTokenPair(user.user_id);
+
+    return {
+      user: {
+        id: user.user_id,
+        email: user.user_email,
+        name: `${user.user_first_name} ${user.user_last_name}`,
+        role: user.user_role,
+      },
+      ...tokens,
+    };
+  }
+
   // ---------- Private helpers ----------
 
-  private async createTokenPair(userId: string, role: string) {
+  private async createTokenPair(userId: string) {
     const familyId = randomUUID();
     const refreshToken = randomUUID();
-    const ttlSeconds = 7 * 24 * 60 * 60; // 7 days
+    const ttlSeconds = 7 * 24 * 60 * 60;
 
-    // Store token in Redis
     await this.redisService.setJson(
       `rt:${refreshToken}`,
       { userId, familyId },

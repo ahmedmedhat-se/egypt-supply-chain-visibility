@@ -14,6 +14,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -48,6 +49,22 @@ export class AuthController {
   ) {
     const result = await this.authService.login(dto.email, dto.password);
 
+    this.setRefreshCookie(reply, result.refreshToken);
+    return {
+      user: result.user,
+      accessToken: result.accessToken,
+    };
+  }
+
+  @Public()
+  @Post('accept-invitation')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Accept an invitation and create account' })
+  async acceptInvitation(
+    @Body() dto: AcceptInvitationDto,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const result = await this.authService.acceptInvitation(dto);
     this.setRefreshCookie(reply, result.refreshToken);
     return {
       user: result.user,
