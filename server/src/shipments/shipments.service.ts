@@ -12,6 +12,7 @@ import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { QueryShipmentDto } from './dto/query-shipment.dto';
 import { STATUS_TRANSITIONS } from './shipments.constants';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import type { Prisma } from '@prisma/client';
 
 /** Shape of the user payload attached by JwtAuthGuard */
@@ -26,7 +27,10 @@ interface RequestUser {
 export class ShipmentsService {
   private readonly logger = new Logger(ShipmentsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly amqpConnection: AmqpConnection,
+  ) {}
 
   // ---------- Create ----------
 
@@ -466,6 +470,19 @@ export class ShipmentsService {
         },
       }),
     ]);
+
+    // Publish RabbitMQ event
+    await this.amqpConnection.publish(
+      'escv.events',
+      'shipment.status_changed',
+      {
+        shipment_id: updatedShipment.shipment_id,
+        old_status: shipment.shipment_status,
+        new_status: dto.status,
+        event_id: event.shipment_event_id,
+        occurred_at: event.event_occurred_at,
+      },
+    );
 
     this.logger.log(
       `Shipment ${updatedShipment.shipment_reference_number} status updated to "${dto.status}"`,
