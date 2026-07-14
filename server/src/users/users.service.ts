@@ -17,6 +17,9 @@ export class UsersService {
         user_token_version: true,
         organization_id: true,
         user_is_active: true,
+        organization: {
+          select: { organization_name: true },
+        },
       },
     });
   }
@@ -24,6 +27,7 @@ export class UsersService {
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { user_email: email },
+      include: { organization: true },
     });
   }
 

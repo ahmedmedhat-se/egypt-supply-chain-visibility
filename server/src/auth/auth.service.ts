@@ -57,6 +57,7 @@ export class AuthService {
           },
         },
       },
+      include: { organization: true },
     });
 
     const tokens = await this.createTokenPair(user.user_id);
@@ -67,6 +68,8 @@ export class AuthService {
         email: user.user_email,
         name: `${user.user_first_name} ${user.user_last_name}`,
         role: user.user_role,
+        organizationId: user.organization_id,
+        organizationName: user.organization?.organization_name,
       },
       ...tokens,
     };
@@ -90,6 +93,8 @@ export class AuthService {
         email: user.user_email,
         name: `${user.user_first_name} ${user.user_last_name}`,
         role: user.user_role,
+        organizationId: user.organization_id,
+        organizationName: user.organization?.organization_name,
       },
       ...tokens,
     };
@@ -188,6 +193,7 @@ export class AuthService {
           user_role: invitation.invited_role,
           organization_id: invitation.organization_id,
         },
+        include: { organization: true },
       }),
       this.prisma.invitation.update({
         where: { invitation_id: invitation.invitation_id },
@@ -203,6 +209,8 @@ export class AuthService {
         email: user.user_email,
         name: `${user.user_first_name} ${user.user_last_name}`,
         role: user.user_role,
+        organizationId: user.organization_id,
+        organizationName: user.organization?.organization_name,
       },
       ...tokens,
     };
