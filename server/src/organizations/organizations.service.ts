@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   ConflictException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
@@ -75,5 +76,91 @@ export class OrganizationsService {
       role: dto.role,
       expiresAt,
     };
+  }
+
+  async getInvitations(orgId: string, userId: string) {
+    const admin = await this.prisma.user.findFirst({
+      where: { user_id: userId, organization_id: orgId, user_role: 'admin' },
+    });
+    if (!admin) {
+      throw new ForbiddenException('Only an admin can view invitations');
+    }
+
+    return this.prisma.invitation.findMany({
+      where: { organization_id: orgId, status: 'pending' },
+      select: {
+        invitation_id: true,
+        invited_email: true,
+        invited_role: true,
+        expires_at: true,
+        created_at: true,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+  }
+
+  async resendInvitation(orgId: string, invitationId: string, userId: string) {
+    const admin = await this.prisma.user.findFirst({
+      where: { user_id: userId, organization_id: orgId, user_role: 'admin' },
+    });
+    if (!admin) {
+      throw new ForbiddenException('Only an admin can resend invitations');
+    }
+
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { invitation_id: invitationId, organization_id: orgId },
+    });
+
+    if (!invitation || invitation.status !== 'pending') {
+      throw new NotFoundException('Valid pending invitation not found');
+    }
+
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await this.prisma.invitation.update({
+      where: { invitation_id: invitationId },
+      data: { token, expires_at: expiresAt },
+    });
+
+    const frontendUrl = this.configService.get<string>(
+      'CORS_ORIGIN',
+      'http://localhost:5173',
+    );
+    const inviteLink = `${frontendUrl}/accept-invitation?token=${token}`;
+
+    await this.amqpConnection.publish('escv.events', 'invitation.created', {
+      email: invitation.invited_email,
+      inviteLink,
+    });
+
+    this.logger.log(`Invitation resent for ${invitation.invited_email}`);
+
+    return { message: 'Invitation resent successfully' };
+  }
+
+  async cancelInvitation(orgId: string, invitationId: string, userId: string) {
+    const admin = await this.prisma.user.findFirst({
+      where: { user_id: userId, organization_id: orgId, user_role: 'admin' },
+    });
+    if (!admin) {
+      throw new ForbiddenException('Only an admin can cancel invitations');
+    }
+
+    const invitation = await this.prisma.invitation.findFirst({
+      where: { invitation_id: invitationId, organization_id: orgId },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    await this.prisma.invitation.delete({
+      where: { invitation_id: invitationId },
+    });
+
+    this.logger.log(`Invitation ${invitationId} canceled and deleted`);
+
+    return { message: 'Invitation canceled successfully' };
   }
 }
