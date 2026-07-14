@@ -176,24 +176,24 @@ export class AuthService {
       throw new ConflictException('User already exists');
     }
 
-    // 4. Create user
+    // 4 & 5. Create user and mark invitation accepted in a single transaction
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    const user = await this.prisma.user.create({
-      data: {
-        user_email: dto.email,
-        user_password_hash: passwordHash,
-        user_first_name: dto.firstName,
-        user_last_name: dto.lastName,
-        user_role: invitation.invited_role,
-        organization_id: invitation.organization_id,
-      },
-    });
-
-    // 5. Mark invitation accepted
-    await this.prisma.invitation.update({
-      where: { invitation_id: invitation.invitation_id },
-      data: { status: 'accepted' },
-    });
+    const [user] = await this.prisma.$transaction([
+      this.prisma.user.create({
+        data: {
+          user_email: dto.email,
+          user_password_hash: passwordHash,
+          user_first_name: dto.firstName,
+          user_last_name: dto.lastName,
+          user_role: invitation.invited_role,
+          organization_id: invitation.organization_id,
+        },
+      }),
+      this.prisma.invitation.update({
+        where: { invitation_id: invitation.invitation_id },
+        data: { status: 'accepted' },
+      }),
+    ]);
 
     const tokens = await this.createTokenPair(user.user_id);
 
