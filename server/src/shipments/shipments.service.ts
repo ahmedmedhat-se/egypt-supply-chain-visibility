@@ -14,6 +14,7 @@ import { QueryShipmentDto } from './dto/query-shipment.dto';
 import { STATUS_TRANSITIONS } from './shipments.constants';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import type { Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 /** Shape of the user payload attached by JwtAuthGuard */
 interface RequestUser {
@@ -42,15 +43,7 @@ export class ShipmentsService {
       );
     }
 
-    // Check reference number uniqueness
-    const existing = await this.prisma.shipment.findUnique({
-      where: { shipment_reference_number: dto.referenceNumber },
-    });
-    if (existing) {
-      throw new ConflictException(
-        `A shipment with reference "${dto.referenceNumber}" already exists`,
-      );
-    }
+    // Removed manual reference number check; will auto-generate below
 
     // Resolve the user's organization
     const dbUser = await this.prisma.user.findUnique({
@@ -82,13 +75,15 @@ export class ShipmentsService {
       }
     }
 
+    const generatedRefNumber = `SHP-${randomUUID().split('-')[0].toUpperCase()}`;
+
     const shipment = await this.prisma.shipment.create({
       data: {
         shipper_organization_id: dbUser.organization_id,
         carrier_organization_id: dto.carrierOrganizationId ?? null,
         route_id: dto.routeId ?? null,
         created_by_user_id: user.sub,
-        shipment_reference_number: dto.referenceNumber,
+        shipment_reference_number: generatedRefNumber,
         shipment_status: 'draft',
         shipment_description: dto.description ?? null,
         shipment_cargo_type: dto.cargoType ?? null,
@@ -259,20 +254,7 @@ export class ShipmentsService {
       );
     }
 
-    // Check reference number uniqueness if changed
-    if (
-      dto.referenceNumber &&
-      dto.referenceNumber !== shipment.shipment_reference_number
-    ) {
-      const existing = await this.prisma.shipment.findUnique({
-        where: { shipment_reference_number: dto.referenceNumber },
-      });
-      if (existing) {
-        throw new ConflictException(
-          `A shipment with reference "${dto.referenceNumber}" already exists`,
-        );
-      }
-    }
+    // Reference number uniqueness check removed since it's no longer editable
 
     // Validate carrier org if provided
     if (dto.carrierOrganizationId) {
@@ -297,9 +279,6 @@ export class ShipmentsService {
     const updated = await this.prisma.shipment.update({
       where: { shipment_id: id },
       data: {
-        ...(dto.referenceNumber !== undefined && {
-          shipment_reference_number: dto.referenceNumber,
-        }),
         ...(dto.description !== undefined && {
           shipment_description: dto.description,
         }),

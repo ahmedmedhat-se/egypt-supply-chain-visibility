@@ -10,10 +10,6 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateShipmentDto {
-  @ApiProperty({ example: 'SHIP-2024-001' })
-  @IsString()
-  @IsNotEmpty()
-  referenceNumber: string;
 
   @ApiPropertyOptional({
     example: 'Electronics shipment from Cairo to Alexandria',
