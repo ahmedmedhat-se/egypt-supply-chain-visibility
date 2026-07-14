@@ -38,7 +38,9 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Egypt Supply Chain Visibility API')
-    .setDescription('API documentation for the supply chain visibility platform')
+    .setDescription(
+      'API documentation for the supply chain visibility platform',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();
