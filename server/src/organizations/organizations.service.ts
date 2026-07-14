@@ -17,7 +17,7 @@ export class OrganizationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly amqpConnection: AmqpConnection,
-    private ConfigService: ConfigService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createInvitation(
@@ -55,7 +55,7 @@ export class OrganizationsService {
     });
 
     // Build invite link
-    const frontendUrl = this.ConfigService.get<string>(
+    const frontendUrl = this.configService.get<string>(
       'CORS_ORIGIN',
       'http://localhost:5173',
     );

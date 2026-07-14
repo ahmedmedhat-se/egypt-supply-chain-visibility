@@ -46,7 +46,7 @@ export class AuthService {
         user_password_hash: passwordHash,
         user_first_name: dto.firstName,
         user_last_name: dto.lastName,
-        user_role: dto.role,
+        user_role: 'admin', // The creator of an organization is always the admin
         user_phone: dto.phone,
         organization: {
           create: {
