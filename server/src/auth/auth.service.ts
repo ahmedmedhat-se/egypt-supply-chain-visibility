@@ -216,6 +216,21 @@ export class AuthService {
     };
   }
 
+  async getMe(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user || !user.user_is_active) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+    return {
+      id: user.user_id,
+      email: user.user_email,
+      name: `${user.user_first_name} ${user.user_last_name}`,
+      role: user.user_role,
+      organizationId: user.organization_id,
+      organizationName: user.organization?.organization_name,
+    };
+  }
+
   // ---------- Private helpers ----------
 
   private async createTokenPair(userId: string) {

@@ -7,6 +7,7 @@ import {
   Res,
   Req,
   UnauthorizedException,
+  Get,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
@@ -15,6 +16,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -54,6 +56,13 @@ export class AuthController {
       user: result.user,
       accessToken: result.accessToken,
     };
+  }
+
+  @Get('me')
+  @ApiOperation({ summary: 'Get current logged-in user profile' })
+  @ApiResponse({ status: 200, description: 'Returns the user profile.' })
+  async getMe(@CurrentUser() user: any) {
+    return this.authService.getMe(user.sub);
   }
 
   @Public()
