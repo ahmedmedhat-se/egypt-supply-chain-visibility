@@ -163,4 +163,26 @@ export class OrganizationsService {
 
     return { message: 'Invitation canceled successfully' };
   }
+
+  async getMembers(orgId: string, userId: string) {
+    const admin = await this.prisma.user.findFirst({
+      where: { user_id: userId, organization_id: orgId, user_role: 'admin' },
+    });
+    if (!admin) {
+      throw new ForbiddenException('Only an admin can view the member directory');
+    }
+
+    return this.prisma.user.findMany({
+      where: { organization_id: orgId },
+      select: {
+        user_id: true,
+        user_email: true,
+        user_first_name: true,
+        user_last_name: true,
+        user_role: true,
+        user_is_active: true,
+      },
+      orderBy: { user_first_name: 'asc' },
+    });
+  }
 }

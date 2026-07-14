@@ -60,4 +60,11 @@ export class OrganizationsController {
       user.sub,
     );
   }
+
+  @Get(':orgId/members')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Get all active members in the organization' })
+  async getMembers(@Param('orgId') orgId: string, @CurrentUser() user: any) {
+    return this.organizationsService.getMembers(orgId, user.sub);
+  }
 }
