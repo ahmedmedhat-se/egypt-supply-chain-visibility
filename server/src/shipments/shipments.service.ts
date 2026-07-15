@@ -421,13 +421,12 @@ export class ShipmentsService {
       throw new NotFoundException('User not found');
     }
 
-    const isAdmin = user.role === 'admin';
     const isShipperOrg =
       shipment.shipper_organization_id === dbUser.organization_id;
     const isCarrierOrg =
       shipment.carrier_organization_id === dbUser.organization_id;
 
-    if (!isAdmin && !isShipperOrg && !isCarrierOrg) {
+    if (!isShipperOrg && !isCarrierOrg) {
       throw new ForbiddenException(
         'You do not have permission to update this shipment status',
       );
@@ -563,22 +562,19 @@ export class ShipmentsService {
     const where: Prisma.ShipmentWhereInput = {};
 
     // Role-based visibility
-    if (user.role === 'shipper' || user.role === 'carrier') {
+    if (user.role !== 'regulator') {
       const dbUser = await this.prisma.user.findUnique({
         where: { user_id: user.sub },
         select: { organization_id: true },
       });
 
       if (dbUser) {
-        if (user.role === 'shipper') {
-          where.shipper_organization_id = dbUser.organization_id;
-        } else {
-          // carrier sees shipments where their org is the carrier
-          where.carrier_organization_id = dbUser.organization_id;
-        }
+        where.OR = [
+          { shipper_organization_id: dbUser.organization_id },
+          { carrier_organization_id: dbUser.organization_id },
+        ];
       }
     }
-    // Admins and regulators see all
 
     // Filters
     if (query.status) {
@@ -586,27 +582,28 @@ export class ShipmentsService {
     }
 
     if (query.search) {
-      where.OR = [
+      where.AND = [
         {
-          shipment_reference_number: {
-            contains: query.search,
-            mode: 'insensitive',
-          },
-        },
-        {
-          shipment_description: {
-            contains: query.search,
-            mode: 'insensitive',
-          },
+          OR: [
+            {
+              shipment_reference_number: {
+                contains: query.search,
+                mode: 'insensitive',
+              },
+            },
+            {
+              shipment_description: {
+                contains: query.search,
+                mode: 'insensitive',
+              },
+            },
+          ],
         },
       ];
     }
 
-    // Only admins and regulators can filter by carrier org
-    if (
-      query.carrierOrganizationId &&
-      (user.role === 'admin' || user.role === 'regulator')
-    ) {
+    // Only regulators can arbitrarily filter by carrier org
+    if (query.carrierOrganizationId && user.role === 'regulator') {
       where.carrier_organization_id = query.carrierOrganizationId;
     }
 
@@ -630,7 +627,7 @@ export class ShipmentsService {
    * - Carriers see shipments where their org is the carrier.
    */
   private async enforceViewAccess(user: RequestUser, shipment: any) {
-    if (user.role === 'admin' || user.role === 'regulator') return;
+    if (user.role === 'regulator') return;
 
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
@@ -656,7 +653,6 @@ export class ShipmentsService {
    * Only the shipper org or an admin can edit.
    */
   private async enforceEditAccess(user: RequestUser, shipment: any) {
-    if (user.role === 'admin') return;
 
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
