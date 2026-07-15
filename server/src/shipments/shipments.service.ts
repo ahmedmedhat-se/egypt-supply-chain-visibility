@@ -433,10 +433,10 @@ export class ShipmentsService {
     }
 
     // Validate status transition
-    const validTransition = this.isValidTransition(
-      shipment.shipment_status,
-      dto.status,
-    );
+    const validTransition =
+      shipment.shipment_status === dto.status ||
+      this.isValidTransition(shipment.shipment_status, dto.status);
+      
     if (!validTransition) {
       throw new BadRequestException(
         `Cannot transition from "${shipment.shipment_status}" to "${dto.status}"`,
