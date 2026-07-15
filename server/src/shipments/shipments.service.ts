@@ -77,48 +77,62 @@ export class ShipmentsService {
 
     const generatedRefNumber = `SHP-${randomUUID().split('-')[0].toUpperCase()}`;
 
-    const shipment = await this.prisma.shipment.create({
-      data: {
-        shipper_organization_id: dbUser.organization_id,
-        carrier_organization_id: dto.carrierOrganizationId ?? null,
-        route_id: dto.routeId ?? null,
-        created_by_user_id: user.sub,
-        shipment_reference_number: generatedRefNumber,
-        shipment_status: 'draft',
-        shipment_description: dto.description ?? null,
-        shipment_cargo_type: dto.cargoType ?? null,
-        shipment_weight_kg: dto.weightKg ?? null,
-        shipment_volume_m3: dto.volumeM3 ?? null,
-        shipment_origin_address: dto.originAddress,
-        shipment_destination_address: dto.destinationAddress,
-        shipment_origin_city: dto.originCity,
-        shipment_destination_city: dto.destinationCity,
-        shipment_estimated_departure_at: dto.estimatedDepartureAt
-          ? new Date(dto.estimatedDepartureAt)
-          : null,
-        shipment_estimated_arrival_at: dto.estimatedArrivalAt
-          ? new Date(dto.estimatedArrivalAt)
-          : null,
-        shipment_notes: dto.notes ?? null,
-      },
-      include: {
-        shipper_organization: {
-          select: { organization_id: true, organization_name: true },
+    const shipment = await this.prisma.$transaction(async (tx) => {
+      const createdShipment = await tx.shipment.create({
+        data: {
+          shipper_organization_id: dbUser.organization_id,
+          carrier_organization_id: dto.carrierOrganizationId ?? null,
+          route_id: dto.routeId ?? null,
+          created_by_user_id: user.sub,
+          shipment_reference_number: generatedRefNumber,
+          shipment_status: 'draft',
+          shipment_description: dto.description ?? null,
+          shipment_cargo_type: dto.cargoType ?? null,
+          shipment_weight_kg: dto.weightKg ?? null,
+          shipment_volume_m3: dto.volumeM3 ?? null,
+          shipment_origin_address: dto.originAddress,
+          shipment_destination_address: dto.destinationAddress,
+          shipment_origin_city: dto.originCity,
+          shipment_destination_city: dto.destinationCity,
+          shipment_estimated_departure_at: dto.estimatedDepartureAt
+            ? new Date(dto.estimatedDepartureAt)
+            : null,
+          shipment_estimated_arrival_at: dto.estimatedArrivalAt
+            ? new Date(dto.estimatedArrivalAt)
+            : null,
+          shipment_notes: dto.notes ?? null,
         },
-        carrier_organization: {
-          select: { organization_id: true, organization_name: true },
-        },
-        route: {
-          select: { route_id: true, route_name: true, route_code: true },
-        },
-        created_by: {
-          select: {
-            user_id: true,
-            user_first_name: true,
-            user_last_name: true,
+        include: {
+          shipper_organization: {
+            select: { organization_id: true, organization_name: true },
+          },
+          carrier_organization: {
+            select: { organization_id: true, organization_name: true },
+          },
+          route: {
+            select: { route_id: true, route_name: true, route_code: true },
+          },
+          created_by: {
+            select: {
+              user_id: true,
+              user_first_name: true,
+              user_last_name: true,
+            },
           },
         },
-      },
+      });
+
+      await tx.shipmentEvent.create({
+        data: {
+          shipment_id: createdShipment.shipment_id,
+          event_type: 'shipment_created',
+          event_status: 'draft',
+          event_description: 'Shipment drafted and registered in the system',
+          recorded_by_user_id: user.sub,
+        },
+      });
+
+      return createdShipment;
     });
 
     this.logger.log(
