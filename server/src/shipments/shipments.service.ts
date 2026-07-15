@@ -75,6 +75,16 @@ export class ShipmentsService {
       }
     }
 
+    if (dto.estimatedDepartureAt && dto.estimatedArrivalAt) {
+      if (
+        new Date(dto.estimatedArrivalAt) <= new Date(dto.estimatedDepartureAt)
+      ) {
+        throw new BadRequestException(
+          'Estimated arrival date must be after the estimated departure date',
+        );
+      }
+    }
+
     const generatedRefNumber = `SHP-${randomUUID().split('-')[0].toUpperCase()}`;
 
     const shipment = await this.prisma.$transaction(async (tx) => {
@@ -288,6 +298,26 @@ export class ShipmentsService {
       if (!route) {
         throw new BadRequestException('Route not found');
       }
+    }
+
+    const newDeparture =
+      dto.estimatedDepartureAt !== undefined
+        ? dto.estimatedDepartureAt
+          ? new Date(dto.estimatedDepartureAt)
+          : null
+        : shipment.shipment_estimated_departure_at;
+
+    const newArrival =
+      dto.estimatedArrivalAt !== undefined
+        ? dto.estimatedArrivalAt
+          ? new Date(dto.estimatedArrivalAt)
+          : null
+        : shipment.shipment_estimated_arrival_at;
+
+    if (newDeparture && newArrival && newArrival <= newDeparture) {
+      throw new BadRequestException(
+        'Estimated arrival date must be after the estimated departure date',
+      );
     }
 
     const updated = await this.prisma.shipment.update({
