@@ -57,6 +57,11 @@ export class ShipmentsService {
 
     // Validate carrier org exists if provided
     if (dto.carrierOrganizationId) {
+      if (dto.carrierOrganizationId === dbUser.organization_id) {
+        throw new BadRequestException(
+          'A shipper cannot assign their own organization as the carrier',
+        );
+      }
       const carrierOrg = await this.prisma.organization.findUnique({
         where: { organization_id: dto.carrierOrganizationId },
       });
@@ -282,6 +287,11 @@ export class ShipmentsService {
 
     // Validate carrier org if provided
     if (dto.carrierOrganizationId) {
+      if (dto.carrierOrganizationId === shipment.shipper_organization_id) {
+        throw new BadRequestException(
+          'A shipper cannot assign their own organization as the carrier',
+        );
+      }
       const carrierOrg = await this.prisma.organization.findUnique({
         where: { organization_id: dto.carrierOrganizationId },
       });
