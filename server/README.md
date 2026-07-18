@@ -7,9 +7,7 @@
 </div>
 
 ---
-
 ## Table of Contents
-
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
@@ -398,7 +396,6 @@ npm install -D supertest @types/supertest
 ```
 
 ### Step 3 — Create the folder structure
-
 ```bash
 cd src
 mkdir -p auth/controllers auth/services auth/strategies auth/guards auth/dto
@@ -411,13 +408,10 @@ mkdir -p common/decorators config types
 ```
 
 ---
-
 ## Prisma Setup
-
 Prisma reads `schema.prisma` and generates a fully-typed TypeScript client. Every database query in the application goes through this client — no raw SQL in service or controller files.
 
 ### Initialize Prisma
-
 ```bash
 npx prisma init
 ```
