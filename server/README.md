@@ -477,7 +477,6 @@ Add this to `package.json`:
 ```
 
 ---
-
 ## Running the Server
 
 ```bash
@@ -494,7 +493,7 @@ npm run start:debug
 
 Verify the server is running:
 
-```
+```js
 GET http://localhost:3000/api/v1/health   →  200 OK
 GET http://localhost:3000/api/docs        →  Swagger UI
 ```
@@ -502,19 +501,15 @@ GET http://localhost:3000/api/docs        →  Swagger UI
 ---
 
 ## Implemented Modules
-
 This section documents every module that has been built and merged into the repository.
 
 ---
-
 ### Auth Module
 
 **Location:** `src/auth/`
-
 Handles the complete authentication lifecycle — registration, login, token refresh, logout, and current user retrieval.
 
 **What's implemented:**
-
 - `POST /auth/register` — creates a new user, hashes password with bcrypt, returns token pair
 - `POST /auth/login` — validates credentials, issues access token (15m) and refresh token (7d)
 - `POST /auth/refresh` — validates refresh token, rotates it, issues new token pair
@@ -522,33 +517,26 @@ Handles the complete authentication lifecycle — registration, login, token ref
 - `GET /auth/me` — returns the authenticated user's profile including organization details
 
 **Key decisions:**
-
 Access tokens are short-lived at 15 minutes. Refresh tokens are stored as bcrypt hashes in the `refresh_token` table and rotated on every use — if a stolen token is used twice, the second attempt fails and the session is invalidated.
 
 ---
-
 ### Users Module
 
 **Location:** `src/users/`
-
 Manages user records. Organization details are included in authentication responses so the frontend does not need a separate call to fetch organization context after login.
 
 **What's implemented:**
-
 - User lookup by ID and email
 - Organization context embedded in user responses
 - User role retrieval for guard enforcement
 
 ---
-
 ### Organizations Module
-
 **Location:** `src/organizations/`
 
 Manages organization records and exposes the member directory endpoint.
 
 **What's implemented:**
-
 - `GET /organizations` — list all organizations (Admin, Regulator)
 - `GET /organizations/:id` — organization detail
 - `POST /organizations` — create organization (Admin)
@@ -557,15 +545,12 @@ Manages organization records and exposes the member directory endpoint.
 - `GET /organizations/:id/members` — fetch full member directory for an organization
 
 ---
-
 ### Shipments Module
-
 **Location:** `src/shipments/`
 
 Manages the complete shipment lifecycle with a state machine enforcing valid status transitions. Supports continuous GPS location updates through self-transitions.
 
 **What's implemented:**
-
 - Full CRUD for shipments
 - State machine with all valid transitions between statuses
 - Self-transitions enabled so a carrier can continuously push GPS coordinates while a shipment remains `in_transit` without being blocked by the transition guard
@@ -573,7 +558,7 @@ Manages the complete shipment lifecycle with a state machine enforcing valid sta
 
 **Valid status transitions:**
 
-```
+```js
 draft         → confirmed
 confirmed     → picked_up
 picked_up     → in_transit
@@ -591,9 +576,7 @@ out_for_delivery → delivered
 ```
 
 ---
-
 ### Admin Module
-
 **Location:** `src/admin/`
 
 Platform-wide administration. Initialized and registered in `app.module.ts`.
@@ -601,93 +584,75 @@ Platform-wide administration. Initialized and registered in `app.module.ts`.
 **Status:** Module initialized. Feature endpoints being developed.
 
 **Planned scope:**
-
 - Platform statistics and KPIs
 - User management across all organizations
 - Organization approval and deactivation
 - System-wide audit log access
 
 ---
-
 ### Mail Module
-
 **Location:** `src/mail/`
 
 Handles all outbound email using SMTP. Currently used by the Queue module to send invitation emails asynchronously.
 
 **What's implemented:**
-
 - SMTP connection configured via environment variables
 - Mail service injectable across modules
 - Invitation email template
 
 ---
-
 ### Queue Module
 
 **Location:** `src/queue/`
-
 BullMQ-powered async job queue backed by Redis. Decouples email delivery from the request cycle — invitation emails are queued and processed by the consumer without blocking the API response.
 
 **What's implemented:**
-
 - Queue module and BullMQ configuration
 - Invitation email consumer — picks jobs off the queue and calls the Mail service
 - Queue registration in `app.module.ts`
 
 ---
-
 ### Redis Module
-
 **Location:** `src/redis/`
-
 Global Redis client using `ioredis`. Provides a shared `RedisService` injectable anywhere in the application for caching, queue backend, and future session management.
 
 **What's implemented:**
-
 - Redis module with `ioredis` client
 - `RedisService` with `get`, `set`, `del`, and `expire` methods
 - Global module — no need to re-import in feature modules
 
 ---
-
 ### Prisma Module
-
 **Location:** `src/prisma/`
-
 Global database client module. `PrismaService` extends `PrismaClient` and manages the connection lifecycle with `onModuleInit` and `onModuleDestroy`. Configured to work with the modern Prisma engine.
 
 **What's implemented:**
-
 - `PrismaService` with connection lifecycle hooks
 - `@Global()` module — imported once in `AppModule`, available everywhere
 - Compatible with Prisma 6+ adapter configuration
 
 ---
-
 ## API Design
-
 ### Design Principles
-
 Every endpoint follows these rules without exception.
 
 **Versioned routes** — every endpoint lives under `/api/v1/`. Breaking changes introduce `/api/v2/` without removing the previous version.
 
 **Plural nouns, never verbs:**
-```
+```js
 ✓  GET /api/v1/shipments
 ✗  GET /api/v1/getShipments
 ```
 
 **Nested routes for resource ownership:**
-```
+```js
 GET  /api/v1/shipments/:id/events
 POST /api/v1/shipments/:id/events
 GET  /api/v1/organizations/:id/members
 ```
 
 **HTTP verbs carry meaning:**
-```
+```js
 GET     read only, never mutates state
 POST    create a new resource
 PATCH   update specific fields of an existing resource
@@ -721,23 +686,19 @@ DELETE  remove or deactivate
 ```
 
 **Pagination on every list endpoint:**
-```
+```js
 GET /api/v1/shipments?page=1&limit=20&status=in_transit
 ```
 
 ---
-
 ### Base URL and Versioning
-
-```
+```js
 Development:   http://localhost:3000/api/v1
 Swagger UI:    http://localhost:3000/api/docs
 ```
 
 ---
-
 ### Authentication Endpoints
-
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
 | `POST` | `/auth/register` | ✗ | — | Register new user account |
@@ -781,9 +742,7 @@ Swagger UI:    http://localhost:3000/api/docs
 ```
 
 ---
-
 ### Organizations Endpoints
-
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
 | `GET` | `/organizations` | ✓ | Admin, Regulator | List all organizations |
@@ -794,9 +753,7 @@ Swagger UI:    http://localhost:3000/api/docs
 | `GET` | `/organizations/:id/members` | ✓ | Admin | Organization member directory |
 
 ---
-
 ### Users Endpoints
-
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
 | `GET` | `/users` | ✓ | Admin | List all users |
@@ -806,9 +763,7 @@ Swagger UI:    http://localhost:3000/api/docs
 | `PATCH` | `/users/:id/deactivate` | ✓ | Admin | Deactivate user |
 
 ---
-
 ### Shipments Endpoints
-
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
 | `GET` | `/shipments` | ✓ | All | List shipments — role-filtered automatically |
@@ -839,9 +794,7 @@ GET /api/v1/shipments?status=in_transit&page=1&limit=20&origin_city=Alexandria
 ```
 
 ---
-
 ### Admin Endpoints
-
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
 | `GET` | `/admin/stats` | ✓ | Admin | Platform-wide KPI statistics |
@@ -852,9 +805,7 @@ GET /api/v1/shipments?status=in_transit&page=1&limit=20&origin_city=Alexandria
 | `GET` | `/admin/audit` | ✓ | Admin | Platform audit log |
 
 ---
-
 ### Alerts Endpoints
-
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
 | `GET` | `/alerts` | ✓ | All | Alerts for the current user |
@@ -864,9 +815,7 @@ GET /api/v1/shipments?status=in_transit&page=1&limit=20&origin_city=Alexandria
 | `PATCH` | `/alerts/:id/resolve` | ✓ | Admin, Regulator | Mark alert as resolved |
 
 ---
-
 ### Dashboard Endpoints
-
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
 | `GET` | `/dashboard/stats` | ✓ | All | KPI statistics — role-filtered |
@@ -875,9 +824,7 @@ GET /api/v1/shipments?status=in_transit&page=1&limit=20&origin_city=Alexandria
 | `GET` | `/dashboard/carrier/performance` | ✓ | Admin, Regulator | Carrier delivery performance |
 
 ---
-
 ### Reports Endpoints
-
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
 | `POST` | `/reports` | ✓ | Admin, Regulator | Request async report generation |
@@ -887,9 +834,7 @@ GET /api/v1/shipments?status=in_transit&page=1&limit=20&origin_city=Alexandria
 Reports are generated asynchronously. The API returns `report_status: "pending"` immediately. A BullMQ worker processes the job. The client receives a `report:ready` WebSocket event when generation completes.
 
 ---
-
 ### Audit Endpoints
-
 | Method | Endpoint | Auth | Role | Description |
 |---|---|---|---|---|
 | `GET` | `/audit` | ✓ | Admin | Browse audit log |
@@ -899,9 +844,7 @@ Reports are generated asynchronously. The API returns `report_status: "pending"`
 Audit logs are read-only. There are no write endpoints.
 
 ---
-
 ### Health Endpoints
-
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/health` | ✗ | Overall application health |
@@ -909,13 +852,10 @@ Audit logs are read-only. There are no write endpoints.
 | `GET` | `/health/redis` | ✗ | Redis connectivity |
 
 ---
-
 ### WebSocket Events
-
 Connect to `ws://localhost:3000` with a valid JWT Bearer token in the handshake headers.
 
 **Client → Server:**
-
 | Event | Payload | Description |
 |---|---|---|
 | `join:shipment` | `{ shipmentId: string }` | Subscribe to a shipment room |
@@ -935,7 +875,7 @@ Connect to `ws://localhost:3000` with a valid JWT Bearer token in the handshake 
 
 ## Request and Response Flow
 
-```
+```js
 1. Global Middleware
    ├── Helmet             security response headers
    ├── Compression        gzip all responses
