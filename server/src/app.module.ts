@@ -12,6 +12,7 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { MailModule } from './mail/mail.module';
 import { QueueModule } from './queue/queue.module';
 import { ShipmentsModule } from './shipments/shipments.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ShipmentsModule } from './shipments/shipments.module';
     MailModule,
     QueueModule,
     ShipmentsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
