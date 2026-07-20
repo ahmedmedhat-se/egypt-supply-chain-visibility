@@ -197,9 +197,11 @@ export class AdminService {
       throw new ForbiddenException('Cannot delete your own account');
     }
     if (user.user_role === 'admin') {
-      const adminCount = await this.prisma.user.count({ where: { user_role: 'admin' } });
+      const adminCount = await this.prisma.user.count({ 
+        where: { user_role: 'admin', organization_id: user.organization_id } 
+      });
       if (adminCount <= 1) {
-        throw new ForbiddenException('Cannot delete the last admin user');
+        throw new ForbiddenException('Cannot delete the last admin user of this organization');
       }
     }
 
@@ -399,21 +401,22 @@ export class AdminService {
 
     if (!shipment) throw new NotFoundException('Shipment not found');
 
-    const updated = await this.prisma.shipment.update({
-      where: { shipment_id: id },
-      data: { shipment_status: status },
-    });
-
-    await this.prisma.shipmentEvent.create({
-      data: {
-        shipment_id: id,
-        recorded_by_user_id: adminUser.user_id,
-        event_type: 'status_change',
-        event_status: status,
-        event_description: `Admin manually updated status to ${status}`,
-        event_metadata: { previous_status: shipment.shipment_status, admin_action: true },
-      },
-    });
+    const [updated, event] = await this.prisma.$transaction([
+      this.prisma.shipment.update({
+        where: { shipment_id: id },
+        data: { shipment_status: status },
+      }),
+      this.prisma.shipmentEvent.create({
+        data: {
+          shipment_id: id,
+          recorded_by_user_id: adminUser.user_id,
+          event_type: 'status_change',
+          event_status: status,
+          event_description: `Admin manually updated status to ${status}`,
+          event_metadata: { previous_status: shipment.shipment_status, admin_action: true },
+        },
+      }),
+    ]);
 
     await this.logAdminAction(adminUser, 'UPDATE_SHIPMENT_STATUS', 'shipment', id, shipment, updated);
     return { success: true, data: updated };
