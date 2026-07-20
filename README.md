@@ -81,6 +81,9 @@ egypt-supply-chain-visibility/
 ├── database/
 ├── docs/
 ├── server/
+└── .env.example
+└── .gitignore
+└── docker-compose.yml
 └── README.md
 ```
 
