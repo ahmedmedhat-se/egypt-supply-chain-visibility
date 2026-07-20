@@ -14,6 +14,9 @@ import { QueueModule } from './queue/queue.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { AdminModule } from './admin/admin.module';
 
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,6 +25,10 @@ import { AdminModule } from './admin/admin.module';
       validationSchema,
       envFilePath: '.env',
     }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 100, // 100 requests per minute max globally
+    }]),
     PrismaModule,
     RedisModule,
     UsersModule,
@@ -33,6 +40,12 @@ import { AdminModule } from './admin/admin.module';
     AdminModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
