@@ -4,21 +4,21 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { Footer } from './Footer';
 import { Toaster } from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
 
 interface AppLayoutProps {
   isAuthenticated?: boolean;
   userName?: string;
   userRole?: string;
-  onLogout?: () => void;
 }
 
 export const AppLayout = ({ 
   isAuthenticated = false,
   userName = 'Guest User',
   userRole = 'Guest',
-  onLogout 
 }: AppLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { logout } = useAuth();
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0A2E4A] overflow-hidden">
@@ -26,7 +26,7 @@ export const AppLayout = ({
         isOpen={sidebarOpen} 
         isAuthenticated={isAuthenticated}
         onClose={() => setSidebarOpen(false)}
-        onLogout={onLogout}
+        onLogout={logout}
       />
       
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -35,6 +35,7 @@ export const AppLayout = ({
           isAuthenticated={isAuthenticated}
           userName={userName}
           userRole={userRole}
+          onLogout={logout}
         />
         
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">

@@ -14,6 +14,7 @@ interface TopbarProps {
   userName?: string;
   userRole?: string;
   notificationCount?: number;
+  onLogout?: () => void; // Add this
 }
 
 export const Topbar = ({ 
@@ -21,7 +22,8 @@ export const Topbar = ({
   isAuthenticated = false,
   userName = 'Guest User', 
   userRole = 'Guest',
-  notificationCount = 0 
+  notificationCount = 0,
+  onLogout // Add this
 }: TopbarProps) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -148,7 +150,10 @@ export const Topbar = ({
                     <Link to={ROUTES.SETTINGS} className="w-full text-left px-4 py-2 text-sm text-[#1A2A3A] dark:text-[#E2E8F0] hover:bg-[#E8F0F8] dark:hover:bg-[#0A2E4A] transition-colors block">
                       <FaCaretDown className="inline mr-2" /> Settings
                     </Link>
-                    <button className="w-full text-left px-4 py-2 text-sm text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#991B1B]/20 transition-colors border-t border-[#E2E8F0] dark:border-[#1A3D5A]">
+                    <button 
+                      onClick={onLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#991B1B]/20 transition-colors border-t border-[#E2E8F0] dark:border-[#1A3D5A]"
+                    >
                       Sign Out
                     </button>
                   </div>
