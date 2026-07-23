@@ -156,6 +156,7 @@ export class OrganizationsService {
         user_last_name: true,
         user_role: true,
         user_is_active: true,
+        user_created_at: true,
       },
       orderBy: { user_first_name: 'asc' },
     });
