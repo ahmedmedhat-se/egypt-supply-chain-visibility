@@ -36,10 +36,14 @@ export class ShipmentsService {
   // ---------- Create ----------
 
   async create(user: RequestUser, dto: CreateShipmentDto) {
-    // Only shippers and admins can create shipments
-    if (user.role !== 'shipper' && user.role !== 'admin') {
+    // Only shippers, org admins, and super admins can create shipments
+    if (
+      user.role !== 'shipper' &&
+      user.role !== 'admin' &&
+      user.role !== 'super_admin'
+    ) {
       throw new ForbiddenException(
-        'Only shippers or admins can create shipments',
+        'You do not have permission to create shipments',
       );
     }
 
