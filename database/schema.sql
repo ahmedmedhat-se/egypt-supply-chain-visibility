@@ -46,7 +46,7 @@ CREATE TABLE "user" (
     user_created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     user_updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_user_role
-        CHECK (user_role IN ('admin', 'shipper', 'carrier', 'regulator'))
+        CHECK (user_role IN ('super_admin', 'admin', 'shipper', 'carrier', 'regulator'))
 );
 
 CREATE INDEX idx_user_organization_id ON "user" (organization_id);
