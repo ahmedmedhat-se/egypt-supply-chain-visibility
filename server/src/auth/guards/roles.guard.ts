@@ -28,6 +28,11 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
+    // super_admin bypasses all role checks — platform-level admin
+    if (user.role === 'super_admin') {
+      return true;
+    }
+
     const hasRole = requiredRoles.includes(user.role);
     if (!hasRole) {
       throw new ForbiddenException('You do not have the required role');
