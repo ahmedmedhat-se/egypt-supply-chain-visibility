@@ -36,7 +36,7 @@
 ## Overview
 The ESCV client is a **React + TypeScript** single-page application that gives shippers, carriers, regulators, and administrators a unified real-time view of Egypt's national supply chain.
 
-It connects to the ESCV NestJS backend via a versioned REST API (`/api/v1`) and a Socket.IO WebSocket gateway. Every role sees a different dashboard tailored to their responsibilities — a shipper tracks their own cargo, a carrier updates shipment status and pushes GPS coordinates, a regulator monitors national port load, and an admin manages the entire platform.
+It connects to the ESCV NestJS backend via a versioned REST API (`/api`) and a Socket.IO WebSocket gateway. Every role sees a different dashboard tailored to their responsibilities — a shipper tracks their own cargo, a carrier updates shipment status and pushes GPS coordinates, a regulator monitors national port load, and an admin manages the entire platform.
 
 **Current status:** Authentication foundation complete. Feature modules in development.
 
@@ -238,7 +238,7 @@ cp .env.example .env
 ### Step 2 — Fill in your `.env`
 ```env
 # ── API ────────────────────────────────────────────────
-VITE_API_BASE_URL=http://localhost:3000/api/v1
+VITE_API_BASE_URL=http://localhost:3000/api
 VITE_WS_URL=http://localhost:3000
 
 # ── Map ────────────────────────────────────────────────

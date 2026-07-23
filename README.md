@@ -215,7 +215,7 @@ npm install dayjs
 ## API Documentation
 ### Base URL
 ```
-http://localhost:PORT/api/v1/
+http://localhost:PORT/api/
 ```
 
 ---

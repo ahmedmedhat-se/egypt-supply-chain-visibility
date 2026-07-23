@@ -488,7 +488,7 @@ npm run start:debug
 Verify the server is running:
 
 ```js
-GET http://localhost:3000/api/v1/health   →  200 OK
+GET http://localhost:3000/api/health   →  200 OK
 GET http://localhost:3000/api/docs        →  Swagger UI
 ```
 
@@ -630,19 +630,19 @@ Global database client module. `PrismaService` extends `PrismaClient` and manage
 ### Design Principles
 Every endpoint follows these rules without exception.
 
-**Versioned routes** — every endpoint lives under `/api/v1/`. Breaking changes introduce `/api/v2/` without removing the previous version.
+**Versioned routes** — every endpoint lives under `/api/`. Breaking changes introduce `/api/v2/` without removing the previous version.
 
 **Plural nouns, never verbs:**
 ```js
-✓  GET /api/v1/shipments
-✗  GET /api/v1/getShipments
+✓  GET /api/shipments
+✗  GET /api/getShipments
 ```
 
 **Nested routes for resource ownership:**
 ```js
-GET  /api/v1/shipments/:id/events
-POST /api/v1/shipments/:id/events
-GET  /api/v1/organizations/:id/members
+GET  /api/shipments/:id/events
+POST /api/shipments/:id/events
+GET  /api/organizations/:id/members
 ```
 
 **HTTP verbs carry meaning:**
@@ -681,13 +681,13 @@ DELETE  remove or deactivate
 
 **Pagination on every list endpoint:**
 ```js
-GET /api/v1/shipments?page=1&limit=20&status=in_transit
+GET /api/shipments?page=1&limit=20&status=in_transit
 ```
 
 ---
 ### Base URL and Versioning
 ```js
-Development:   http://localhost:3000/api/v1
+Development:   http://localhost:3000/api
 Swagger UI:    http://localhost:3000/api/docs
 ```
 
@@ -773,7 +773,7 @@ Swagger UI:    http://localhost:3000/api/docs
 
 **Query parameters:**
 ```
-GET /api/v1/shipments?status=in_transit&page=1&limit=20&origin_city=Alexandria
+GET /api/shipments?status=in_transit&page=1&limit=20&origin_city=Alexandria
 ```
 
 **Status update body:**

@@ -18,6 +18,8 @@ async function bootstrap() {
 
   await app.register(helmet);
 
+  app.setGlobalPrefix('api');
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
