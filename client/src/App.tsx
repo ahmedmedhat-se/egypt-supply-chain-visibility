@@ -167,7 +167,7 @@ function App() {
             <Route 
               path={ROUTES.ADMIN} 
               element={
-                isAuthenticated && user?.role === 'admin' ? 
+                isAuthenticated && user?.role === 'super_admin' ? 
                   <AdminPage /> : <Navigate to={ROUTES.LOGIN} replace />
               } 
             />
