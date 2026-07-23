@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-primary: #0A2E4A;
+  --color-primary-light: #1A3D5A;
+  --color-primary-dark: #061F33;
+  --color-secondary: #2D9B6E;
+  --color-secondary-light: #3DB87E;
+  --color-secondary-dark: #1F7A52;
+}
+
+body {
+  background: #F8FAFC;
+  color: #1A2A3A;
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark body {
+  background: #0A2E4A;
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #E8F0F8;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0A2E4A;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1A3D5A;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1A3D5A;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #2D9B6E;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3DB87E;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes leave {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.animate-enter {
+  animation: enter 200ms ease-out;
+}
+
+.animate-leave {
+  animation: leave 150ms ease-in;
+}
