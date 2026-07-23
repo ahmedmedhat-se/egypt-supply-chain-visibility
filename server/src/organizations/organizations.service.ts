@@ -26,12 +26,7 @@ export class OrganizationsService {
     dto: CreateInvitationDto,
     userId: string,
   ) {
-    const admin = await this.prisma.user.findFirst({
-      where: { user_id: userId, organization_id: orgId, user_role: 'admin' },
-    });
-    if (!admin) {
-      throw new ForbiddenException('Only an admin can invite members');
-    }
+    await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
 
     const existingUser = await this.prisma.user.findUnique({
       where: { user_email: dto.email },
@@ -79,12 +74,7 @@ export class OrganizationsService {
   }
 
   async getInvitations(orgId: string, userId: string) {
-    const admin = await this.prisma.user.findFirst({
-      where: { user_id: userId, organization_id: orgId, user_role: 'admin' },
-    });
-    if (!admin) {
-      throw new ForbiddenException('Only an admin can view invitations');
-    }
+    await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
 
     return this.prisma.invitation.findMany({
       where: { organization_id: orgId, status: 'pending' },
@@ -100,12 +90,7 @@ export class OrganizationsService {
   }
 
   async resendInvitation(orgId: string, invitationId: string, userId: string) {
-    const admin = await this.prisma.user.findFirst({
-      where: { user_id: userId, organization_id: orgId, user_role: 'admin' },
-    });
-    if (!admin) {
-      throw new ForbiddenException('Only an admin can resend invitations');
-    }
+    await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
 
     const invitation = await this.prisma.invitation.findFirst({
       where: { invitation_id: invitationId, organization_id: orgId },
@@ -140,12 +125,7 @@ export class OrganizationsService {
   }
 
   async cancelInvitation(orgId: string, invitationId: string, userId: string) {
-    const admin = await this.prisma.user.findFirst({
-      where: { user_id: userId, organization_id: orgId, user_role: 'admin' },
-    });
-    if (!admin) {
-      throw new ForbiddenException('Only an admin can cancel invitations');
-    }
+    await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
 
     const invitation = await this.prisma.invitation.findFirst({
       where: { invitation_id: invitationId, organization_id: orgId },
@@ -165,12 +145,7 @@ export class OrganizationsService {
   }
 
   async getMembers(orgId: string, userId: string) {
-    const admin = await this.prisma.user.findFirst({
-      where: { user_id: userId, organization_id: orgId, user_role: 'admin' },
-    });
-    if (!admin) {
-      throw new ForbiddenException('Only an admin can view the member directory');
-    }
+    await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
 
     return this.prisma.user.findMany({
       where: { organization_id: orgId },
@@ -184,5 +159,28 @@ export class OrganizationsService {
       },
       orderBy: { user_first_name: 'asc' },
     });
+  }
+
+  private async ensureOrgAdminOrSuperAdmin(userId: string, orgId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: userId },
+      select: { user_role: true, organization_id: true },
+    });
+
+    if (!user) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    // super_admin can manage any organization
+    if (user.user_role === 'super_admin') {
+      return;
+    }
+
+    // org admin must belong to the target organization
+    if (user.user_role === 'admin' && user.organization_id === orgId) {
+      return;
+    }
+
+    throw new ForbiddenException('Only an admin can perform this action');
   }
 }
