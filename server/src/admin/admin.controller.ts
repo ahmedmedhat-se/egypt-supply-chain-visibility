@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { 
@@ -22,11 +23,14 @@ import {
 } from './dto/admin.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
 @Controller('admin')
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('super_admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
