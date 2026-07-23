@@ -26,7 +26,7 @@ async function main() {
       user_password_hash: passwordHash,
       user_first_name: 'Super',
       user_last_name: 'Admin',
-      user_role: 'admin',
+      user_role: 'super_admin',
       user_is_active: true,
     },
   });

@@ -12,6 +12,7 @@ import {
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -24,6 +25,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Register a new organization and user' })
   @ApiResponse({ status: 201, description: 'Successfully registered.' })
   @Post('register')
@@ -41,6 +43,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Login to an existing account' })
   @ApiResponse({ status: 200, description: 'Successfully logged in.' })
   @Post('login')
