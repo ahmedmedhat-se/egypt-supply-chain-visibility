@@ -13,6 +13,8 @@ import { MailModule } from './mail/mail.module';
 import { QueueModule } from './queue/queue.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { AdminModule } from './admin/admin.module';
+import { CheckpointsModule } from './checkpoints/checkpoints.module';
+import { RoutesModule } from './routes/routes.module';
 
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -38,6 +40,8 @@ import { APP_GUARD } from '@nestjs/core';
     QueueModule,
     ShipmentsModule,
     AdminModule,
+    CheckpointsModule,
+    RoutesModule,
   ],
   controllers: [AppController],
   providers: [
