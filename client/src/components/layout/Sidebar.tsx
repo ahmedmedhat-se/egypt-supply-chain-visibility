@@ -56,6 +56,7 @@ export const Sidebar = ({
 
   const adminOnlyRoles = ['super_admin', 'admin'];
   const isAdmin = adminOnlyRoles.includes(userRole || '');
+  const isSuperAdmin = userRole === 'super_admin';
 
   const authenticatedNavigation: NavItem[] = [
     { name: 'Dashboard', to: ROUTES.DASHBOARD, icon: FaTachometerAlt, authRequired: true },
@@ -67,7 +68,7 @@ export const Sidebar = ({
       { name: 'Invitations', to: ROUTES.ORGANIZATIONS_INVITATIONS, icon: FaPaperPlane, authRequired: true } as NavItem,
     ] : []),
     { name: 'Reports', to: ROUTES.REPORTS, icon: FaFileAlt, authRequired: true },
-    ...(isAdmin ? [
+    ...(isSuperAdmin ? [
       { name: 'Admin', to: ROUTES.ADMIN, icon: FaUsersCog, authRequired: true } as NavItem,
     ] : []),
   ];
