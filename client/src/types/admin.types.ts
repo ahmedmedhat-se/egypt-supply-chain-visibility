@@ -78,6 +78,18 @@ export interface PaginatedResponse<T> {
   meta: { page: number; limit: number; total: number; pages: number };
 }
 
+export interface AdminInvitation {
+  invitation_id: string;
+  organization_id: string;
+  organization: { organization_id: string; organization_name: string };
+  invited_email: string;
+  invited_role: string;
+  status: string;
+  created_by: { user_id: string; user_email: string; user_first_name: string; user_last_name: string };
+  expires_at: string;
+  created_at: string;
+}
+
 export interface BulkActionData {
   action: string;
   resourceType: string;

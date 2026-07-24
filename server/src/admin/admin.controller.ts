@@ -159,6 +159,17 @@ export class AdminController {
     return this.adminService.bulkAction(dto, user);
   }
 
+  @Get('invitations')
+  @ApiOperation({ summary: 'List all invitations across platform' })
+  @ApiResponse({ status: 200, description: 'Invitations list returned' })
+  async listInvitations(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.listInvitations(page, limit, status);
+  }
+
   @Get('audit-logs')
   @ApiOperation({ summary: 'View audit logs' })
   @ApiResponse({ status: 200, description: 'Audit logs returned' })

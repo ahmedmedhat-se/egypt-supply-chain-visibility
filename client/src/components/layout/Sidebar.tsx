@@ -16,7 +16,9 @@ import {
   FaEnvelope,
   FaSignInAlt,
   FaUserPlus,
-  FaPaperPlane
+  FaPaperPlane,
+  FaUsers,
+  FaGlobe,
 } from 'react-icons/fa';
 import { ROUTES } from '../../constants/routes';
 import { cn } from '../../lib/utils';
@@ -63,9 +65,14 @@ export const Sidebar = ({
     { name: 'Shipments', to: ROUTES.SHIPMENTS, icon: FaShip, authRequired: true },
     { name: 'Tracking', to: ROUTES.TRACKING, icon: FaMapMarkedAlt, authRequired: true },
     { name: 'Alerts', to: ROUTES.ALERTS, icon: FaBell, badge: 3, authRequired: true },
-    ...(isAdmin ? [
-      { name: 'Organizations', to: ROUTES.ORGANIZATIONS, icon: FaBuilding, authRequired: true } as NavItem,
-      { name: 'Invitations', to: ROUTES.ORGANIZATIONS_INVITATIONS, icon: FaPaperPlane, authRequired: true } as NavItem,
+    ...(isAdmin && !isSuperAdmin ? [
+      { name: 'Users Report', to: ROUTES.USERS_REPORT, icon: FaUsers, authRequired: true } as NavItem,
+      { name: 'Invitations', to: ROUTES.INVITATIONS, icon: FaPaperPlane, authRequired: true } as NavItem,
+    ] : []),
+    ...(isSuperAdmin ? [
+      { name: 'Users Report', to: ROUTES.SUPER_ADMIN_USERS_REPORT, icon: FaUsers, authRequired: true } as NavItem,
+      { name: 'Invitations', to: ROUTES.SUPER_ADMIN_INVITATIONS, icon: FaPaperPlane, authRequired: true } as NavItem,
+      { name: 'Organizations', to: ROUTES.SUPER_ADMIN_ORGANIZATIONS, icon: FaGlobe, authRequired: true } as NavItem,
     ] : []),
     { name: 'Reports', to: ROUTES.REPORTS, icon: FaFileAlt, authRequired: true },
     ...(isSuperAdmin ? [
@@ -115,7 +122,7 @@ export const Sidebar = ({
           {navigation.map((item) => {
             const isActive =
               item.name === 'Dashboard'
-                ? ['/admin/dashboard', '/shipper/dashboard', '/carrier/dashboard', '/regulator/dashboard']
+                    ? ['/admin/dashboard', '/super-admin/dashboard', '/shipper/dashboard', '/carrier/dashboard', '/regulator/dashboard']
                     .some((p) => location.pathname.startsWith(p))
                 : location.pathname === item.to;
             return (

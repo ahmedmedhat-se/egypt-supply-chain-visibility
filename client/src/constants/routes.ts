@@ -12,6 +12,7 @@ export const ROUTES = {
   // Protected Routes (Authenticated)
   DASHBOARD: '/dashboard',
   DASHBOARD_ADMIN: '/admin/dashboard',
+  DASHBOARD_SUPER_ADMIN: '/super-admin/dashboard',
   DASHBOARD_SHIPPER: '/shipper/dashboard',
   DASHBOARD_CARRIER: '/carrier/dashboard',
   DASHBOARD_REGULATOR: '/regulator/dashboard',
@@ -23,23 +24,9 @@ export const ROUTES = {
   TRACKING_SHIPMENT: '/tracking/:id',
   ALERTS: '/alerts',
   ALERT_DETAIL: '/alerts/:id',
-  ORGANIZATIONS: '/organizations',
-  ORGANIZATIONS_INVITATIONS: '/organizations/invitations',
-  ORGANIZATION_DETAIL: '/organizations/:id',
-  ORGANIZATION_CREATE: '/organizations/create',
   REPORTS: '/reports',
   REPORTS_CREATE: '/reports/create',
   REPORTS_DETAIL: '/reports/:id',
-  
-  // Admin Routes
-  ADMIN: '/admin',
-  ADMIN_USERS: '/admin/users',
-  ADMIN_USER_DETAIL: '/admin/users/:id',
-  ADMIN_ORGANIZATIONS: '/admin/organizations',
-  ADMIN_SETTINGS: '/admin/settings',
-  ADMIN_LOGS: '/admin/logs',
-  
-  // User Routes
   PROFILE: '/profile',
   SETTINGS: '/settings',
   NOTIFICATIONS: '/notifications',
@@ -47,6 +34,18 @@ export const ROUTES = {
   FAQ: '/faq',
   TERMS: '/terms',
   PRIVACY: '/privacy',
+
+  // Org Admin Routes
+  USERS_REPORT: '/users-report',
+  INVITATIONS: '/invitations',
+
+  // Super Admin Routes
+  SUPER_ADMIN_USERS_REPORT: '/super-admin/users-report',
+  SUPER_ADMIN_INVITATIONS: '/super-admin/invitations',
+  SUPER_ADMIN_ORGANIZATIONS: '/super-admin/organizations',
+
+  // Admin Panel
+  ADMIN: '/admin',
 } as const;
 
 export type RoutePath = typeof ROUTES[keyof typeof ROUTES];

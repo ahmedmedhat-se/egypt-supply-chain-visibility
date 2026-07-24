@@ -3,6 +3,7 @@ import type {
   AdminDashboardData,
   AdminUser,
   AdminOrganization,
+  AdminInvitation,
   AuditLogEntry,
   PaginatedResponse,
   BulkActionData,
@@ -41,6 +42,9 @@ export const adminApi = {
 
   deactivateOrganization: (id: string) =>
     apiClient.patch<{ success: boolean; message: string }>(`/api/admin/organizations/${id}/deactivate`),
+
+  getInvitations: (params?: { page?: number; limit?: number; status?: string }) =>
+    apiClient.get<PaginatedResponse<AdminInvitation>>('/api/admin/invitations', { params }),
 
   getAuditLogs: (params?: { resourceType?: string; resourceId?: string; limit?: number }) =>
     apiClient.get<{ success: boolean; data: AuditLogEntry[] }>('/api/admin/audit-logs', { params }),

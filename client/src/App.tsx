@@ -38,6 +38,11 @@ const AdminDashboardPage = lazy(() =>
     default: m.AdminDashboardPage,
   })),
 );
+const SuperAdminDashboardPage = lazy(() =>
+  import('./components/pages/super-admin/DashboardPage').then((m) => ({
+    default: m.SuperAdminDashboardPage,
+  })),
+);
 const ShipperDashboardPage = lazy(() =>
   import('./components/pages/shipper/DashboardPage').then((m) => ({
     default: m.ShipperDashboardPage,
@@ -67,6 +72,21 @@ const OrganizationsPage = lazy(() =>
 );
 const InvitationsPage = lazy(() =>
   import('./components/pages/InvitationsPage').then((m) => ({ default: m.InvitationsPage })),
+);
+const SuperAdminUsersReportPage = lazy(() =>
+  import('./components/pages/super-admin/UsersReportPage').then((m) => ({
+    default: m.SuperAdminUsersReportPage,
+  })),
+);
+const SuperAdminOrganizationsPage = lazy(() =>
+  import('./components/pages/super-admin/OrganizationsPage').then((m) => ({
+    default: m.SuperAdminOrganizationsPage,
+  })),
+);
+const SuperAdminInvitationsPage = lazy(() =>
+  import('./components/pages/super-admin/InvitationsPage').then((m) => ({
+    default: m.SuperAdminInvitationsPage,
+  })),
 );
 const AcceptInvitationPage = lazy(() =>
   import('./components/pages/AcceptInvitationPage').then((m) => ({
@@ -116,7 +136,7 @@ function DashboardRedirect({ user }: { user: User | null }) {
   if (!user) return <Navigate to={ROUTES.LOGIN} replace />;
 
   const routeMap: Record<string, string> = {
-    super_admin: ROUTES.DASHBOARD_ADMIN,
+    super_admin: ROUTES.DASHBOARD_SUPER_ADMIN,
     admin: ROUTES.DASHBOARD_ADMIN,
     shipper: ROUTES.DASHBOARD_SHIPPER,
     carrier: ROUTES.DASHBOARD_CARRIER,
@@ -173,8 +193,16 @@ function App() {
           <Route
             path={ROUTES.DASHBOARD_ADMIN}
             element={
-              <RoleRoute roles={['super_admin', 'admin']}>
+              <RoleRoute roles={['admin']}>
                 <PageLoader><AdminDashboardPage /></PageLoader>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path={ROUTES.DASHBOARD_SUPER_ADMIN}
+            element={
+              <RoleRoute roles={['super_admin']}>
+                <PageLoader><SuperAdminDashboardPage /></PageLoader>
               </RoleRoute>
             }
           />
@@ -226,22 +254,50 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            {/* ── Org Admin Routes ── */}
             <Route
-              path={ROUTES.ORGANIZATIONS}
+              path={ROUTES.USERS_REPORT}
               element={
-                <RoleRoute roles={['super_admin', 'admin']}>
+                <RoleRoute roles={['admin']}>
                   <PageLoader><OrganizationsPage /></PageLoader>
                 </RoleRoute>
               }
             />
             <Route
-              path={ROUTES.ORGANIZATIONS_INVITATIONS}
+              path={ROUTES.INVITATIONS}
               element={
-                <RoleRoute roles={['super_admin', 'admin']}>
+                <RoleRoute roles={['admin']}>
                   <PageLoader><InvitationsPage /></PageLoader>
                 </RoleRoute>
               }
             />
+
+            {/* ── Super Admin Routes ── */}
+            <Route
+              path={ROUTES.SUPER_ADMIN_USERS_REPORT}
+              element={
+                <RoleRoute roles={['super_admin']}>
+                  <PageLoader><SuperAdminUsersReportPage /></PageLoader>
+                </RoleRoute>
+              }
+            />
+            <Route
+              path={ROUTES.SUPER_ADMIN_ORGANIZATIONS}
+              element={
+                <RoleRoute roles={['super_admin']}>
+                  <PageLoader><SuperAdminOrganizationsPage /></PageLoader>
+                </RoleRoute>
+              }
+            />
+            <Route
+              path={ROUTES.SUPER_ADMIN_INVITATIONS}
+              element={
+                <RoleRoute roles={['super_admin']}>
+                  <PageLoader><SuperAdminInvitationsPage /></PageLoader>
+                </RoleRoute>
+              }
+            />
+
             <Route
               path={ROUTES.REPORTS}
               element={
@@ -268,7 +324,7 @@ function App() {
             />
 
             {/* ═══════════════════════════════════════════════
-                 ADMIN PAGES — require super_admin only
+                 ADMIN PANEL — super_admin only
                ═══════════════════════════════════════════════ */}
             <Route
               path={ROUTES.ADMIN}

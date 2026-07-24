@@ -478,6 +478,36 @@ export class AdminService {
     };
   }
 
+  async listInvitations(page: number = 1, limit: number = 20, status?: string) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (status) where.status = status;
+
+    const [invitations, total] = await Promise.all([
+      this.prisma.invitation.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        include: {
+          organization: {
+            select: { organization_id: true, organization_name: true },
+          },
+          created_by: {
+            select: { user_id: true, user_email: true, user_first_name: true, user_last_name: true },
+          },
+        },
+      }),
+      this.prisma.invitation.count({ where }),
+    ]);
+
+    return {
+      success: true,
+      data: invitations,
+      meta: { page, limit, total, pages: Math.ceil(total / limit) },
+    };
+  }
+
   async getAuditLogs(resourceType?: string, resourceId?: string, limit: number = 50) {
     const where: any = {};
     if (resourceType) where.audit_resource_type = resourceType;
