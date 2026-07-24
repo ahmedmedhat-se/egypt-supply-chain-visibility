@@ -1,82 +1,90 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from './components/layout/AppLayout';
 import { ROUTES } from './constants/routes';
 import { useAuthStore } from './store/auth.store';
-import { useEffect } from 'react';
+import { ProtectedRoute, RoleRoute } from './router';
+import type { User } from './store/auth.store';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import { DashboardPage } from './components';
 
-// Import pages
-import { HomePage } from './components/pages/HomePage';
-import { AboutPage } from './components/pages/AboutPage';
-import { ContactPage } from './components/pages/ContactPage';
-import { LoginPage } from './components/pages/LoginPage';
-import { RegisterPage } from './components/pages/RegisterPage';
-import { ForgotPasswordPage } from './components/pages/ForgotPasswordPage';
-// src/App.tsx - Add the NotFoundPage import and route
-import { NotFoundPage } from './components/pages/NotFoundPage';
-
-// Placeholder pages
-const DashboardPage = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Dashboard</h1>
-    <p className="text-[#1A2A3A] dark:text-[#94A3B8]">Welcome to ESCV</p>
-  </div>
+// Lazy-loaded pages — each becomes its own chunk
+const HomePage = lazy(() =>
+  import('./components/pages/HomePage').then((m) => ({ default: m.HomePage })),
 );
-
-const ShipmentsPage = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Shipments</h1>
-    <p className="text-[#1A2A3A] dark:text-[#94A3B8]">Manage your shipments</p>
-  </div>
+const AboutPage = lazy(() =>
+  import('./components/pages/AboutPage').then((m) => ({ default: m.AboutPage })),
 );
-
-const TrackingPage = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Live Tracking</h1>
-    <p className="text-[#1A2A3A] dark:text-[#94A3B8]">Real-time shipment tracking</p>
-  </div>
+const ContactPage = lazy(() =>
+  import('./components/pages/ContactPage').then((m) => ({ default: m.ContactPage })),
 );
-
-const AlertsPage = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Alerts</h1>
-    <p className="text-[#1A2A3A] dark:text-[#94A3B8]">Your notification center</p>
-  </div>
+const LoginPage = lazy(() =>
+  import('./components/pages/LoginPage').then((m) => ({ default: m.LoginPage })),
 );
-
-const OrganizationsPage = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Organizations</h1>
-    <p className="text-[#1A2A3A] dark:text-[#94A3B8]">Manage organizations</p>
-  </div>
+const RegisterPage = lazy(() =>
+  import('./components/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
 );
-
-const ReportsPage = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Reports</h1>
-    <p className="text-[#1A2A3A] dark:text-[#94A3B8]">Generate and view reports</p>
-  </div>
+const ForgotPasswordPage = lazy(() =>
+  import('./components/pages/ForgotPasswordPage').then((m) => ({
+    default: m.ForgotPasswordPage,
+  })),
 );
-
-const AdminPage = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Admin</h1>
-    <p className="text-[#1A2A3A] dark:text-[#94A3B8]">Platform administration</p>
-  </div>
+const NotFoundPage = lazy(() =>
+  import('./components/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 );
-
-const ProfilePage = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Profile</h1>
-    <p className="text-[#1A2A3A] dark:text-[#94A3B8]">Your profile settings</p>
-  </div>
+const AdminDashboardPage = lazy(() =>
+  import('./components/pages/org-admin/DashboardPage').then((m) => ({
+    default: m.AdminDashboardPage,
+  })),
 );
-
-const SettingsPage = () => (
-  <div className="space-y-4">
-    <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Settings</h1>
-    <p className="text-[#1A2A3A] dark:text-[#94A3B8]">Application settings</p>
-  </div>
+const ShipperDashboardPage = lazy(() =>
+  import('./components/pages/shipper/DashboardPage').then((m) => ({
+    default: m.ShipperDashboardPage,
+  })),
+);
+const CarrierDashboardPage = lazy(() =>
+  import('./components/pages/carrier/DashboardPage').then((m) => ({
+    default: m.CarrierDashboardPage,
+  })),
+);
+const RegulatorDashboardPage = lazy(() =>
+  import('./components/pages/regulator/DashboardPage').then((m) => ({
+    default: m.RegulatorDashboardPage,
+  })),
+);
+const ShipmentsPage = lazy(() =>
+  import('./components/pages/ShipmentsPage').then((m) => ({ default: m.ShipmentsPage })),
+);
+const TrackingPage = lazy(() =>
+  import('./components/pages/TrackingPage').then((m) => ({ default: m.TrackingPage })),
+);
+const AlertsPage = lazy(() =>
+  import('./components/pages/AlertsPage').then((m) => ({ default: m.AlertsPage })),
+);
+const OrganizationsPage = lazy(() =>
+  import('./components/pages/OrganizationsPage').then((m) => ({ default: m.OrganizationsPage })),
+);
+const InvitationsPage = lazy(() =>
+  import('./components/pages/InvitationsPage').then((m) => ({ default: m.InvitationsPage })),
+);
+const AcceptInvitationPage = lazy(() =>
+  import('./components/pages/AcceptInvitationPage').then((m) => ({
+    default: m.AcceptInvitationPage,
+  })),
+);
+const ReportsPage = lazy(() =>
+  import('./components/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
+);
+const AdminPage = lazy(() =>
+  import('./components/pages/AdminPage').then((m) => ({ default: m.AdminPage })),
+);
+const ProfilePage = lazy(() =>
+  import('./components/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+);
+const SettingsPage = lazy(() =>
+  import('./components/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
 
 const queryClient = new QueryClient({
@@ -84,34 +92,58 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
+      retry: 1,
     },
   },
 });
 
+/** Shared Suspense wrapper — shows a spinner while lazy chunk loads */
+function PageLoader({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LoadingSpinner size="lg" />
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
+
+/** Redirects /dashboard to the role-specific dashboard route */
+function DashboardRedirect({ user }: { user: User | null }) {
+  if (!user) return <Navigate to={ROUTES.LOGIN} replace />;
+
+  const routeMap: Record<string, string> = {
+    super_admin: ROUTES.DASHBOARD_ADMIN,
+    admin: ROUTES.DASHBOARD_ADMIN,
+    shipper: ROUTES.DASHBOARD_SHIPPER,
+    carrier: ROUTES.DASHBOARD_CARRIER,
+    regulator: ROUTES.DASHBOARD_REGULATOR,
+  };
+
+  const target = routeMap[user.role] || ROUTES.DASHBOARD_ADMIN;
+  return <Navigate to={target} replace />;
+}
+
 function App() {
-  const { isAuthenticated, user, clearAuth } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
 
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    const userStr = localStorage.getItem('user');
-    
-    if (!token || !userStr) {
-      clearAuth();
-    }
-  }, [clearAuth]);
-
-  const userName = user ? `${user.firstName} ${user.lastName}` : 'Guest User';
+  const userName = user?.name || 'Guest User';
   const userRole = user?.role || 'Guest';
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
       <BrowserRouter>
         <Routes>
-          {/* AppLayout Interface */}
-          <Route 
+          <Route
             element={
-              <AppLayout 
-                isAuthenticated={isAuthenticated} 
+              <AppLayout
+                isAuthenticated={isAuthenticated}
                 userName={userName}
                 userRole={userRole}
               />
@@ -184,14 +216,144 @@ function App() {
               } 
             />
 
-            {/* Redirect root to home */}
-            <Route path="/" element={<Navigate to={ROUTES.HOME} replace />} />
+            {/* ═══════════════════════════════════════════════
+                 PROTECTED PAGES — require valid JWT
+               ═══════════════════════════════════════════════ */}
+            {/* Role-based dashboard redirect */}
+          <Route
+            path={ROUTES.DASHBOARD}
+            element={
+              <ProtectedRoute>
+                <DashboardRedirect user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.DASHBOARD_ADMIN}
+            element={
+              <RoleRoute roles={['super_admin', 'admin']}>
+                <PageLoader><AdminDashboardPage /></PageLoader>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path={ROUTES.DASHBOARD_SHIPPER}
+            element={
+              <RoleRoute roles={['shipper']}>
+                <PageLoader><ShipperDashboardPage /></PageLoader>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path={ROUTES.DASHBOARD_CARRIER}
+            element={
+              <RoleRoute roles={['carrier']}>
+                <PageLoader><CarrierDashboardPage /></PageLoader>
+              </RoleRoute>
+            }
+          />
+          <Route
+            path={ROUTES.DASHBOARD_REGULATOR}
+            element={
+              <RoleRoute roles={['regulator']}>
+                <PageLoader><RegulatorDashboardPage /></PageLoader>
+              </RoleRoute>
+            }
+          />
+            <Route
+              path={ROUTES.SHIPMENTS}
+              element={
+                <ProtectedRoute>
+                  <PageLoader><ShipmentsPage /></PageLoader>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.TRACKING}
+              element={
+                <ProtectedRoute>
+                  <PageLoader><TrackingPage /></PageLoader>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.ALERTS}
+              element={
+                <ProtectedRoute>
+                  <PageLoader><AlertsPage /></PageLoader>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.ORGANIZATIONS}
+              element={
+                <RoleRoute roles={['super_admin', 'admin']}>
+                  <PageLoader><OrganizationsPage /></PageLoader>
+                </RoleRoute>
+              }
+            />
+            <Route
+              path={ROUTES.ORGANIZATIONS_INVITATIONS}
+              element={
+                <RoleRoute roles={['super_admin', 'admin']}>
+                  <PageLoader><InvitationsPage /></PageLoader>
+                </RoleRoute>
+              }
+            />
+            <Route
+              path={ROUTES.REPORTS}
+              element={
+                <ProtectedRoute>
+                  <PageLoader><ReportsPage /></PageLoader>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.PROFILE}
+              element={
+                <ProtectedRoute>
+                  <PageLoader><ProfilePage /></PageLoader>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.SETTINGS}
+              element={
+                <ProtectedRoute>
+                  <PageLoader><SettingsPage /></PageLoader>
+                </ProtectedRoute>
+              }
+            />
 
-            {/* 404 Route */}
-            <Route path="*" element={<NotFoundPage />} />
+            {/* ═══════════════════════════════════════════════
+                 ADMIN PAGES — require super_admin or admin
+               ═══════════════════════════════════════════════ */}
+            <Route
+              path={ROUTES.ADMIN}
+              element={
+                <RoleRoute roles={['super_admin', 'admin']}>
+                  <PageLoader><AdminPage /></PageLoader>
+                </RoleRoute>
+              }
+            />
+
+            {/* ═══════════════════════════════════════════════
+                 FALLBACKS
+               ═══════════════════════════════════════════════ */}
+            <Route path="/" element={<Navigate to={ROUTES.HOME} replace />} />
+            <Route path="*" element={<PageLoader><NotFoundPage /></PageLoader>} />
           </Route>
+
+          {/* ═══════════════════════════════════════════════
+               FULL-SCREEN PUBLIC PAGES — outside AppLayout
+             ═══════════════════════════════════════════════ */}
+          <Route
+            path={ROUTES.ACCEPT_INVITATION}
+            element={<PageLoader><AcceptInvitationPage /></PageLoader>}
+          />
         </Routes>
       </BrowserRouter>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }

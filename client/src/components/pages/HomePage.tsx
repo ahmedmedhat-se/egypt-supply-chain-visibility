@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FaShip, FaMapMarkedAlt, FaBell, FaChartLine, FaShieldAlt, FaGlobe } from 'react-icons/fa';
+import { FaBell, FaChartLine, FaGlobe, FaMapMarkedAlt, FaShieldAlt, FaShip } from 'react-icons/fa';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { ROUTES } from '../../constants/routes';
@@ -81,21 +81,6 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Active Shipments', value: '12,847' },
-          { label: 'Ports Connected', value: '8' },
-          { label: 'Happy Users', value: '2,341' },
-          { label: 'Uptime', value: '99.9%' },
-        ].map((stat) => (
-          <Card key={stat.label} variant="elevated" className="text-center">
-            <p className="text-2xl md:text-3xl font-bold text-[#0A2E4A] dark:text-white">{stat.value}</p>
-            <p className="text-sm text-[#94A3B8] dark:text-[#94A3B8]">{stat.label}</p>
-          </Card>
-        ))}
-      </section>
-
       {/* Features Section */}
       <section>
         <div className="text-center mb-8">
@@ -129,7 +114,7 @@ export const HomePage = () => {
           Ready to Transform Your Supply Chain?
         </h2>
         <p className="text-[#94A3B8] dark:text-[#94A3B8] mb-6 max-w-2xl mx-auto">
-          Join thousands of shippers, carriers, and regulators who trust ESCV for real-time supply chain visibility.
+          Join shippers, carriers, and regulators who trust ESCV for real-time supply chain visibility.
         </p>
         <div className="flex flex-wrap justify-center gap-4">
           <Link to={ROUTES.REGISTER}>
