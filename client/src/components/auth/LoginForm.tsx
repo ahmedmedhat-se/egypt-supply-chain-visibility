@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FaEye, FaEyeSlash, FaGoogle, FaLinkedin, FaSpinner } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaSpinner } from 'react-icons/fa';
 import { Button } from '../ui/Button';
 import { ROUTES } from '../../constants/routes';
 import { useAuth } from '../../hooks/useAuth';
@@ -220,38 +220,6 @@ export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
           <span>Sign In</span>
         )}
       </Button>
-
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-[#E2E8F0] dark:border-[#1A3D5A]" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-white dark:bg-[#1A3D5A] px-4 text-xs font-medium text-[#94A3B8] dark:text-[#64748B] uppercase tracking-wider">
-            Or continue with
-          </span>
-        </div>
-      </div>
-
-      {/* Social Buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          disabled={loginLoading || isLockedOut}
-          className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl border border-[#D1D9E6] dark:border-[#1A3D5A] bg-white dark:bg-[#1A3D5A] text-[#1A2A3A] dark:text-[#E2E8F0] hover:bg-[#F8FAFC] dark:hover:bg-[#0A2E4A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E] transition-all duration-200 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed group"
-        >
-          <FaGoogle className="text-red-500 group-hover:scale-110 transition-transform" />
-          <span>Google</span>
-        </button>
-        <button
-          type="button"
-          disabled={loginLoading || isLockedOut}
-          className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl border border-[#D1D9E6] dark:border-[#1A3D5A] bg-white dark:bg-[#1A3D5A] text-[#1A2A3A] dark:text-[#E2E8F0] hover:bg-[#F8FAFC] dark:hover:bg-[#0A2E4A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E] transition-all duration-200 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed group"
-        >
-          <FaLinkedin className="text-[#0A66C2] group-hover:scale-110 transition-transform" />
-          <span>LinkedIn</span>
-        </button>
-      </div>
 
       {/* Sign up link */}
       <p className="text-center text-sm text-[#94A3B8] dark:text-[#64748B]">

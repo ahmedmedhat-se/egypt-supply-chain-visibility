@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FaEye, FaEyeSlash, FaGoogle, FaLinkedin, FaSpinner } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaSpinner } from 'react-icons/fa';
 import { Button } from '../ui/Button';
 import { ROUTES } from '../../constants/routes';
 import { useAuth } from '../../hooks/useAuth';
@@ -29,6 +29,10 @@ const registerSchema = z.object({
     .min(1, 'Organization name is required')
     .min(2, 'Organization name must be at least 2 characters')
     .max(255, 'Organization name is too long'),
+  organizationEmail: z.string()
+    .min(1, 'Organization email is required')
+    .email('Please enter a valid organization email')
+    .max(255, 'Organization email is too long'),
   organizationType: z.string()
     .min(1, 'Please select an organization type')
     .refine((val) => ['shipper', 'carrier', 'regulator'].includes(val), 'Invalid organization type'),
@@ -79,6 +83,7 @@ export const RegisterForm = ({ className, onSuccess }: RegisterFormProps) => {
       lastName: '',
       email: '',
       organizationName: '',
+      organizationEmail: '',
       organizationType: 'shipper',
       phone: '',
       password: '',
@@ -95,9 +100,9 @@ export const RegisterForm = ({ className, onSuccess }: RegisterFormProps) => {
       lastName: data.lastName,
       email: data.email,
       password: data.password,
-      confirmPassword: data.confirmPassword,
       organizationName: data.organizationName,
-      organizationType: data.organizationType as 'shipper' | 'carrier' | 'regulator',
+      organizationEmail: data.organizationEmail,
+      organizationType: data.organizationType,
       phone: data.phone,
       acceptTerms: data.acceptTerms,
     });
@@ -257,6 +262,38 @@ export const RegisterForm = ({ className, onSuccess }: RegisterFormProps) => {
           <p className="text-sm text-[#DC2626] flex items-center gap-1.5 mt-1">
             <span className="text-xs">⚠</span>
             {errors.organizationName.message}
+          </p>
+        )}
+      </div>
+
+      {/* Organization Email */}
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-[#1A2A3A] dark:text-[#E2E8F0] flex items-center gap-1">
+          Organization Email
+          <span className="text-[#DC2626]">*</span>
+        </label>
+        <div className={cn('relative rounded-xl transition-all duration-200', getFieldRing('organizationEmail'))}>
+          <input
+            type="email"
+            placeholder="contact@company.com"
+            autoComplete="email"
+            disabled={registerLoading}
+            className={cn(
+              'w-full px-4 py-3.5 rounded-xl border bg-white dark:bg-[#1A3D5A]',
+              'text-[#1A2A3A] dark:text-[#E2E8F0] placeholder:text-[#94A3B8] dark:placeholder:text-[#64748B]',
+              'focus:outline-none transition-all duration-200',
+              getFieldBorder('organizationEmail'),
+              'disabled:opacity-50 disabled:cursor-not-allowed'
+            )}
+            {...register('organizationEmail')}
+            onFocus={() => handleFocus('organizationEmail')}
+            onBlur={() => handleBlur('organizationEmail')}
+          />
+        </div>
+        {errors.organizationEmail && (
+          <p className="text-sm text-[#DC2626] flex items-center gap-1.5 mt-1">
+            <span className="text-xs">⚠</span>
+            {errors.organizationEmail.message}
           </p>
         )}
       </div>
@@ -456,38 +493,6 @@ export const RegisterForm = ({ className, onSuccess }: RegisterFormProps) => {
           <span>Create Account</span>
         )}
       </Button>
-
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-[#E2E8F0] dark:border-[#1A3D5A]" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-white dark:bg-[#1A3D5A] px-4 text-xs font-medium text-[#94A3B8] dark:text-[#64748B] uppercase tracking-wider">
-            Or continue with
-          </span>
-        </div>
-      </div>
-
-      {/* Social Buttons */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          disabled={registerLoading}
-          className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl border border-[#D1D9E6] dark:border-[#1A3D5A] bg-white dark:bg-[#1A3D5A] text-[#1A2A3A] dark:text-[#E2E8F0] hover:bg-[#F8FAFC] dark:hover:bg-[#0A2E4A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E] transition-all duration-200 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed group"
-        >
-          <FaGoogle className="text-red-500 group-hover:scale-110 transition-transform" />
-          <span>Google</span>
-        </button>
-        <button
-          type="button"
-          disabled={registerLoading}
-          className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl border border-[#D1D9E6] dark:border-[#1A3D5A] bg-white dark:bg-[#1A3D5A] text-[#1A2A3A] dark:text-[#E2E8F0] hover:bg-[#F8FAFC] dark:hover:bg-[#0A2E4A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E] transition-all duration-200 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed group"
-        >
-          <FaLinkedin className="text-[#0A66C2] group-hover:scale-110 transition-transform" />
-          <span>LinkedIn</span>
-        </button>
-      </div>
 
       {/* Sign in link */}
       <p className="text-center text-sm text-[#94A3B8] dark:text-[#64748B]">
