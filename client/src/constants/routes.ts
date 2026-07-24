@@ -7,9 +7,14 @@ export const ROUTES = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password/:token',
+  ACCEPT_INVITATION: '/accept-invitation',
   
   // Protected Routes (Authenticated)
   DASHBOARD: '/dashboard',
+  DASHBOARD_ADMIN: '/admin/dashboard',
+  DASHBOARD_SHIPPER: '/shipper/dashboard',
+  DASHBOARD_CARRIER: '/carrier/dashboard',
+  DASHBOARD_REGULATOR: '/regulator/dashboard',
   SHIPMENTS: '/shipments',
   SHIPMENT_DETAIL: '/shipments/:id',
   SHIPMENT_CREATE: '/shipments/create',
@@ -19,6 +24,7 @@ export const ROUTES = {
   ALERTS: '/alerts',
   ALERT_DETAIL: '/alerts/:id',
   ORGANIZATIONS: '/organizations',
+  ORGANIZATIONS_INVITATIONS: '/organizations/invitations',
   ORGANIZATION_DETAIL: '/organizations/:id',
   ORGANIZATION_CREATE: '/organizations/create',
   REPORTS: '/reports',
