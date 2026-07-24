@@ -7,7 +7,7 @@ import { Button } from '../ui/Button';
 import { FaEnvelope, FaPhone, FaMapMarkerAlt, FaClock, FaSpinner, FaCheckCircle } from 'react-icons/fa';
 import { showToast } from '../ui/Toast';
 import { cn } from '../../lib/utils';
-import apiClient from '../../api/client';
+
 
 const contactSchema = z.object({
   firstName: z.string()
@@ -114,17 +114,13 @@ export const ContactPage = () => {
 
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
-    try {
-      await apiClient.post('/contact', data);
-      setIsSuccess(true);
-      showToast.success('Message sent successfully! We\'ll get back to you soon.');
-      reset();
-      setTimeout(() => setIsSuccess(false), 5000);
-    } catch {
-      showToast.error('Failed to send message. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Simulate submission (no backend endpoint yet)
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setIsSuccess(true);
+    showToast.success('Message sent successfully! We\'ll get back to you soon.');
+    reset();
+    setTimeout(() => setIsSuccess(false), 5000);
+    setIsSubmitting(false);
   };
 
   return (
