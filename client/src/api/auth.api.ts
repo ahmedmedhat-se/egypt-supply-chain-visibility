@@ -1,34 +1,50 @@
 import apiClient from './client';
-import type { 
-  LoginCredentials, 
-  RegisterData, 
+import type {
+  LoginCredentials,
+  RegisterData,
   AuthResponse,
+  AuthRefreshResponse,
   ForgotPasswordData,
-  ResetPasswordData 
+  AcceptInvitationData,
+  ApiUser,
 } from '../types/auth.types';
 
 export const authApi = {
-  login: (credentials: LoginCredentials) => 
-    apiClient.post<AuthResponse>('/auth/login', credentials),
+  login: (credentials: LoginCredentials) =>
+    apiClient.post<AuthResponse>('/api/auth/login', {
+      email: credentials.email,
+      password: credentials.password,
+    }),
 
-  register: (data: RegisterData) => 
-    apiClient.post<AuthResponse>('/auth/register', data),
+  register: (data: RegisterData) =>
+    apiClient.post<AuthResponse>('/api/auth/register', {
+      email: data.email,
+      password: data.password,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      role: data.organizationType,
+      phone: data.phone || undefined,
+      organizationName: data.organizationName,
+      organizationType: data.organizationType,
+      organizationEmail: data.organizationEmail,
+      organizationCountry: data.organizationCountry || 'Egypt',
+    }),
 
-  logout: () => 
-    apiClient.post('/auth/logout'),
+  logout: () => apiClient.post('/api/auth/logout'),
 
-  refreshToken: (refreshToken: string) => 
-    apiClient.post<{ accessToken: string }>('/auth/refresh', { refreshToken }),
+  refreshToken: () =>
+    apiClient.post<AuthRefreshResponse>('/api/auth/refresh', {}),
 
-  forgotPassword: (data: ForgotPasswordData) => 
-    apiClient.post('/auth/forgot-password', data),
+  forgotPassword: (data: ForgotPasswordData) =>
+    apiClient.post('/api/auth/forgot-password', data),
 
-  resetPassword: (data: ResetPasswordData) => 
-    apiClient.post('/auth/reset-password', data),
+  acceptInvitation: (data: AcceptInvitationData) =>
+    apiClient.post<AuthResponse>('/api/auth/accept-invitation', data),
 
-  verifyEmail: (token: string) => 
-    apiClient.get(`/auth/verify-email/${token}`),
+  getCurrentUser: () => apiClient.get<ApiUser>('/api/auth/me'),
 
-  getCurrentUser: () => 
-    apiClient.get<AuthResponse['user']>('/auth/me'),
+  getInvitation: (token: string) =>
+    apiClient.get<{ email: string; role: string; organizationName: string }>(
+      `/api/auth/invitation?token=${token}`,
+    ),
 };
