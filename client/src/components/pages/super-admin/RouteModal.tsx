@@ -60,7 +60,7 @@ export const RouteModal: React.FC<RouteModalProps> = ({ isOpen, onClose, route }
     e.preventDefault();
     const payload = {
       ...formData,
-      estimatedDays: parseInt(formData.estimatedDays, 10),
+      estimatedDays: formData.estimatedDays ? parseInt(formData.estimatedDays, 10) : undefined,
     };
 
     if (route) {
