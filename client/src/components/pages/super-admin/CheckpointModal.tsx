@@ -20,8 +20,6 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
     city: '',
     latitude: '',
     longitude: '',
-    address: '',
-    capacity: '',
     isActive: true,
   });
 
@@ -37,10 +35,8 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
         code: checkpoint.code,
         type: checkpoint.type,
         city: checkpoint.city,
-        latitude: checkpoint.latitude.toString(),
-        longitude: checkpoint.longitude.toString(),
-        address: checkpoint.address || '',
-        capacity: checkpoint.capacity ? checkpoint.capacity.toString() : '',
+        latitude: checkpoint.latitude ? checkpoint.latitude.toString() : '',
+        longitude: checkpoint.longitude ? checkpoint.longitude.toString() : '',
         isActive: checkpoint.isActive,
       });
     } else {
@@ -51,8 +47,6 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
         city: '',
         latitude: '',
         longitude: '',
-        address: '',
-        capacity: '',
         isActive: true,
       });
     }
@@ -70,9 +64,8 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
     e.preventDefault();
     const payload = {
       ...formData,
-      latitude: parseFloat(formData.latitude),
-      longitude: parseFloat(formData.longitude),
-      capacity: formData.capacity ? parseInt(formData.capacity, 10) : undefined,
+      latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
+      longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
     };
 
     if (checkpoint) {
@@ -103,9 +96,10 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
             options={[
               { value: 'port', label: 'Port' },
               { value: 'warehouse', label: 'Warehouse' },
-              { value: 'border_crossing', label: 'Border Crossing' },
-              { value: 'airport', label: 'Airport' },
-              { value: 'facility', label: 'Facility' },
+              { value: 'customs', label: 'Customs' },
+              { value: 'hub', label: 'Hub' },
+              { value: 'border', label: 'Border' },
+              { value: 'depot', label: 'Depot' },
             ]}
           />
           <Input label="City" name="city" value={formData.city} onChange={handleChange} required placeholder="e.g. Alexandria" />
@@ -116,20 +110,7 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
           <Input label="Longitude" name="longitude" type="number" step="any" value={formData.longitude} onChange={handleChange} required placeholder="e.g. 29.9187" />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Capacity (optional)" name="capacity" type="number" value={formData.capacity} onChange={handleChange} placeholder="e.g. 5000" />
-        </div>
 
-        <div>
-          <label className="block text-sm font-medium text-[#1A2A3A] mb-1.5">Address (optional)</label>
-          <textarea
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            rows={2}
-            className="w-full rounded-md border border-[#E2E8F0] px-3 py-2 text-sm focus:border-[#0A2E4A] focus:outline-none focus:ring-1 focus:ring-[#0A2E4A]"
-          />
-        </div>
 
         <div className="flex items-center gap-2">
           <input

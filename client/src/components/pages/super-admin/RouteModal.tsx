@@ -15,8 +15,8 @@ export const RouteModal: React.FC<RouteModalProps> = ({ isOpen, onClose, route }
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    origin: '',
-    destination: '',
+    originCity: '',
+    destinationCity: '',
     estimatedDays: '',
     isActive: true,
   });
@@ -31,17 +31,17 @@ export const RouteModal: React.FC<RouteModalProps> = ({ isOpen, onClose, route }
       setFormData({
         name: route.name,
         code: route.code,
-        origin: route.origin,
-        destination: route.destination,
-        estimatedDays: route.estimatedDays.toString(),
+        originCity: route.originCity,
+        destinationCity: route.destinationCity,
+        estimatedDays: route.estimatedDays ? route.estimatedDays.toString() : '',
         isActive: route.isActive,
       });
     } else {
       setFormData({
         name: '',
         code: '',
-        origin: '',
-        destination: '',
+        originCity: '',
+        destinationCity: '',
         estimatedDays: '',
         isActive: true,
       });
@@ -82,8 +82,8 @@ export const RouteModal: React.FC<RouteModalProps> = ({ isOpen, onClose, route }
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Origin City" name="origin" value={formData.origin} onChange={handleChange} required placeholder="e.g. Cairo" />
-          <Input label="Destination City" name="destination" value={formData.destination} onChange={handleChange} required placeholder="e.g. Alexandria" />
+          <Input label="Origin City" name="originCity" value={formData.originCity} onChange={handleChange} required placeholder="e.g. Cairo" />
+          <Input label="Destination City" name="destinationCity" value={formData.destinationCity} onChange={handleChange} required placeholder="e.g. Alexandria" />
         </div>
 
         <div>

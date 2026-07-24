@@ -74,9 +74,9 @@ export const RoutesPage = () => {
                   <TableCell>{route.name}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="text-sm text-[#0A2E4A] dark:text-white">{route.origin}</span>
+                      <span className="text-sm text-[#0A2E4A] dark:text-white">{route.originCity}</span>
                       <span className="text-xs text-[#94A3B8] flex items-center gap-1">
-                        <FaMapSigns className="w-3 h-3" /> to {route.destination}
+                        <FaMapSigns className="w-3 h-3" /> to {route.destinationCity}
                       </span>
                     </div>
                   </TableCell>
