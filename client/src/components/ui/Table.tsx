@@ -40,6 +40,6 @@ export const TableHead = ({ children, className }: { children: ReactNode; classN
   );
 };
 
-export const TableCell = ({ children, className }: { children: ReactNode; className?: string }) => {
-  return <td className={cn('px-4 py-3 text-[#1A2A3A]', className)}>{children}</td>;
+export const TableCell = ({ children, className, ...props }: { children: ReactNode; className?: string; colSpan?: number }) => {
+  return <td className={cn('px-4 py-3 text-[#1A2A3A]', className)} {...props}>{children}</td>;
 };
