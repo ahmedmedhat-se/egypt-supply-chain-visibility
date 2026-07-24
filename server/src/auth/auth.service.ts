@@ -216,6 +216,35 @@ export class AuthService {
     };
   }
 
+  async getInvitation(token: string) {
+    const invitation = await this.prisma.invitation.findUnique({
+      where: { token },
+      include: {
+        organization: {
+          select: { organization_name: true },
+        },
+      },
+    });
+
+    if (!invitation || invitation.status !== 'pending') {
+      throw new BadRequestException('Invalid or expired invitation');
+    }
+
+    if (invitation.expires_at < new Date()) {
+      await this.prisma.invitation.update({
+        where: { invitation_id: invitation.invitation_id },
+        data: { status: 'expired' },
+      });
+      throw new BadRequestException('Invitation has expired');
+    }
+
+    return {
+      email: invitation.invited_email,
+      role: invitation.invited_role,
+      organizationName: invitation.organization?.organization_name,
+    };
+  }
+
   async getMe(userId: string) {
     const user = await this.usersService.findById(userId);
     if (!user || !user.user_is_active) {
@@ -255,6 +284,7 @@ export class AuthService {
       sub: user!.user_id,
       email: user!.user_email,
       role: user!.user_role,
+      organizationId: user!.organization_id,
       tokenVersion: user!.user_token_version,
     });
 
@@ -298,6 +328,7 @@ export class AuthService {
       sub: user.user_id,
       email: user.user_email,
       role: user.user_role,
+      organizationId: user.organization_id,
       tokenVersion: user.user_token_version,
     });
 

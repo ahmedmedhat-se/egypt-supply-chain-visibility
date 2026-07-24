@@ -8,6 +8,8 @@ import {
   Req,
   UnauthorizedException,
   Get,
+  Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
@@ -69,6 +71,15 @@ export class AuthController {
   }
 
   @Public()
+  @Get('invitation')
+  @ApiOperation({ summary: 'Get invitation details by token (public)' })
+  @ApiResponse({ status: 200, description: 'Invitation details.' })
+  async getInvitation(@Query('token') token: string) {
+    if (!token) throw new BadRequestException('Token is required');
+    return this.authService.getInvitation(token);
+  }
+
+  @Public()
   @Post('accept-invitation')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Accept an invitation and create account' })
@@ -112,7 +123,7 @@ export class AuthController {
     if (cookie) {
       await this.authService.logout(cookie);
     }
-    reply.clearCookie('refresh_token', { path: '/api/v1/auth/refresh' });
+    reply.clearCookie('refresh_token', { path: '/api/auth/refresh' });
     return;
   }
 
@@ -121,7 +132,7 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/api/v1/auth/refresh',
+      path: '/api/auth/refresh',
       maxAge: 7 * 24 * 60 * 60,
       signed: true,
     });
