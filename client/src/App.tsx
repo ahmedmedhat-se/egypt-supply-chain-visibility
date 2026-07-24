@@ -8,7 +8,6 @@ import { ProtectedRoute, RoleRoute } from './router';
 import type { User } from './store/auth.store';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import { DashboardPage } from './components';
 
 // Lazy-loaded pages — each becomes its own chunk
 const HomePage = lazy(() =>
@@ -159,63 +158,6 @@ function App() {
             <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
             <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
 
-            {/* Protected pages */}
-            <Route 
-              path={ROUTES.DASHBOARD} 
-              element={
-                isAuthenticated ? <DashboardPage /> : <Navigate to={ROUTES.LOGIN} replace />
-              } 
-            />
-            <Route 
-              path={ROUTES.SHIPMENTS} 
-              element={
-                isAuthenticated ? <ShipmentsPage /> : <Navigate to={ROUTES.LOGIN} replace />
-              } 
-            />
-            <Route 
-              path={ROUTES.TRACKING} 
-              element={
-                isAuthenticated ? <TrackingPage /> : <Navigate to={ROUTES.LOGIN} replace />
-              } 
-            />
-            <Route 
-              path={ROUTES.ALERTS} 
-              element={
-                isAuthenticated ? <AlertsPage /> : <Navigate to={ROUTES.LOGIN} replace />
-              } 
-            />
-            <Route 
-              path={ROUTES.ORGANIZATIONS} 
-              element={
-                isAuthenticated ? <OrganizationsPage /> : <Navigate to={ROUTES.LOGIN} replace />
-              } 
-            />
-            <Route 
-              path={ROUTES.REPORTS} 
-              element={
-                isAuthenticated ? <ReportsPage /> : <Navigate to={ROUTES.LOGIN} replace />
-              } 
-            />
-            <Route 
-              path={ROUTES.ADMIN} 
-              element={
-                isAuthenticated && user?.role === 'super_admin' ? 
-                  <AdminPage /> : <Navigate to={ROUTES.LOGIN} replace />
-              } 
-            />
-            <Route 
-              path={ROUTES.PROFILE} 
-              element={
-                isAuthenticated ? <ProfilePage /> : <Navigate to={ROUTES.LOGIN} replace />
-              } 
-            />
-            <Route 
-              path={ROUTES.SETTINGS} 
-              element={
-                isAuthenticated ? <SettingsPage /> : <Navigate to={ROUTES.LOGIN} replace />
-              } 
-            />
-
             {/* ═══════════════════════════════════════════════
                  PROTECTED PAGES — require valid JWT
                ═══════════════════════════════════════════════ */}
@@ -326,12 +268,12 @@ function App() {
             />
 
             {/* ═══════════════════════════════════════════════
-                 ADMIN PAGES — require super_admin or admin
+                 ADMIN PAGES — require super_admin only
                ═══════════════════════════════════════════════ */}
             <Route
               path={ROUTES.ADMIN}
               element={
-                <RoleRoute roles={['super_admin', 'admin']}>
+                <RoleRoute roles={['super_admin']}>
                   <PageLoader><AdminPage /></PageLoader>
                 </RoleRoute>
               }
