@@ -35,6 +35,21 @@ export class OrganizationsService {
       throw new ConflictException('A user with this email already exists');
     }
 
+    // Verify organization exists and role matches org type
+    const org = await this.prisma.organization.findUnique({
+      where: { organization_id: orgId },
+    });
+    
+    if (!org) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    if (dto.role !== 'admin' && dto.role.toLowerCase() !== org.organization_type.toLowerCase()) {
+      throw new ConflictException(
+        `Role mismatch: Cannot invite a '${dto.role}' to a '${org.organization_type}' organization.`,
+      );
+    }
+
     // Create invitation
     const token = randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
