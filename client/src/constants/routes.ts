@@ -43,6 +43,8 @@ export const ROUTES = {
   SUPER_ADMIN_USERS_REPORT: '/super-admin/users-report',
   SUPER_ADMIN_INVITATIONS: '/super-admin/invitations',
   SUPER_ADMIN_ORGANIZATIONS: '/super-admin/organizations',
+  SUPER_ADMIN_ROUTES: '/super-admin/routes',
+  SUPER_ADMIN_CHECKPOINTS: '/super-admin/checkpoints',
 
   // Admin Panel
   ADMIN: '/admin',

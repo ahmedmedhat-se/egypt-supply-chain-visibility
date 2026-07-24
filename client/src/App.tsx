@@ -84,9 +84,13 @@ const SuperAdminOrganizationsPage = lazy(() =>
   })),
 );
 const SuperAdminInvitationsPage = lazy(() =>
-  import('./components/pages/super-admin/InvitationsPage').then((m) => ({
-    default: m.SuperAdminInvitationsPage,
-  })),
+  import('./components/pages/super-admin/InvitationsPage').then((m) => ({ default: m.SuperAdminInvitationsPage })),
+);
+const SuperAdminRoutesPage = lazy(() =>
+  import('./components/pages/super-admin/RoutesPage').then((m) => ({ default: m.RoutesPage })),
+);
+const SuperAdminCheckpointsPage = lazy(() =>
+  import('./components/pages/super-admin/CheckpointsPage').then((m) => ({ default: m.CheckpointsPage })),
 );
 const AcceptInvitationPage = lazy(() =>
   import('./components/pages/AcceptInvitationPage').then((m) => ({
@@ -302,6 +306,22 @@ function App() {
                 element={
                   <RoleRoute roles={['super_admin']}>
                     <PageLoader><SuperAdminInvitationsPage /></PageLoader>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path={ROUTES.SUPER_ADMIN_ROUTES}
+                element={
+                  <RoleRoute roles={['super_admin']}>
+                    <PageLoader><SuperAdminRoutesPage /></PageLoader>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path={ROUTES.SUPER_ADMIN_CHECKPOINTS}
+                element={
+                  <RoleRoute roles={['super_admin']}>
+                    <PageLoader><SuperAdminCheckpointsPage /></PageLoader>
                   </RoleRoute>
                 }
               />

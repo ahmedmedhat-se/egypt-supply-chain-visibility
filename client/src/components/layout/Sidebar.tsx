@@ -18,6 +18,8 @@ import {
   FaPaperPlane,
   FaUsers,
   FaGlobe,
+  FaRoute,
+  FaMapMarkerAlt,
 } from 'react-icons/fa';
 import { ROUTES } from '../../constants/routes';
 import { cn } from '../../lib/utils';
@@ -86,6 +88,8 @@ export const Sidebar = ({
       { name: 'Users Report', to: ROUTES.SUPER_ADMIN_USERS_REPORT, icon: FaUsers, authRequired: true } as NavItem,
       { name: 'Invitations', to: ROUTES.SUPER_ADMIN_INVITATIONS, icon: FaPaperPlane, authRequired: true } as NavItem,
       { name: 'Organizations', to: ROUTES.SUPER_ADMIN_ORGANIZATIONS, icon: FaGlobe, authRequired: true } as NavItem,
+      { name: 'Routes', to: ROUTES.SUPER_ADMIN_ROUTES, icon: FaRoute, authRequired: true } as NavItem,
+      { name: 'Checkpoints', to: ROUTES.SUPER_ADMIN_CHECKPOINTS, icon: FaMapMarkerAlt, authRequired: true } as NavItem,
     ] : []),
     { name: 'Reports', to: ROUTES.REPORTS, icon: FaFileAlt, authRequired: true },
     ...(isSuperAdmin ? [
