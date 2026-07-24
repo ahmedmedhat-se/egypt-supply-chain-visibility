@@ -10,23 +10,23 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const adminOrg = await prisma.organization.upsert({
-    where: { organization_email: 'admin@escv' },
+    where: { organization_email: 'admin@escv.com' },
     update: {},
     create: {
       organization_name: 'ESCV Administration',
       organization_type: 'admin',
-      organization_email: 'admin@escv',
+      organization_email: 'admin@escv.com',
       organization_country: 'Egypt',
     },
   });
 
   const hash = await bcrypt.hash('Admin@123', 12);
   await prisma.user.upsert({
-    where: { user_email: 'admin@escv' },
+    where: { user_email: 'admin@escv.com' },
     update: {},
     create: {
       organization_id: adminOrg.organization_id,
-      user_email: 'admin@escv',
+      user_email: 'admin@escv.com',
       user_password_hash: hash,
       user_first_name: 'Super',
       user_last_name: 'Admin',
@@ -35,7 +35,7 @@ async function main() {
   });
 
   console.log('✅ Seed completed');
-  console.log('   admin@escv / Admin@123');
+  console.log('   admin@escv.com / Admin@123');
 }
 
 main()
