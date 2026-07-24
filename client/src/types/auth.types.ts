@@ -9,29 +9,30 @@ export interface RegisterData {
   lastName: string;
   email: string;
   password: string;
-  confirmPassword: string;
   organizationName: string;
-  organizationType: 'shipper' | 'carrier' | 'regulator';
+  organizationType: string;
+  organizationEmail: string;
+  organizationCountry?: string;
   phone?: string;
   acceptTerms: boolean;
 }
 
+export interface ApiUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'super_admin' | 'admin' | 'shipper' | 'carrier' | 'regulator';
+  organizationId: string;
+  organizationName: string;
+}
+
 export interface AuthResponse {
-  user: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    role: 'admin' | 'shipper' | 'carrier' | 'regulator';
-    organizationId: string;
-    organizationName: string;
-    organizationType: string;
-    isActive: boolean;
-    lastLoginAt: string | null;
-  };
+  user: ApiUser;
   accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
+}
+
+export interface AuthRefreshResponse {
+  accessToken: string;
 }
 
 export interface ForgotPasswordData {
@@ -41,5 +42,12 @@ export interface ForgotPasswordData {
 export interface ResetPasswordData {
   token: string;
   password: string;
-  confirmPassword: string;
+}
+
+export interface AcceptInvitationData {
+  token: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
 }
