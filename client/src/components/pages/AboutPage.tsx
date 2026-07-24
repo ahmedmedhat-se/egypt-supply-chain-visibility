@@ -1,37 +1,30 @@
 import { Card } from '../ui/Card';
 import { FaShip, FaGlobe, FaShieldAlt, FaChartLine } from 'react-icons/fa';
 
+const features = [
+  {
+    icon: FaShip,
+    title: 'Real-time Tracking',
+    description: 'GPS-powered live tracking with instant status updates for every shipment.',
+  },
+  {
+    icon: FaGlobe,
+    title: 'National Coverage',
+    description: 'Complete visibility across all Egyptian ports, customs, and logistics hubs.',
+  },
+  {
+    icon: FaShieldAlt,
+    title: 'Enterprise Security',
+    description: 'Role-based access control with encrypted data and secure authentication.',
+  },
+  {
+    icon: FaChartLine,
+    title: 'Analytics & Insights',
+    description: 'Data-driven decisions with comprehensive supply chain analytics and reports.',
+  },
+];
+
 export const AboutPage = () => {
-  const stats = [
-    { label: 'Active Shipments', value: '12,847+' },
-    { label: 'Ports Connected', value: '8' },
-    { label: 'Happy Users', value: '2,341+' },
-    { label: 'Uptime', value: '99.9%' },
-  ];
-
-  const features = [
-    {
-      icon: FaShip,
-      title: 'Real-time Tracking',
-      description: 'GPS-powered live tracking with instant status updates for every shipment.',
-    },
-    {
-      icon: FaGlobe,
-      title: 'National Coverage',
-      description: 'Complete visibility across all Egyptian ports, customs, and logistics hubs.',
-    },
-    {
-      icon: FaShieldAlt,
-      title: 'Enterprise Security',
-      description: 'Role-based access control with encrypted data and secure authentication.',
-    },
-    {
-      icon: FaChartLine,
-      title: 'Analytics & Insights',
-      description: 'Data-driven decisions with comprehensive supply chain analytics and reports.',
-    },
-  ];
-
   return (
     <div className="space-y-12">
       {/* Hero */}
@@ -47,7 +40,7 @@ export const AboutPage = () => {
         </div>
       </section>
 
-      {/* Mission */}
+      {/* Mission & Vision */}
       <section>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Card variant="elevated">
@@ -64,18 +57,6 @@ export const AboutPage = () => {
               and positions Egypt as a global logistics leader.
             </p>
           </Card>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {stats.map((stat) => (
-            <Card key={stat.label} variant="elevated" className="text-center">
-              <p className="text-2xl md:text-3xl font-bold text-[#0A2E4A] dark:text-white">{stat.value}</p>
-              <p className="text-sm text-[#94A3B8] dark:text-[#94A3B8]">{stat.label}</p>
-            </Card>
-          ))}
         </div>
       </section>
 
