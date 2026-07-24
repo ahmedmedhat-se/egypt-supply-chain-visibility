@@ -15,7 +15,8 @@ import {
   FaInfoCircle,
   FaEnvelope,
   FaSignInAlt,
-  FaUserPlus
+  FaUserPlus,
+  FaPaperPlane
 } from 'react-icons/fa';
 import { ROUTES } from '../../constants/routes';
 import { cn } from '../../lib/utils';
@@ -33,6 +34,7 @@ interface NavItem {
 interface SidebarProps {
   isOpen: boolean;
   isAuthenticated?: boolean;
+  userRole?: string;
   onClose?: () => void;
   onLogout?: () => void;
 }
@@ -40,6 +42,7 @@ interface SidebarProps {
 export const Sidebar = ({ 
   isOpen, 
   isAuthenticated = false,
+  userRole,
   onClose, 
   onLogout 
 }: SidebarProps) => {
@@ -51,14 +54,22 @@ export const Sidebar = ({
     { name: 'Contact', to: ROUTES.CONTACT, icon: FaEnvelope },
   ];
 
+  const adminOnlyRoles = ['super_admin', 'admin'];
+  const isAdmin = adminOnlyRoles.includes(userRole || '');
+
   const authenticatedNavigation: NavItem[] = [
     { name: 'Dashboard', to: ROUTES.DASHBOARD, icon: FaTachometerAlt, authRequired: true },
     { name: 'Shipments', to: ROUTES.SHIPMENTS, icon: FaShip, authRequired: true },
     { name: 'Tracking', to: ROUTES.TRACKING, icon: FaMapMarkedAlt, authRequired: true },
     { name: 'Alerts', to: ROUTES.ALERTS, icon: FaBell, badge: 3, authRequired: true },
-    { name: 'Organizations', to: ROUTES.ORGANIZATIONS, icon: FaBuilding, authRequired: true },
+    ...(isAdmin ? [
+      { name: 'Organizations', to: ROUTES.ORGANIZATIONS, icon: FaBuilding, authRequired: true } as NavItem,
+      { name: 'Invitations', to: ROUTES.ORGANIZATIONS_INVITATIONS, icon: FaPaperPlane, authRequired: true } as NavItem,
+    ] : []),
     { name: 'Reports', to: ROUTES.REPORTS, icon: FaFileAlt, authRequired: true },
-    { name: 'Admin', to: ROUTES.ADMIN, icon: FaUsersCog, authRequired: true },
+    ...(isAdmin ? [
+      { name: 'Admin', to: ROUTES.ADMIN, icon: FaUsersCog, authRequired: true } as NavItem,
+    ] : []),
   ];
 
   const bottomNav: NavItem[] = [
@@ -101,7 +112,11 @@ export const Sidebar = ({
         {/* Navigation */}
         <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
           {navigation.map((item) => {
-            const isActive = location.pathname === item.to;
+            const isActive =
+              item.name === 'Dashboard'
+                ? ['/admin/dashboard', '/shipper/dashboard', '/carrier/dashboard', '/regulator/dashboard']
+                    .some((p) => location.pathname.startsWith(p))
+                : location.pathname === item.to;
             return (
               <NavLink
                 key={item.name}

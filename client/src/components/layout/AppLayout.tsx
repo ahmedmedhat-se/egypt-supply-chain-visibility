@@ -25,6 +25,7 @@ export const AppLayout = ({
       <Sidebar 
         isOpen={sidebarOpen} 
         isAuthenticated={isAuthenticated}
+        userRole={userRole}
         onClose={() => setSidebarOpen(false)}
         onLogout={logout}
       />
