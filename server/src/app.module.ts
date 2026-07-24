@@ -15,6 +15,7 @@ import { ShipmentsModule } from './shipments/shipments.module';
 import { AdminModule } from './admin/admin.module';
 import { CheckpointsModule } from './checkpoints/checkpoints.module';
 import { RoutesModule } from './routes/routes.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
@@ -27,10 +28,12 @@ import { APP_GUARD } from '@nestjs/core';
       validationSchema,
       envFilePath: '.env',
     }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100, // 100 requests per minute max globally
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100, // 100 requests per minute max globally
+      },
+    ]),
     PrismaModule,
     RedisModule,
     UsersModule,
@@ -42,6 +45,7 @@ import { APP_GUARD } from '@nestjs/core';
     AdminModule,
     CheckpointsModule,
     RoutesModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [
