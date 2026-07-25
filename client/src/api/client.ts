@@ -1,5 +1,5 @@
-import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
-import { useAuthStore } from '../store/auth.store';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { useAuthStore } from "../store/auth.store";
 
 // Extend Axios config to prevent infinite refresh loops
 interface CustomAxiosConfig extends InternalAxiosRequestConfig {
@@ -7,9 +7,9 @@ interface CustomAxiosConfig extends InternalAxiosRequestConfig {
 }
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081',
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8081",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   withCredentials: true, // Required for httpOnly refresh token cookie
 });
@@ -23,7 +23,7 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor — handle 401 with silent refresh
@@ -57,14 +57,14 @@ apiClient.interceptors.response.use(
     // ── Login endpoint ──
     // Returns 401 for bad credentials, not an expired token.
     // Let the error bubble to useAuth's onError so it can show the toast.
-    if (originalRequest.url === '/api/auth/login') {
+    if (originalRequest.url === "/api/auth/login") {
       return Promise.reject(error);
     }
 
     // Already retried — give up and force logout
     if (originalRequest._retry) {
       useAuthStore.getState().clearAuth();
-      window.location.href = '/login';
+      window.location.href = "/login";
       return Promise.reject(error);
     }
 
@@ -75,13 +75,13 @@ apiClient.interceptors.response.use(
 
       try {
         const { data } = await axios.post<{ accessToken: string }>(
-          '/api/auth/refresh',
+          "/api/auth/refresh",
           {},
           {
             baseURL: apiClient.defaults.baseURL,
             withCredentials: true,
-            headers: { 'Content-Type': 'application/json' },
-          }
+            headers: { "Content-Type": "application/json" },
+          },
         );
 
         const newToken = data.accessToken;
@@ -94,7 +94,7 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         useAuthStore.getState().clearAuth();
-        window.location.href = '/login';
+        window.location.href = "/login";
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -108,27 +108,49 @@ apiClient.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${token}`;
       return apiClient(originalRequest);
     });
-  }
+  },
 );
 
 // Extract a human-readable error message from any AxiosError
 export function extractErrorMessage(error: unknown): string {
   if (error instanceof AxiosError && error.response?.data) {
+    const status = error.response.status;
     const data = error.response.data as Record<string, unknown>;
-    if (typeof data.message === 'string') {
+
+    // Handle rate limiting (429) with a friendly message
+    if (status === 429) {
+      return "Too many requests. Please wait a moment before trying again.";
+    }
+
+    // Check for a custom `reason` field first (e.g., ACCOUNT_INACTIVE)
+    if (typeof data.reason === "string") {
+      if (typeof data.message === "string") {
+        return data.message;
+      }
+    }
+
+    if (typeof data.message === "string") {
       return data.message;
     }
     if (Array.isArray(data.message)) {
-      return (data.message as string[]).join(', ');
+      return (data.message as string[]).join(", ");
     }
-    if (typeof data.error === 'string') {
+    if (typeof data.error === "string") {
       return data.error;
     }
   }
   if (error instanceof Error) {
     return error.message;
   }
-  return 'An unexpected error occurred. Please try again.';
+  return "An unexpected error occurred. Please try again.";
+}
+
+export function getErrorReason(error: unknown): string | null {
+  if (error instanceof AxiosError && error.response?.data) {
+    const data = error.response.data as { reason?: string };
+    return data.reason ?? null;
+  }
+  return null;
 }
 
 export default apiClient;
