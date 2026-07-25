@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth.store";
@@ -8,42 +8,18 @@ import { showToast } from "../components/ui/Toast";
 import { ROUTES } from "../constants/routes";
 import type { LoginCredentials, RegisterData } from "../types/auth.types";
 
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
-
 export const useAuth = () => {
   const navigate = useNavigate();
   const { setAuth, clearAuth, isAuthenticated, user } = useAuthStore();
-  const [loginAttempts, setLoginAttempts] = useState<number>(0);
-  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
-
-  // Check if account is locked
-  const isLockedOut = useCallback((): boolean => {
-    if (!lockoutUntil) return false;
-    return Date.now() < lockoutUntil;
-  }, [lockoutUntil]);
-
-  // Get remaining lockout time in minutes
-  const getRemainingLockoutTime = useCallback((): number => {
-    if (!lockoutUntil) return 0;
-    return Math.max(0, Math.ceil((lockoutUntil - Date.now()) / 60000));
-  }, [lockoutUntil]);
 
   // Login Mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
-      if (isLockedOut()) {
-        throw new Error(
-          `Account locked. Try again in ${getRemainingLockoutTime()} minutes.`,
-        );
-      }
       const response = await authApi.login(credentials);
       return response.data;
     },
     onSuccess: (data) => {
       setAuth(data.user, data.accessToken);
-      setLoginAttempts(0);
-      setLockoutUntil(null);
 
       // Show welcome toast with the user's first name
       const firstName = data.user.name.split(" ")[0];
@@ -51,18 +27,8 @@ export const useAuth = () => {
       navigate(ROUTES.DASHBOARD);
     },
     onError: (error: unknown) => {
-      const newAttempts = loginAttempts + 1;
-      setLoginAttempts(newAttempts);
-
-      if (newAttempts >= MAX_LOGIN_ATTEMPTS) {
-        setLockoutUntil(Date.now() + LOCKOUT_DURATION);
-        showToast.error(
-          "Too many failed attempts. Account locked for 15 minutes.",
-        );
-      } else {
-        const message = extractErrorMessage(error);
-        showToast.error(message);
-      }
+      const message = extractErrorMessage(error);
+      showToast.error(message);
     },
   });
 
@@ -100,13 +66,18 @@ export const useAuth = () => {
 
   // Logout
   const logout = useCallback((): void => {
-    // Fire-and-forget logout (server will clear cookie)
-    authApi.logout().catch(() => {
-      // Ignore errors — we're logging out anyway
-    });
-    clearAuth();
-    navigate(ROUTES.LOGIN);
-    showToast.info("You have been logged out.");
+    // 1. Send logout request FIRST while token is still valid
+    // 2. Then clear auth state — this avoids triggering the 401 refresh interceptor
+    authApi
+      .logout()
+      .catch(() => {
+        // Ignore errors — we're logging out anyway
+      })
+      .finally(() => {
+        clearAuth();
+        navigate(ROUTES.LOGIN);
+        showToast.info("You have been logged out.");
+      });
   }, [clearAuth, navigate]);
 
   return {
@@ -131,10 +102,5 @@ export const useAuth = () => {
     // Auth State
     isAuthenticated,
     user,
-
-    // Rate Limiting
-    isLockedOut: isLockedOut(),
-    remainingLockoutMinutes: getRemainingLockoutTime(),
-    loginAttempts,
   };
 };
