@@ -100,9 +100,6 @@ const AcceptInvitationPage = lazy(() =>
 const ReportsPage = lazy(() =>
   import('./components/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 );
-const AdminPage = lazy(() =>
-  import('./components/pages/AdminPage').then((m) => ({ default: m.AdminPage })),
-);
 const ProfilePage = lazy(() =>
   import('./components/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
@@ -348,18 +345,6 @@ function App() {
                   <ProtectedRoute>
                     <PageLoader><SettingsPage /></PageLoader>
                   </ProtectedRoute>
-                }
-              />
-
-              {/* ═══════════════════════════════════════════════
-                 ADMIN PANEL — super_admin only
-               ═══════════════════════════════════════════════ */}
-              <Route
-                path={ROUTES.ADMIN}
-                element={
-                  <RoleRoute roles={['super_admin']}>
-                    <PageLoader><AdminPage /></PageLoader>
-                  </RoleRoute>
                 }
               />
 
