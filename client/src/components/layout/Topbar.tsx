@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FaBars, FaBell, FaSearch, FaCaretDown, FaUser, FaSignInAlt, FaUserPlus } from 'react-icons/fa';
 import { Badge } from '../ui/Badge';
@@ -14,7 +14,7 @@ interface TopbarProps {
   userName?: string;
   userRole?: string;
   notificationCount?: number;
-  onLogout?: () => void; // Add this
+  onLogout?: () => void;
 }
 
 export const Topbar = ({ 
@@ -23,10 +23,25 @@ export const Topbar = ({
   userName = 'Guest User', 
   userRole = 'Guest',
   notificationCount = 0,
-  onLogout // Add this
+  onLogout
 }: TopbarProps) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    if (!isProfileOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isProfileOpen]);
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 dark:bg-[#0A2E4A]/95 backdrop-blur-lg border-b border-[#E2E8F0] dark:border-[#1A3D5A]">
@@ -121,7 +136,7 @@ export const Topbar = ({
             </div>
           ) : (
             /* Profile - for authenticated users */
-            <div className="relative ml-2 pl-3 border-l border-[#E2E8F0] dark:border-[#1A3D5A]">
+            <div ref={profileRef} className="relative ml-2 pl-3 border-l border-[#E2E8F0] dark:border-[#1A3D5A]">
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-3 focus:outline-none"
@@ -137,27 +152,21 @@ export const Topbar = ({
 
               {/* Dropdown */}
               {isProfileOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#1A3D5A] rounded-xl shadow-lg border border-[#E2E8F0] dark:border-[#1A3D5A] py-1 z-50">
-                    <div className="px-4 py-3 border-b border-[#E2E8F0] dark:border-[#1A3D5A]">
-                      <p className="text-sm font-medium text-[#0A2E4A] dark:text-white">{userName}</p>
-                      <p className="text-xs text-[#94A3B8] dark:text-[#94A3B8]">{userRole}</p>
-                    </div>
-                    <Link to={ROUTES.PROFILE} className="w-full text-left px-4 py-2 text-sm text-[#1A2A3A] dark:text-[#E2E8F0] hover:bg-[#E8F0F8] dark:hover:bg-[#0A2E4A] transition-colors block">
-                      <FaUser className="inline mr-2" /> Profile
-                    </Link>
-                    <Link to={ROUTES.SETTINGS} className="w-full text-left px-4 py-2 text-sm text-[#1A2A3A] dark:text-[#E2E8F0] hover:bg-[#E8F0F8] dark:hover:bg-[#0A2E4A] transition-colors block">
-                      <FaCaretDown className="inline mr-2" /> Settings
-                    </Link>
-                    <button 
-                      onClick={onLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#991B1B]/20 transition-colors border-t border-[#E2E8F0] dark:border-[#1A3D5A]"
-                    >
-                      Sign Out
-                    </button>
+                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#1A3D5A] rounded-xl shadow-lg border border-[#E2E8F0] dark:border-[#1A3D5A] py-1 z-50">
+                  <div className="px-4 py-3 border-b border-[#E2E8F0] dark:border-[#1A3D5A]">
+                    <p className="text-sm font-medium text-[#0A2E4A] dark:text-white">{userName}</p>
+                    <p className="text-xs text-[#94A3B8] dark:text-[#94A3B8]">{userRole}</p>
                   </div>
-                </>
+                  <Link to={ROUTES.PROFILE} className="w-full text-left px-4 py-2 text-sm text-[#1A2A3A] dark:text-[#E2E8F0] hover:bg-[#E8F0F8] dark:hover:bg-[#0A2E4A] transition-colors block">
+                    <FaUser className="inline mr-2" /> Profile
+                  </Link>
+                  <button 
+                    onClick={onLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#991B1B]/20 transition-colors border-t border-[#E2E8F0] dark:border-[#1A3D5A]"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               )}
             </div>
           )}
