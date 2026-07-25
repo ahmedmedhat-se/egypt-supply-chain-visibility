@@ -98,19 +98,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               </button>
             </div>
 
-            {/* Error details (dev only) */}
-            {import.meta.env.DEV && this.state.error && (
-              <details className="mt-8 text-left">
-                <summary className="text-sm text-[#94A3B8] cursor-pointer hover:text-[#64748B] select-none">
-                  Error details
-                </summary>
-                <pre className="mt-2 p-4 rounded-lg bg-[#F1F4F8] dark:bg-[#1A3D5A] text-xs text-[#DC2626] overflow-auto max-h-48">
-                  {this.state.error.name}: {this.state.error.message}
-                  {'\n\n'}
-                  {this.state.errorInfo?.componentStack || 'No component stack available'}
-                </pre>
-              </details>
-            )}
+
           </div>
         </div>
       );
