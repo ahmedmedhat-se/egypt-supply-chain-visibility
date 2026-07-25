@@ -73,11 +73,20 @@ export const Sidebar = ({
   const isAdmin = adminOnlyRoles.includes(userRole || '');
   const isSuperAdmin = userRole === 'super_admin';
 
+  const getShipmentsRoute = () => {
+    switch (userRole) {
+      case 'admin': return ROUTES.SHIPMENTS_ADMIN;
+      case 'shipper': return ROUTES.SHIPMENTS_SHIPPER;
+      case 'carrier': return ROUTES.SHIPMENTS_CARRIER;
+      case 'regulator': return ROUTES.SHIPMENTS_REGULATOR;
+      case 'super_admin': return ROUTES.SHIPMENTS_SUPER_ADMIN;
+      default: return ROUTES.SHIPMENTS;
+    }
+  };
+
   const authenticatedNavigation: NavItem[] = [
     { name: 'Dashboard', to: ROUTES.DASHBOARD, icon: FaTachometerAlt, authRequired: true },
-    ...(userRole !== 'super_admin'
-      ? [{ name: 'Shipments', to: ROUTES.SHIPMENTS, icon: FaShip, authRequired: true } as NavItem]
-      : []),
+    { name: 'Shipments', to: getShipmentsRoute(), icon: FaShip, authRequired: true },
     { name: 'Tracking', to: ROUTES.TRACKING, icon: FaMapMarkedAlt, authRequired: true },
     { name: 'Alerts', to: ROUTES.ALERTS, icon: FaBell, badge: 3, authRequired: true },
     ...(isAdmin && !isSuperAdmin ? [

@@ -2,6 +2,7 @@ export type ShipmentStatus =
   | 'draft'
   | 'pending'
   | 'confirmed'
+  | 'picked_up'
   | 'in_transit'
   | 'at_checkpoint'
   | 'customs_hold'

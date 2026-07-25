@@ -97,6 +97,11 @@ const AcceptInvitationPage = lazy(() =>
     default: m.AcceptInvitationPage,
   })),
 );
+const ShipmentDetailPage = lazy(() =>
+  import('./components/pages/ShipmentDetailPage').then((m) => ({
+    default: m.ShipmentDetailPage,
+  })),
+);
 const ReportsPage = lazy(() =>
   import('./components/pages/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 );
@@ -148,6 +153,22 @@ function DashboardRedirect({ user }: { user: User | null }) {
   };
 
   const target = routeMap[user.role] || ROUTES.DASHBOARD_ADMIN;
+  return <Navigate to={target} replace />;
+}
+
+/** Redirects /shipments to the role-specific shipment route */
+function ShipmentsRedirect({ user }: { user: User | null }) {
+  if (!user) return <Navigate to={ROUTES.LOGIN} replace />;
+
+  const routeMap: Record<string, string> = {
+    super_admin: ROUTES.SHIPMENTS_SUPER_ADMIN,
+    admin: ROUTES.SHIPMENTS_ADMIN,
+    shipper: ROUTES.SHIPMENTS_SHIPPER,
+    carrier: ROUTES.SHIPMENTS_CARRIER,
+    regulator: ROUTES.SHIPMENTS_REGULATOR,
+  };
+
+  const target = routeMap[user.role] || ROUTES.SHIPMENTS_ADMIN;
   return <Navigate to={target} replace />;
 }
 
@@ -236,11 +257,60 @@ function App() {
                   </RoleRoute>
                 }
               />
+              {/* ── Per-role Shipment Routes ── */}
               <Route
                 path={ROUTES.SHIPMENTS}
                 element={
                   <ProtectedRoute>
+                    <ShipmentsRedirect user={user} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path={ROUTES.SHIPMENTS_ADMIN}
+                element={
+                  <RoleRoute roles={['admin']}>
                     <PageLoader><ShipmentsPage /></PageLoader>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path={ROUTES.SHIPMENTS_SHIPPER}
+                element={
+                  <RoleRoute roles={['shipper']}>
+                    <PageLoader><ShipmentsPage /></PageLoader>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path={ROUTES.SHIPMENTS_CARRIER}
+                element={
+                  <RoleRoute roles={['carrier']}>
+                    <PageLoader><ShipmentsPage /></PageLoader>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path={ROUTES.SHIPMENTS_REGULATOR}
+                element={
+                  <RoleRoute roles={['regulator']}>
+                    <PageLoader><ShipmentsPage /></PageLoader>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path={ROUTES.SHIPMENTS_SUPER_ADMIN}
+                element={
+                  <RoleRoute roles={['super_admin']}>
+                    <PageLoader><ShipmentsPage /></PageLoader>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path={ROUTES.SHIPMENT_DETAIL}
+                element={
+                  <ProtectedRoute>
+                    <PageLoader><ShipmentDetailPage /></PageLoader>
                   </ProtectedRoute>
                 }
               />

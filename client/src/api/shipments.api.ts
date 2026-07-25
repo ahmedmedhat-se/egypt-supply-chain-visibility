@@ -20,6 +20,9 @@ export const shipmentsApi = {
   update: (id: string, data: UpdateShipmentData) =>
     apiClient.put<Shipment>(`/api/shipments/${id}`, data),
 
+  acceptShipment: (id: string) =>
+    apiClient.post<Shipment>(`/api/shipments/${id}/accept`),
+
   updateStatus: (id: string, data: UpdateShipmentStatusData) =>
     apiClient.patch<Shipment>(`/api/shipments/${id}/status`, data),
 

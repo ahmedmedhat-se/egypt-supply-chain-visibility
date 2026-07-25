@@ -543,6 +543,92 @@ export class ShipmentsService {
     return this.formatShipment(updatedShipment);
   }
 
+  // ---------- Accept (Carrier claims a shipment) ----------
+
+  async accept(user: RequestUser, id: string) {
+    const shipment = await this.prisma.shipment.findUnique({
+      where: { shipment_id: id },
+    });
+
+    if (!shipment) {
+      throw new NotFoundException('Shipment not found');
+    }
+
+    // Only carriers can accept shipments
+    if (user.role !== 'carrier' && user.role !== 'admin' && user.role !== 'super_admin') {
+      throw new ForbiddenException(
+        'Only carrier users can accept shipments',
+      );
+    }
+
+    const dbUser = await this.prisma.user.findUnique({
+      where: { user_id: user.sub },
+      select: { organization_id: true },
+    });
+
+    if (!dbUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    // If the shipment already has a carrier org, only users from that org can claim it
+    if (shipment.carrier_organization_id &&
+        shipment.carrier_organization_id !== dbUser.organization_id) {
+      throw new ForbiddenException(
+        'This shipment is already assigned to another carrier organization',
+      );
+    }
+
+    // If already assigned to this org, no need to reassign
+    if (shipment.carrier_organization_id === dbUser.organization_id) {
+      return this.formatShipment(shipment);
+    }
+
+    // Assign the carrier organization
+    // Only transition to 'confirmed' if the shipment is still in 'draft'
+    const updated = await this.prisma.shipment.update({
+      where: { shipment_id: id },
+      data: {
+        carrier_organization_id: dbUser.organization_id,
+        ...(shipment.shipment_status === 'draft' && { shipment_status: 'confirmed' }),
+      },
+      include: {
+        shipper_organization: {
+          select: { organization_id: true, organization_name: true },
+        },
+        carrier_organization: {
+          select: { organization_id: true, organization_name: true },
+        },
+        route: {
+          select: { route_id: true, route_name: true, route_code: true },
+        },
+        created_by: {
+          select: {
+            user_id: true,
+            user_first_name: true,
+            user_last_name: true,
+          },
+        },
+      },
+    });
+
+    // Log the acceptance event
+    await this.prisma.shipmentEvent.create({
+      data: {
+        shipment_id: id,
+        event_type: 'carrier_assigned',
+        event_status: 'confirmed',
+        event_description: `Carrier organization claimed this shipment`,
+        recorded_by_user_id: user.sub,
+      },
+    });
+
+    this.logger.log(
+      `Shipment ${updated.shipment_reference_number} accepted by carrier org ${dbUser.organization_id}`,
+    );
+
+    return this.formatShipment(updated);
+  }
+
   // ---------- Remove ----------
 
   async remove(user: RequestUser, id: string) {

@@ -78,6 +78,16 @@ export class ShipmentsController {
     return this.shipmentsService.updateStatus(user, id, dto);
   }
 
+  @Post(':id/accept')
+  @Roles('carrier', 'admin', 'super_admin')
+  @ApiOperation({
+    summary: 'Accept/claim a shipment as a carrier',
+  })
+  @ApiResponse({ status: 200, description: 'Shipment accepted.' })
+  async accept(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.shipmentsService.accept(user, id);
+  }
+
   @Delete(':id')
   @Roles('shipper', 'admin')
   @HttpCode(HttpStatus.OK)
