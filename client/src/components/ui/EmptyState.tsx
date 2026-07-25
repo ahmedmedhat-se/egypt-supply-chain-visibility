@@ -1,11 +1,11 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, type ComponentType, createElement } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from './Button';
 
 interface EmptyStateProps {
   title: string;
   description?: string;
-  icon?: ReactNode;
+  icon?: ComponentType<{ className?: string }> | ReactNode;
   actionText?: string;
   onAction?: () => void;
   className?: string;
@@ -26,7 +26,9 @@ export const EmptyState = ({
     )}>
       {icon && (
         <div className="text-[#94A3B8] text-5xl mb-4">
-          {icon}
+          {typeof icon === 'function'
+            ? createElement(icon as ComponentType<{ className?: string }>)
+            : icon}
         </div>
       )}
       <h3 className="text-lg font-semibold text-[#0A2E4A]">{title}</h3>
