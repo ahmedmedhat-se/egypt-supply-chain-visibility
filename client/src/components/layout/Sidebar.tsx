@@ -1,4 +1,4 @@
-import { NavLink, useLocation, Link } from 'react-router-dom';
+import { NavLink, useLocation, Link, useNavigate } from 'react-router-dom';
 import { 
   FaTachometerAlt, 
   FaShip, 
@@ -50,6 +50,7 @@ export const Sidebar = ({
   onLogout 
 }: SidebarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -59,7 +60,7 @@ export const Sidebar = ({
     scrollToTop();
     if (location.pathname !== path) {
       setTimeout(() => {
-        window.location.href = path;
+        navigate(path);
       }, 300);
     }
     onClose?.();

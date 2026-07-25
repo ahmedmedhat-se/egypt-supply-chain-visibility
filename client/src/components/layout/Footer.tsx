@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   FaGithub, 
   FaLinkedin, 
@@ -35,6 +35,7 @@ export const Footer = ({ className }: FooterProps) => {
   const currentYear = new Date().getFullYear();
   const [showScrollTop, setShowScrollTop] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -55,7 +56,7 @@ export const Footer = ({ className }: FooterProps) => {
     } else {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       setTimeout(() => {
-        window.location.href = path;
+        navigate(path);
       }, 300);
     }
   };
