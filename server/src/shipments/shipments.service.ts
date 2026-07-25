@@ -446,7 +446,7 @@ export class ShipmentsService {
     const isCarrierOrg =
       shipment.carrier_organization_id === dbUser.organization_id;
 
-    if (!isShipperOrg && !isCarrierOrg) {
+    if (user.role !== 'super_admin' && !isShipperOrg && !isCarrierOrg) {
       throw new ForbiddenException(
         'You do not have permission to update this shipment status',
       );
@@ -582,7 +582,7 @@ export class ShipmentsService {
     const where: Prisma.ShipmentWhereInput = {};
 
     // Role-based visibility
-    if (user.role !== 'regulator') {
+    if (user.role !== 'regulator' && user.role !== 'super_admin') {
       const dbUser = await this.prisma.user.findUnique({
         where: { user_id: user.sub },
         select: { organization_id: true },
@@ -673,6 +673,9 @@ export class ShipmentsService {
    * Only the shipper org or an admin can edit.
    */
   private async enforceEditAccess(user: RequestUser, shipment: any) {
+    if (user.role === 'super_admin') {
+      return;
+    }
 
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
