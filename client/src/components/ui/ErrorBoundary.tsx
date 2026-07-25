@@ -31,7 +31,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     if (import.meta.env.DEV) {
       console.error('[ErrorBoundary] Caught error:', error, errorInfo);
     }
-    // TODO: Send to error reporting service in production
   }
 
   handleReset = () => {

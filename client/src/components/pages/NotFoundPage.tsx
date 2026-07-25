@@ -75,19 +75,11 @@ export const NotFoundPage = () => {
             >
               About
             </Link>
-            <span className="text-[#94A3B8] dark:text-[#64748B]">•</span>
             <Link
               to={ROUTES.CONTACT}
               className="text-sm text-[#2D9B6E] hover:underline font-medium"
             >
               Contact
-            </Link>
-            <span className="text-[#94A3B8] dark:text-[#64748B]">•</span>
-            <Link
-              to={ROUTES.HELP}
-              className="text-sm text-[#2D9B6E] hover:underline font-medium"
-            >
-              Help Center
             </Link>
           </div>
         </div>

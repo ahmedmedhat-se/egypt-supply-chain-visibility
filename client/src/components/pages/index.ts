@@ -12,4 +12,3 @@ export { AlertsPage } from './AlertsPage';
 export { OrganizationsPage } from './OrganizationsPage';
 export { ReportsPage } from './ReportsPage';
 export { ProfilePage } from './ProfilePage';
-export { SettingsPage } from './SettingsPage';

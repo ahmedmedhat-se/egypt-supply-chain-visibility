@@ -5,10 +5,7 @@ import {
   FaMapMarkedAlt, 
   FaBell, 
   FaFileAlt, 
-  FaUsersCog,
   FaSignOutAlt,
-  FaCog,
-  FaQuestionCircle,
   FaUser,
   FaHome,
   FaInfoCircle,
@@ -99,8 +96,6 @@ export const Sidebar = ({
 
   const bottomNav: NavItem[] = [
     { name: 'Profile', to: ROUTES.PROFILE, icon: FaUser, authRequired: true },
-    { name: 'Settings', to: ROUTES.SETTINGS, icon: FaCog, authRequired: true },
-    { name: 'Help', to: ROUTES.HELP, icon: FaQuestionCircle },
   ];
 
   const navigation = isAuthenticated ? authenticatedNavigation : publicNavigation;

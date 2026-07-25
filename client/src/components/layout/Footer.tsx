@@ -64,7 +64,6 @@ export const Footer = ({ className }: FooterProps) => {
   const companyLinks: FooterLink[] = [
     { label: 'About ESCV', path: ROUTES.ABOUT },
     { label: 'Contact Support', path: ROUTES.CONTACT },
-    { label: 'Help Center', path: ROUTES.HELP },
   ];
 
   const legalLinks: FooterLink[] = [
