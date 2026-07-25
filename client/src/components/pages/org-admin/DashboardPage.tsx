@@ -34,7 +34,7 @@ export const AdminDashboardPage = () => {
   const { data: pendingInvites } = useQuery({
     queryKey: ['org-invitations', user?.organizationId],
     queryFn: async () => {
-      const res = await organizationApi.getInvitations(user!.organizationId);
+      const res = await organizationApi.getInvitations(user!.organizationId, 'pending');
       return res.data;
     },
     enabled: !!user?.organizationId,
