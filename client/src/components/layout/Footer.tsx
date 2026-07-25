@@ -61,14 +61,6 @@ export const Footer = ({ className }: FooterProps) => {
     }
   };
 
-  const platformLinks: FooterLink[] = [
-    { label: 'Dashboard', path: ROUTES.DASHBOARD },
-    { label: 'Shipments', path: ROUTES.SHIPMENTS },
-    { label: 'Live Tracking', path: ROUTES.TRACKING },
-    { label: 'Analytics & Reports', path: ROUTES.REPORTS },
-    { label: 'Alert Center', path: ROUTES.ALERTS },
-  ];
-
   const companyLinks: FooterLink[] = [
     { label: 'About ESCV', path: ROUTES.ABOUT },
     { label: 'Contact Support', path: ROUTES.CONTACT },
@@ -142,26 +134,6 @@ export const Footer = ({ className }: FooterProps) => {
                 ISO 27001
               </span>
             </div>
-          </div>
-
-          {/* Platform Links */}
-          <div>
-            <h3 className="text-sm font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-5">
-              Platform
-            </h3>
-            <ul className="space-y-3">
-              {platformLinks.map((link) => (
-                <li key={link.path}>
-                  <Link
-                    to={link.path}
-                    onClick={(e) => handleNavigation(e, link.path)}
-                    className="text-base text-[#64748B] dark:text-[#94A3B8] hover:text-[#2D9B6E] dark:hover:text-[#2D9B6E] transition-all duration-200 font-medium"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </div>
 
           {/* Company Links */}
