@@ -78,7 +78,9 @@ export const Sidebar = ({
 
   const authenticatedNavigation: NavItem[] = [
     { name: 'Dashboard', to: ROUTES.DASHBOARD, icon: FaTachometerAlt, authRequired: true },
-    { name: 'Shipments', to: ROUTES.SHIPMENTS, icon: FaShip, authRequired: true },
+    ...(userRole !== 'super_admin'
+      ? [{ name: 'Shipments', to: ROUTES.SHIPMENTS, icon: FaShip, authRequired: true } as NavItem]
+      : []),
     { name: 'Tracking', to: ROUTES.TRACKING, icon: FaMapMarkedAlt, authRequired: true },
     { name: 'Alerts', to: ROUTES.ALERTS, icon: FaBell, badge: 3, authRequired: true },
     ...(isAdmin && !isSuperAdmin ? [
