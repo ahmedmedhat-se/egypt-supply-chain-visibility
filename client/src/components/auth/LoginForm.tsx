@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FaEye, FaEyeSlash, FaSpinner } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaSpinner, FaLock } from 'react-icons/fa';
 import { Button } from '../ui/Button';
 import { ROUTES } from '../../constants/routes';
 import { useAuth } from '../../hooks/useAuth';
+import { getErrorReason } from '../../api/client';
 import { cn } from '../../lib/utils';
 
 const loginSchema = z.object({
@@ -23,12 +24,14 @@ interface LoginFormProps {
 }
 
 export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
-  const { login, loginLoading, isLockedOut, remainingLockoutMinutes, loginAttempts } = useAuth();
+  const { login, loginLoading, loginError } = useAuth();
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isFocused, setIsFocused] = useState<{ email: boolean; password: boolean }>({
     email: false,
     password: false,
   });
+
+  const isInactiveAccount = getErrorReason(loginError) === 'ACCOUNT_INACTIVE';
 
   const {
     register,
@@ -65,34 +68,22 @@ export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={cn('space-y-5', className)}>
-      {isLockedOut && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50">
-          <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center flex-shrink-0">
-            <span className="text-red-500 dark:text-red-400 text-sm font-bold">!</span>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-red-700 dark:text-red-400">
-              Account temporarily locked
-            </p>
-            <p className="text-xs text-red-600 dark:text-red-400/70 mt-0.5">
-              Try again in {remainingLockoutMinutes} minutes
-            </p>
-          </div>
-        </div>
-      )}
-
-      {loginAttempts >= 3 && loginAttempts < 5 && !isLockedOut && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800/50">
-          <div className="w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900/50 flex items-center justify-center flex-shrink-0">
-            <span className="text-yellow-600 dark:text-yellow-400 text-sm font-bold">⚠</span>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
-              {5 - loginAttempts} login attempts remaining
-            </p>
-            <p className="text-xs text-yellow-600 dark:text-yellow-400/70 mt-0.5">
-              Account will be locked after {5 - loginAttempts} more failed attempts
-            </p>
+      {/* Inactive Account Card */}
+      {isInactiveAccount && (
+        <div className="p-5 rounded-xl bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-800/50">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center flex-shrink-0">
+              <FaLock className="w-5 h-5 text-red-500 dark:text-red-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                Account Deactivated
+              </h3>
+              <p className="text-sm text-red-600 dark:text-red-400/90 mt-1 leading-relaxed">
+                Your account has been deactivated. To regain access, please contact your
+                organization administrator or platform support.
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -113,15 +104,13 @@ export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
             placeholder="you@company.com"
             autoComplete="email"
             autoFocus
-            disabled={isLockedOut}
             className={cn(
               'w-full px-4 py-3.5 rounded-xl border bg-white dark:bg-[#1A3D5A]',
               'text-[#1A2A3A] dark:text-[#E2E8F0] placeholder:text-[#94A3B8] dark:placeholder:text-[#64748B]',
               'focus:outline-none transition-all duration-200',
               errors.email 
                 ? 'border-[#DC2626] dark:border-[#DC2626]' 
-                : 'border-[#D1D9E6] dark:border-[#1A3D5A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E]',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+                : 'border-[#D1D9E6] dark:border-[#1A3D5A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E]'
             )}
             {...register('email')}
             onFocus={() => setIsFocused(prev => ({ ...prev, email: true }))}
@@ -151,15 +140,13 @@ export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
             type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"
             autoComplete="current-password"
-            disabled={isLockedOut}
             className={cn(
               'w-full px-4 py-3.5 rounded-xl border bg-white dark:bg-[#1A3D5A]',
               'text-[#1A2A3A] dark:text-[#E2E8F0] placeholder:text-[#94A3B8] dark:placeholder:text-[#64748B]',
               'focus:outline-none transition-all duration-200 pr-12',
               errors.password 
                 ? 'border-[#DC2626] dark:border-[#DC2626]' 
-                : 'border-[#D1D9E6] dark:border-[#1A3D5A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E]',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
+                : 'border-[#D1D9E6] dark:border-[#1A3D5A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E]'
             )}
             {...register('password')}
             onFocus={() => setIsFocused(prev => ({ ...prev, password: true }))}
@@ -188,8 +175,7 @@ export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
           <input
             type="checkbox"
             {...register('rememberMe')}
-            disabled={isLockedOut}
-            className="w-4 h-4 rounded border-[#D1D9E6] dark:border-[#1A3D5A] text-[#2D9B6E] focus:ring-[#2D9B6E] focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-[#0A2E4A] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-4 h-4 rounded border-[#D1D9E6] dark:border-[#1A3D5A] text-[#2D9B6E] focus:ring-[#2D9B6E] focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-[#0A2E4A] transition-all cursor-pointer"
           />
           <span className="group-hover:text-[#0A2E4A] dark:group-hover:text-[#E2E8F0] transition-colors">
             Remember me
@@ -208,7 +194,7 @@ export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
         type="submit"
         fullWidth
         size="lg"
-        disabled={loginLoading || isLockedOut}
+        disabled={loginLoading}
         className="bg-[#2D9B6E] hover:bg-[#1F7A52] dark:bg-[#2D9B6E] dark:hover:bg-[#1F7A52] text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-[#2D9B6E]/20 dark:shadow-[#2D9B6E]/10 hover:shadow-xl hover:shadow-[#2D9B6E]/30 dark:hover:shadow-[#2D9B6E]/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loginLoading ? (

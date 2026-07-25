@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  ForbiddenException,
   Logger,
   BadRequestException,
 } from '@nestjs/common';
@@ -77,13 +78,33 @@ export class AuthService {
 
   // ---------- Login ----------
   async login(email: string, password: string) {
+    // Rate limiting is handled by the global NestJS ThrottlerModule
+    // (5 requests per 60 seconds on the login endpoint)
+
     const user = await this.usersService.findByEmail(email);
-    if (!user || !user.user_is_active) {
+    if (!user) {
+      // Don't reveal whether the email exists
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (!user.user_is_active) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Your account has been deactivated. Please contact your administrator.',
+        reason: 'ACCOUNT_INACTIVE',
+      });
+    }
+
     const valid = await bcrypt.compare(password, user.user_password_hash);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+    if (!valid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Success — update last login
+    await this.prisma.user.update({
+      where: { user_id: user.user_id },
+      data: { user_last_login_at: new Date() },
+    }).catch(() => {}); // non-critical
 
     const tokens = await this.createTokenPair(user.user_id);
 
