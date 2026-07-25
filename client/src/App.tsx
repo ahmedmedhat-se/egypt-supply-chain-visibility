@@ -179,16 +179,16 @@ function App() {
               }
             >
               {/* Public pages */}
-              <Route path={ROUTES.HOME} element={<HomePage />} />
-              <Route path={ROUTES.ABOUT} element={<AboutPage />} />
-              <Route path={ROUTES.CONTACT} element={<ContactPage />} />
+              <Route path={ROUTES.HOME} element={<PageLoader><HomePage /></PageLoader>} />
+              <Route path={ROUTES.ABOUT} element={<PageLoader><AboutPage /></PageLoader>} />
+              <Route path={ROUTES.CONTACT} element={<PageLoader><ContactPage /></PageLoader>} />
               <Route path={ROUTES.TERMS} element={<PageLoader><TermsPage /></PageLoader>} />
               <Route path={ROUTES.PRIVACY} element={<PageLoader><PrivacyPage /></PageLoader>} />
 
               {/* Auth pages - now with Topbar and Footer */}
-              <Route path={ROUTES.LOGIN} element={<LoginPage />} />
-              <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
-              <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPasswordPage />} />
+              <Route path={ROUTES.LOGIN} element={<PageLoader><LoginPage /></PageLoader>} />
+              <Route path={ROUTES.REGISTER} element={<PageLoader><RegisterPage /></PageLoader>} />
+              <Route path={ROUTES.FORGOT_PASSWORD} element={<PageLoader><ForgotPasswordPage /></PageLoader>} />
 
               {/* ═══════════════════════════════════════════════
                  PROTECTED PAGES — require valid JWT
