@@ -44,6 +44,12 @@ export class JwtAuthGuard implements CanActivate {
         throw new UnauthorizedException('User not found');
       }
 
+      if (!user.user_is_active) {
+        throw new UnauthorizedException(
+          'Account is deactivated — contact your administrator',
+        );
+      }
+
       if (user.user_token_version !== payload.tokenVersion) {
         throw new UnauthorizedException(
           'Session expired - please log in again',
