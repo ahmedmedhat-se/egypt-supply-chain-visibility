@@ -95,9 +95,6 @@ export const Sidebar = ({
       { name: 'Checkpoints', to: ROUTES.SUPER_ADMIN_CHECKPOINTS, icon: FaMapMarkerAlt, authRequired: true } as NavItem,
     ] : []),
     { name: 'Reports', to: ROUTES.REPORTS, icon: FaFileAlt, authRequired: true },
-    ...(isSuperAdmin ? [
-      { name: 'Admin', to: ROUTES.ADMIN, icon: FaUsersCog, authRequired: true } as NavItem,
-    ] : []),
   ];
 
   const bottomNav: NavItem[] = [
