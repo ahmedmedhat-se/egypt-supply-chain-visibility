@@ -138,14 +138,30 @@ export class AdminService {
     if (dto.user_first_name) updateData.user_first_name = dto.user_first_name;
     if (dto.user_last_name) updateData.user_last_name = dto.user_last_name;
     if (dto.user_phone !== undefined) updateData.user_phone = dto.user_phone;
-    if (dto.user_role) updateData.user_role = dto.user_role;
-    if (dto.organization_id) {
+    const targetRole = dto.user_role || user.user_role;
+    const targetOrgId = dto.organization_id || user.organization_id;
+
+    if (targetOrgId) {
       const org = await this.prisma.organization.findUnique({
-        where: { organization_id: dto.organization_id },
+        where: { organization_id: targetOrgId },
       });
       if (!org) throw new NotFoundException('Organization not found');
-      updateData.organization_id = dto.organization_id;
+
+      if (
+        targetRole !== 'admin' &&
+        targetRole !== 'super_admin' &&
+        targetRole.toLowerCase() !== org.organization_type.toLowerCase()
+      ) {
+        throw new ConflictException(
+          `Role mismatch: Cannot assign a '${targetRole}' role to a '${org.organization_type}' organization.`,
+        );
+      }
+    } else if (targetRole !== 'admin' && targetRole !== 'super_admin') {
+      throw new ConflictException(`Role mismatch: '${targetRole}' role requires an organization.`);
     }
+
+    if (dto.user_role) updateData.user_role = dto.user_role;
+    if (dto.organization_id) updateData.organization_id = dto.organization_id;
     if (dto.user_password) {
       updateData.user_password_hash = await bcrypt.hash(dto.user_password, 12);
     }
