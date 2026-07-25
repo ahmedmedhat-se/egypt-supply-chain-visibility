@@ -9,6 +9,8 @@ interface ShipmentStatusBadgeProps {
 export const ShipmentStatusBadge: React.FC<ShipmentStatusBadgeProps> = ({ status }) => {
   const getBadgeProps = (status: ShipmentStatus) => {
     switch (status) {
+      case 'draft':
+        return { variant: 'default' as const, label: 'Draft' };
       case 'pending':
         return { variant: 'default' as const, label: 'Pending' };
       case 'confirmed':

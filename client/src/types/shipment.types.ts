@@ -1,4 +1,5 @@
 export type ShipmentStatus =
+  | 'draft'
   | 'pending'
   | 'confirmed'
   | 'in_transit'
@@ -12,40 +13,57 @@ export type ShipmentStatus =
 
 export interface Shipment {
   id: string;
-  trackingNumber: string;
-  description: string;
-  origin: string;
-  destination: string;
+  referenceNumber: string;
   status: ShipmentStatus;
-  estimatedDelivery: string | null;
-  actualDelivery: string | null;
-  shipperId: string;
-  carrierId: string | null;
-  carrierName: string | null;
-  routeId: string | null;
-  routeName: string | null;
-  weight: number | null;
+  description: string | null;
+  cargoType: string | null;
+  weightKg: number | null;
+  volumeM3: number | null;
+  originAddress: string;
+  destinationAddress: string;
+  originCity: string;
+  destinationCity: string;
+  estimatedDepartureAt: string | null;
+  estimatedArrivalAt: string | null;
+  actualDepartureAt: string | null;
+  actualArrivalAt: string | null;
   notes: string | null;
+  shipperOrganization: { organization_id: string; organization_name: string } | null;
+  carrierOrganization: { organization_id: string; organization_name: string } | null;
+  route: { route_id: string; route_name: string; route_code: string } | null;
+  currentCheckpoint: { checkpoint_id: string; checkpoint_name: string; checkpoint_code: string; checkpoint_city: string } | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateShipmentData {
-  description: string;
-  origin: string;
-  destination: string;
-  weight?: number;
-  estimatedDelivery?: string;
+  description?: string;
+  cargoType?: string;
+  originAddress: string;
+  destinationAddress: string;
+  originCity: string;
+  destinationCity: string;
+  weightKg?: number;
+  volumeM3?: number;
+  estimatedDepartureAt?: string;
+  estimatedArrivalAt?: string;
+  carrierOrganizationId?: string;
   routeId?: string;
   notes?: string;
 }
 
 export interface UpdateShipmentData {
   description?: string;
-  origin?: string;
-  destination?: string;
-  weight?: number;
-  estimatedDelivery?: string;
+  cargoType?: string;
+  originAddress?: string;
+  destinationAddress?: string;
+  originCity?: string;
+  destinationCity?: string;
+  weightKg?: number;
+  volumeM3?: number;
+  estimatedDepartureAt?: string;
+  estimatedArrivalAt?: string;
+  carrierOrganizationId?: string;
   routeId?: string;
   notes?: string;
 }

@@ -1,19 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { useCreateShipment } from '../../hooks/useShipments';
+import { useUpdateShipment } from '../../hooks/useShipments';
 import { cn } from '../../lib/utils';
 import { FaChevronDown } from 'react-icons/fa';
-import type { CreateShipmentData } from '../../types/shipment.types';
+import type { Shipment, UpdateShipmentData } from '../../types/shipment.types';
 
-interface CreateShipmentModalProps {
+interface EditShipmentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  shipment: Shipment | null;
 }
 
-export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({ isOpen, onClose }) => {
-  const [formData, setFormData] = useState<CreateShipmentData>({
+export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({ isOpen, onClose, shipment }) => {
+  const [formData, setFormData] = useState<UpdateShipmentData>({
     description: '',
     originAddress: '',
     destinationAddress: '',
@@ -22,52 +23,77 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({ isOpen
     weightKg: undefined,
     volumeM3: undefined,
     cargoType: '',
-    estimatedArrivalAt: '',
+    estimatedArrivalAt: undefined,
+    estimatedDepartureAt: undefined,
     notes: '',
   });
   const [showMoreOptions, setShowMoreOptions] = useState(false);
 
-  const { mutate: createShipment, isPending } = useCreateShipment();
+  const { mutate: updateShipment, isPending } = useUpdateShipment();
+
+  // Populate form when shipment data changes
+  useEffect(() => {
+    if (shipment) {
+      setFormData({
+        description: shipment.description || '',
+        originAddress: shipment.originAddress || '',
+        destinationAddress: shipment.destinationAddress || '',
+        originCity: shipment.originCity || '',
+        destinationCity: shipment.destinationCity || '',
+        weightKg: shipment.weightKg ?? undefined,
+        volumeM3: shipment.volumeM3 ?? undefined,
+        cargoType: shipment.cargoType || '',
+        estimatedArrivalAt: shipment.estimatedArrivalAt
+          ? shipment.estimatedArrivalAt.slice(0, 16)
+          : undefined,
+        estimatedDepartureAt: shipment.estimatedDepartureAt
+          ? shipment.estimatedDepartureAt.slice(0, 16)
+          : undefined,
+        notes: shipment.notes || '',
+      });
+      setShowMoreOptions(false);
+    }
+  }, [shipment]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'weightKg' || name === 'volumeM3' ? (value ? Number(value) : undefined) : name === 'estimatedArrivalAt' ? (value || undefined) : value,
+      [name]:
+        name === 'weightKg' || name === 'volumeM3'
+          ? (value ? Number(value) : undefined)
+          : name === 'estimatedArrivalAt' || name === 'estimatedDepartureAt'
+            ? (value || undefined)
+            : value,
     }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createShipment(formData, {
-      onSuccess: () => {
-        onClose();
-        setFormData({
-          description: '',
-          originAddress: '',
-          destinationAddress: '',
-          originCity: '',
-          destinationCity: '',
-          weightKg: undefined,
-          volumeM3: undefined,
-          cargoType: '',
-          estimatedArrivalAt: '',
-          notes: '',
-        });
-        setShowMoreOptions(false);
+    if (!shipment) return;
+    updateShipment(
+      { id: shipment.id, data: formData },
+      {
+        onSuccess: () => {
+          onClose();
+        },
       },
-    });
+    );
+  };
+
+  const handleClose = () => {
+    onClose();
+    setShowMoreOptions(false);
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create New Shipment">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Edit Shipment">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label="Description"
           name="description"
           value={formData.description || ''}
           onChange={handleChange}
-          required
           placeholder="e.g. Medical Supplies"
         />
 
@@ -77,17 +103,15 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({ isOpen
             <Input
               label="Address"
               name="originAddress"
-              value={formData.originAddress}
+              value={formData.originAddress || ''}
               onChange={handleChange}
-              required
               placeholder="e.g. 123 Main St"
             />
             <Input
               label="City"
               name="originCity"
-              value={formData.originCity}
+              value={formData.originCity || ''}
               onChange={handleChange}
-              required
               placeholder="e.g. Cairo"
             />
           </div>
@@ -99,17 +123,15 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({ isOpen
             <Input
               label="Address"
               name="destinationAddress"
-              value={formData.destinationAddress}
+              value={formData.destinationAddress || ''}
               onChange={handleChange}
-              required
               placeholder="e.g. 456 Nile St"
             />
             <Input
               label="City"
               name="destinationCity"
-              value={formData.destinationCity}
+              value={formData.destinationCity || ''}
               onChange={handleChange}
-              required
               placeholder="e.g. Alexandria"
             />
           </div>
@@ -120,7 +142,7 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({ isOpen
             label="Weight (kg)"
             name="weightKg"
             type="number"
-            value={formData.weightKg || ''}
+            value={formData.weightKg ?? ''}
             onChange={handleChange}
             placeholder="0.0"
             min="0"
@@ -145,7 +167,7 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({ isOpen
             <FaChevronDown
               className={cn(
                 'w-3 h-3 transition-transform duration-200',
-                showMoreOptions && 'rotate-180'
+                showMoreOptions && 'rotate-180',
               )}
             />
             <span>More Options</span>
@@ -156,7 +178,7 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({ isOpen
           <div
             className={cn(
               'overflow-hidden transition-all duration-300 ease-in-out',
-              showMoreOptions ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'
+              showMoreOptions ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0',
             )}
           >
             <div className="grid grid-cols-2 gap-4 pb-2">
@@ -171,7 +193,7 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({ isOpen
                 label="Volume (m³)"
                 name="volumeM3"
                 type="number"
-                value={formData.volumeM3 || ''}
+                value={formData.volumeM3 ?? ''}
                 onChange={handleChange}
                 placeholder="0.0"
                 min="0"
@@ -196,11 +218,11 @@ export const CreateShipmentModal: React.FC<CreateShipmentModalProps> = ({ isOpen
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-[#E2E8F0] dark:border-[#1A3D5A]">
-          <Button variant="outline" type="button" onClick={onClose} disabled={isPending}>
+          <Button variant="outline" type="button" onClick={handleClose} disabled={isPending}>
             Cancel
           </Button>
           <Button type="submit" isLoading={isPending}>
-            Create Shipment
+            Save Changes
           </Button>
         </div>
       </form>

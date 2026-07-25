@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { shipmentsApi } from '../api/shipments.api';
-import type { ShipmentQueryParams, CreateShipmentData } from '../types/shipment.types';
+import type { ShipmentQueryParams, CreateShipmentData, UpdateShipmentData } from '../types/shipment.types';
 import toast from 'react-hot-toast';
 
 export const useShipments = (params?: ShipmentQueryParams) => {
@@ -27,6 +27,24 @@ export const useCreateShipment = () => {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to create shipment');
+    },
+  });
+};
+
+export const useUpdateShipment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateShipmentData }) => {
+      const response = await shipmentsApi.update(id, data);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Shipment updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['shipments'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update shipment');
     },
   });
 };
