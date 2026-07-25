@@ -60,12 +60,14 @@ export const RoutesPage = () => {
         ) : (
           <Table>
             <TableHeader>
-              <TableHead>Code</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Origin / Destination</TableHead>
-              <TableHead>Est. Time</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Origin / Destination</TableHead>
+                <TableHead>Est. Time</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
             </TableHeader>
             <TableBody>
               {data.data.map((route) => (
