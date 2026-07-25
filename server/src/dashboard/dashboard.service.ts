@@ -23,7 +23,7 @@ export class DashboardService {
       ? undefined
       : { organization_id: organizationId };
 
-    const shipmentOrgFilter = isSuperAdmin
+    const shipmentOrgFilter = (isSuperAdmin || role === 'regulator')
       ? undefined
       : {
           OR: [
@@ -64,12 +64,12 @@ export class DashboardService {
         : Promise.resolve(1),
 
       // Shipments (org-scoped if applicable)
-      isSuperAdmin
+      (isSuperAdmin || role === 'regulator')
         ? this.prisma.shipment.count()
         : this.prisma.shipment.count({ where: shipmentOrgFilter }),
 
       // Shipments by status
-      isSuperAdmin
+      (isSuperAdmin || role === 'regulator')
         ? this.prisma.shipment.groupBy({
             by: ['shipment_status'],
             _count: true,
@@ -93,7 +93,7 @@ export class DashboardService {
           }),
 
       // Alerts (scoped to org's shipments)
-      isSuperAdmin
+      (isSuperAdmin || role === 'regulator')
         ? this.prisma.alert.count()
         : this.prisma.alert.count({
             where: {
@@ -102,7 +102,7 @@ export class DashboardService {
           }),
 
       // Critical unresolved alerts
-      isSuperAdmin
+      (isSuperAdmin || role === 'regulator')
         ? this.prisma.alert.count({
             where: {
               alert_is_resolved: false,
