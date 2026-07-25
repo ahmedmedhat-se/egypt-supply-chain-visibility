@@ -26,8 +26,8 @@ export const ShipmentsPage = () => {
           </p>
         </div>
         
-        {/* Only allow Shippers and Admins to create new shipments for now */}
-        {(user?.role === 'shipper' || user?.role === 'admin' || user?.role === 'super_admin') && (
+        {/* Only allow Shippers and Admins to create new shipments */}
+        {(user?.role === 'shipper' || user?.role === 'admin') && (
           <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
             <FaPlus /> New Shipment
           </Button>
@@ -55,12 +55,14 @@ export const ShipmentsPage = () => {
         ) : (
           <Table>
             <TableHeader>
-              <TableHead>Tracking #</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Route</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableRow>
+                <TableHead>Tracking #</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Route</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
             </TableHeader>
             <TableBody>
               {data.data.map((shipment) => (

@@ -19,7 +19,7 @@ export const Table = ({ children, className }: TableProps) => {
 export const TableHeader = ({ children }: { children: ReactNode }) => {
   return (
     <thead className="bg-[#E8F0F8] text-[#0A2E4A]">
-      <tr>{children}</tr>
+      {children}
     </thead>
   );
 };
