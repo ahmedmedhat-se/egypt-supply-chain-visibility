@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
@@ -15,9 +15,10 @@ import {
 } from '../../ui/Table';
 import { adminApi } from '../../../api/admin.api';
 import { formatDate, cn } from '../../../lib/utils';
-import { FaBuilding, FaGlobe, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { FaBuilding, FaGlobe, FaCheckCircle, FaTimesCircle, FaBan } from 'react-icons/fa';
 
 export const SuperAdminOrganizationsPage = () => {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -32,6 +33,14 @@ export const SuperAdminOrganizationsPage = () => {
         type: typeFilter || undefined,
       });
       return res.data;
+    },
+  });
+
+  const deactivateMutate = useMutation({
+    mutationFn: (id: string) => adminApi.deactivateOrganization(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-organizations'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
 
@@ -119,12 +128,13 @@ export const SuperAdminOrganizationsPage = () => {
                 <TableHead>Members</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {orgs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-[#94A3B8] py-8">
+                  <TableCell colSpan={8} className="text-center text-[#94A3B8] py-8">
                     No organizations found.
                   </TableCell>
                 </TableRow>
@@ -170,6 +180,23 @@ export const SuperAdminOrganizationsPage = () => {
                     </TableCell>
                     <TableCell className="text-[#94A3B8] text-sm">
                       {formatDate(o.organization_created_at)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {o.organization_is_active ? (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Deactivate "${o.organization_name}"? All members will also be deactivated.`)) {
+                                deactivateMutate.mutate(o.organization_id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                            title="Deactivate Organization"
+                          >
+                            <FaBan className="w-3.5 h-3.5" />
+                          </button>
+                        ) : null}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

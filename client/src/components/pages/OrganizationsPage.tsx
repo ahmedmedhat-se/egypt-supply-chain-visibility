@@ -1,10 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth.store';
 import { organizationApi } from '../../api/organization.api';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
-import { FaUsers, FaEnvelope, FaCalendarAlt, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { showToast } from '../ui/Toast';
+import { extractErrorMessage } from '../../api/client';
+import { FaUsers, FaEnvelope, FaCalendarAlt, FaCheckCircle, FaTimesCircle, FaBan } from 'react-icons/fa';
 import { formatDate } from '../../lib/utils';
 
 const roleBadgeVariant: Record<string, 'info' | 'success' | 'warning' | 'danger' | 'primary'> = {
@@ -19,6 +21,7 @@ export const OrganizationsPage = () => {
   const user = useAuthStore((state) => state.user);
   const orgId = user?.organizationId;
   const orgName = user?.organizationName;
+  const queryClient = useQueryClient();
 
   const {
     data: members,
@@ -31,6 +34,20 @@ export const OrganizationsPage = () => {
       return res.data;
     },
     enabled: !!orgId,
+  });
+
+  const memberMutate = useMutation({
+    mutationFn: async ({ userId, action }: { userId: string; action: 'activate' | 'deactivate' }) => {
+      if (action === 'activate') return organizationApi.activateMember(orgId!, userId);
+      return organizationApi.deactivateMember(orgId!, userId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-members', orgId] });
+      showToast.success('Member status updated');
+    },
+    onError: (err: unknown) => {
+      showToast.error(extractErrorMessage(err));
+    },
   });
 
   if (!user || !orgId) return null;
@@ -119,64 +136,92 @@ export const OrganizationsPage = () => {
       {/* Members Table */}
       <Card variant="bordered" padding="none">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#E2E8F0] dark:border-[#334155]">
-                <Th>Name</Th>
-                <Th>Email</Th>
-                <Th>Role</Th>
-                <Th>Status</Th>
-                <Th>Joined</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((member) => (
-                <tr
-                  key={member.user_id}
-                  className="border-b border-[#E2E8F0] dark:border-[#334155] last:border-b-0 hover:bg-[#F8FAFC] dark:hover:bg-[#1A3D5A]/50 transition-colors"
-                >
-                  <Td>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#0A2E4A] text-white flex items-center justify-center text-sm font-medium">
-                        {member.user_first_name.charAt(0)}{member.user_last_name.charAt(0)}
-                      </div>
-                      <span className="font-medium text-[#0A2E4A] dark:text-white">
-                        {member.user_first_name} {member.user_last_name}
-                      </span>
-                    </div>
-                  </Td>
-                  <Td>
-                    <span className="text-sm text-[#64748B] dark:text-[#94A3B8]">
-                      {member.user_email}
-                    </span>
-                  </Td>
-                  <Td>
-                    <Badge variant={roleBadgeVariant[member.user_role] || 'default'} size="sm">
-                      {member.user_role.replace(/_/g, ' ')}
-                    </Badge>
-                  </Td>
-                  <Td>
-                    {member.user_is_active ? (
-                      <span className="inline-flex items-center gap-1 text-sm text-[#065F46]">
-                        <FaCheckCircle className="w-3.5 h-3.5" />
-                        Active
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-sm text-[#94A3B8]">
-                        <FaTimesCircle className="w-3.5 h-3.5" />
-                        Inactive
-                      </span>
-                    )}
-                  </Td>
-                  <Td>
-                    <span className="text-sm text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1.5">
-                      <FaCalendarAlt className="w-3 h-3" />
-                      {formatDate(member.user_created_at)}
-                    </span>
-                  </Td>
+          <table className="w-full"><thead>
+                <tr className="border-b border-[#E2E8F0] dark:border-[#334155]">
+                  <Th>Name</Th>
+                  <Th>Email</Th>
+                  <Th>Role</Th>
+                  <Th>Status</Th>
+                  <Th>Joined</Th>
+                  <Th className="text-right">Actions</Th>
                 </tr>
-              ))}
-            </tbody>
+              </thead>
+              <tbody>
+                {members.map((member) => (
+                  <tr
+                    key={member.user_id}
+                    className={`
+                      border-b border-[#E2E8F0] dark:border-[#334155] last:border-b-0
+                      transition-colors
+                      ${member.user_is_active ? 'hover:bg-[#F8FAFC] dark:hover:bg-[#1A3D5A]/50' : ''}
+                      ${!member.user_is_active ? 'opacity-60' : ''}
+                    `}
+                  >
+                    <Td>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${member.user_is_active ? 'bg-[#0A2E4A] text-white' : 'bg-[#D1D9E6] text-[#94A3B8]'}`}>
+                          {member.user_first_name.charAt(0)}{member.user_last_name.charAt(0)}
+                        </div>
+                        <span className="font-medium text-[#0A2E4A] dark:text-white">
+                          {member.user_first_name} {member.user_last_name}
+                        </span>
+                      </div>
+                    </Td>
+                    <Td>
+                      <span className="text-sm text-[#64748B] dark:text-[#94A3B8]">
+                        {member.user_email}
+                      </span>
+                    </Td>
+                    <Td>
+                      <Badge variant={roleBadgeVariant[member.user_role] || 'default'} size="sm">
+                        {member.user_role.replace(/_/g, ' ')}
+                      </Badge>
+                    </Td>
+                    <Td>
+                      {member.user_is_active ? (
+                        <span className="inline-flex items-center gap-1 text-sm text-[#065F46]">
+                          <FaCheckCircle className="w-3.5 h-3.5" />
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-sm text-[#94A3B8]">
+                          <FaTimesCircle className="w-3.5 h-3.5" />
+                          Inactive
+                        </span>
+                      )}
+                    </Td>
+                    <Td>
+                      <span className="text-sm text-[#64748B] dark:text-[#94A3B8] flex items-center gap-1.5">
+                        <FaCalendarAlt className="w-3 h-3" />
+                        {formatDate(member.user_created_at)}
+                      </span>
+                    </Td>
+                    <Td className="text-right">
+                      {member.user_id !== user.id && (
+                        <div className="flex items-center justify-end gap-1">
+                          {member.user_is_active ? (
+                            <button
+                              onClick={() => memberMutate.mutate({ userId: member.user_id, action: 'deactivate' })}
+                              className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                              title="Deactivate"
+                            >
+                              <FaBan className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => memberMutate.mutate({ userId: member.user_id, action: 'activate' })}
+                              className="p-1.5 rounded-lg text-[#2D9B6E] hover:bg-[#D1FAE5] transition-colors"
+                              title="Activate"
+                            >
+                              <FaCheckCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
           </table>
         </div>
       </Card>

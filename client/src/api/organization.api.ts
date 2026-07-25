@@ -6,15 +6,16 @@ export const organizationApi = {
   getMembers: (orgId: string) =>
     apiClient.get<OrgMember[]>(`/api/organizations/${orgId}/members`),
 
-  /** Get pending invitations for the organization */
-  getInvitations: (orgId: string) =>
+  /** Get invitations for the organization (optional status filter) */
+  getInvitations: (orgId: string, status?: string) =>
     apiClient.get<Array<{
       invitation_id: string;
       invited_email: string;
       invited_role: string;
+      status: string;
       expires_at: string;
       created_at: string;
-    }>>(`/api/organizations/${orgId}/invitations`),
+    }>>(`/api/organizations/${orgId}/invitations`, { params: { status } }),
 
   /** Invite a new user to the organization */
   invite: (orgId: string, data: { email: string; role: string }) =>
@@ -27,4 +28,12 @@ export const organizationApi = {
   /** Cancel a pending invitation */
   cancelInvitation: (orgId: string, invitationId: string) =>
     apiClient.delete(`/api/organizations/${orgId}/invitations/${invitationId}`),
+
+  /** Deactivate a member */
+  deactivateMember: (orgId: string, userId: string) =>
+    apiClient.patch(`/api/organizations/${orgId}/members/${userId}/deactivate`),
+
+  /** Activate a member */
+  activateMember: (orgId: string, userId: string) =>
+    apiClient.patch(`/api/organizations/${orgId}/members/${userId}/activate`),
 };

@@ -4,6 +4,7 @@ import {
   ConflictException,
   Logger,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
@@ -88,15 +89,19 @@ export class OrganizationsService {
     };
   }
 
-  async getInvitations(orgId: string, userId: string) {
-    await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
+  async getInvitations(orgId: string, status?: string, userId?: string) {
+    if (userId) await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
+
+    const where: any = { organization_id: orgId };
+    if (status) where.status = status;
 
     return this.prisma.invitation.findMany({
-      where: { organization_id: orgId, status: 'pending' },
+      where,
       select: {
         invitation_id: true,
         invited_email: true,
         invited_role: true,
+        status: true,
         expires_at: true,
         created_at: true,
       },
@@ -174,6 +179,60 @@ export class OrganizationsService {
         user_created_at: true,
       },
       orderBy: { user_first_name: 'asc' },
+    });
+  }
+
+  async deactivateMember(orgId: string, targetUserId: string, requestingUserId: string) {
+    await this.ensureOrgAdminOrSuperAdmin(requestingUserId, orgId);
+
+    if (targetUserId === requestingUserId) {
+      throw new BadRequestException('Cannot deactivate your own account');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { user_id: targetUserId, organization_id: orgId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found in this organization');
+    }
+
+    return this.prisma.user.update({
+      where: { user_id: targetUserId },
+      data: { user_is_active: false },
+      select: {
+        user_id: true,
+        user_email: true,
+        user_first_name: true,
+        user_last_name: true,
+        user_role: true,
+        user_is_active: true,
+      },
+    });
+  }
+
+  async activateMember(orgId: string, targetUserId: string, requestingUserId: string) {
+    await this.ensureOrgAdminOrSuperAdmin(requestingUserId, orgId);
+
+    const user = await this.prisma.user.findFirst({
+      where: { user_id: targetUserId, organization_id: orgId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found in this organization');
+    }
+
+    return this.prisma.user.update({
+      where: { user_id: targetUserId },
+      data: { user_is_active: true },
+      select: {
+        user_id: true,
+        user_email: true,
+        user_first_name: true,
+        user_last_name: true,
+        user_role: true,
+        user_is_active: true,
+      },
     });
   }
 

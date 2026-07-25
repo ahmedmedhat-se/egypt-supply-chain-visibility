@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, Get, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Param, Get, Delete, Patch, Query } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -23,12 +23,13 @@ export class OrganizationsController {
 
   @Get(':orgId/invitations')
   @Roles('admin')
-  @ApiOperation({ summary: 'Get all pending invitations for the organization' })
+  @ApiOperation({ summary: 'Get all invitations for the organization' })
   async getInvitations(
     @Param('orgId') orgId: string,
+    @Query('status') status: string | undefined,
     @CurrentUser() user: any,
   ) {
-    return this.organizationsService.getInvitations(orgId, user.sub);
+    return this.organizationsService.getInvitations(orgId, status, user.sub);
   }
 
   @Post(':orgId/invitations/:invitationId/resend')
@@ -63,8 +64,30 @@ export class OrganizationsController {
 
   @Get(':orgId/members')
   @Roles('admin')
-  @ApiOperation({ summary: 'Get all active members in the organization' })
+  @ApiOperation({ summary: 'Get all members in the organization' })
   async getMembers(@Param('orgId') orgId: string, @CurrentUser() user: any) {
     return this.organizationsService.getMembers(orgId, user.sub);
+  }
+
+  @Patch(':orgId/members/:userId/deactivate')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Deactivate a member in the organization' })
+  async deactivateMember(
+    @Param('orgId') orgId: string,
+    @Param('userId') userId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.organizationsService.deactivateMember(orgId, userId, user.sub);
+  }
+
+  @Patch(':orgId/members/:userId/activate')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Activate a member in the organization' })
+  async activateMember(
+    @Param('orgId') orgId: string,
+    @Param('userId') userId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.organizationsService.activateMember(orgId, userId, user.sub);
   }
 }

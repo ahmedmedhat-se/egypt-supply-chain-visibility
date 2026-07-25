@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
@@ -16,12 +16,12 @@ import {
 import { adminApi } from '../../../api/admin.api';
 import { formatDate, cn } from '../../../lib/utils';
 import {
-  FaUsers,
   FaEnvelope,
-  FaPaperPlane,
   FaCheckCircle,
   FaTimesCircle,
   FaClock,
+  FaBan,
+  FaTrash,
 } from 'react-icons/fa';
 
 type Tab = 'users' | 'invitations';
@@ -64,6 +64,7 @@ export const SuperAdminUsersReportPage = () => {
 /* ─── All Users Table ────────────────────────────────────────── */
 
 function AllUsersTable() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -74,6 +75,18 @@ function AllUsersTable() {
     queryFn: async () => {
       const res = await adminApi.getUsers({ page, limit, search: search || undefined, role: roleFilter || undefined });
       return res.data;
+    },
+  });
+
+  const userMutate = useMutation({
+    mutationFn: async ({ id, action }: { id: string; action: 'activate' | 'deactivate' | 'delete' }) => {
+      if (action === 'activate') return adminApi.activateUser(id);
+      if (action === 'deactivate') return adminApi.deactivateUser(id);
+      return adminApi.deleteUser(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
 
@@ -119,12 +132,13 @@ function AllUsersTable() {
                 <TableHead>Organization</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-[#94A3B8] py-8">
+                  <TableCell colSpan={7} className="text-center text-[#94A3B8] py-8">
                     No users found.
                   </TableCell>
                 </TableRow>
@@ -171,6 +185,38 @@ function AllUsersTable() {
                     </TableCell>
                     <TableCell className="text-[#94A3B8] text-sm">
                       {formatDate(u.user_created_at)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {u.user_is_active ? (
+                          <button
+                            onClick={() => userMutate.mutate({ id: u.user_id, action: 'deactivate' })}
+                            className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                            title="Deactivate"
+                          >
+                            <FaBan className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => userMutate.mutate({ id: u.user_id, action: 'activate' })}
+                            className="p-1.5 rounded-lg text-[#2D9B6E] hover:bg-[#D1FAE5] transition-colors"
+                            title="Activate"
+                          >
+                            <FaCheckCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to permanently delete this user?')) {
+                              userMutate.mutate({ id: u.user_id, action: 'delete' });
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                          title="Delete"
+                        >
+                          <FaTrash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

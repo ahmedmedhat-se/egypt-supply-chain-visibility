@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
+import { showToast } from '../../ui/Toast';
+import { extractErrorMessage } from '../../../api/client';
 import {
   Table,
   TableHeader,
@@ -13,15 +15,19 @@ import {
   TableCell,
 } from '../../ui/Table';
 import { adminApi } from '../../../api/admin.api';
+import { organizationApi } from '../../../api/organization.api';
 import { formatDate } from '../../../lib/utils';
 import {
   FaEnvelope,
   FaCheckCircle,
   FaTimesCircle,
   FaClock,
+  FaPaperPlane,
+  FaTrash,
 } from 'react-icons/fa';
 
 export const SuperAdminInvitationsPage = () => {
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const limit = 20;
@@ -31,6 +37,33 @@ export const SuperAdminInvitationsPage = () => {
     queryFn: async () => {
       const res = await adminApi.getInvitations({ page, limit, status: statusFilter || undefined });
       return res.data;
+    },
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: (invitationId: string) => {
+      const invitation = data?.data.find((inv) => inv.invitation_id === invitationId);
+      if (!invitation) throw new Error('Invitation not found');
+      return organizationApi.resendInvitation(invitation.organization_id, invitationId);
+    },
+    onSuccess: () => {
+      showToast.success('Invitation resent successfully');
+      queryClient.invalidateQueries({ queryKey: ['admin-invitations'] });
+    },
+    onError: (err: unknown) => {
+      showToast.error(extractErrorMessage(err));
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: ({ orgId, invitationId }: { orgId: string; invitationId: string }) =>
+      organizationApi.cancelInvitation(orgId, invitationId),
+    onSuccess: () => {
+      showToast.success('Invitation cancelled');
+      queryClient.invalidateQueries({ queryKey: ['admin-invitations'] });
+    },
+    onError: (err: unknown) => {
+      showToast.error(extractErrorMessage(err));
     },
   });
 
@@ -75,12 +108,13 @@ export const SuperAdminInvitationsPage = () => {
                 <TableHead>Invited By</TableHead>
                 <TableHead>Sent</TableHead>
                 <TableHead>Expires</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {invitations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-[#94A3B8] py-8">
+                  <TableCell colSpan={8} className="text-center text-[#94A3B8] py-8">
                     No invitations found.
                   </TableCell>
                 </TableRow>
@@ -131,6 +165,35 @@ export const SuperAdminInvitationsPage = () => {
                       </TableCell>
                       <TableCell className="text-[#94A3B8] text-sm">
                         {formatDate(inv.expires_at)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {inv.status === 'pending' && (
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => resendMutation.mutate(inv.invitation_id)}
+                              className="p-1.5 rounded-lg text-[#2D9B6E] hover:bg-[#D1FAE5] transition-colors"
+                              title="Resend"
+                              disabled={resendMutation.isPending}
+                            >
+                              <FaPaperPlane className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm('Cancel this invitation?')) {
+                                  cancelMutation.mutate({
+                                    orgId: inv.organization_id,
+                                    invitationId: inv.invitation_id,
+                                  });
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                              title="Cancel"
+                              disabled={cancelMutation.isPending}
+                            >
+                              <FaTrash className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
