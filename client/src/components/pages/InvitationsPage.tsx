@@ -35,21 +35,21 @@ export const InvitationsPage = () => {
   const queryClient = useQueryClient();
   const [showInviteModal, setShowInviteModal] = useState(false);
 
-  /* ───── Fetch pending invitations ───── */
+  /* ───── Fetch all invitations (pending + accepted + expired) ───── */
 
   const {
     data: invitations,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['org-invitations', orgId],
+    queryKey: ['org-invitations-all', orgId],
     queryFn: async () => {
       const res = await organizationApi.getInvitations(orgId!);
       return res.data;
     },
     enabled: !!orgId,
-    staleTime: 0,           // always refetch on mount (catches accepted invites)
-    refetchInterval: 30_000, // auto-refresh every 30s
+    staleTime: 0,
+    refetchInterval: 30_000,
   });
 
   /* ───── Resend mutation ───── */
@@ -59,7 +59,7 @@ export const InvitationsPage = () => {
       organizationApi.resendInvitation(orgId!, invitationId),
     onSuccess: () => {
       showToast.success('Invitation resent successfully');
-      queryClient.invalidateQueries({ queryKey: ['org-invitations', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['org-invitations-all', orgId] });
     },
     onError: (err: unknown) => {
       showToast.error(extractErrorMessage(err));
@@ -73,7 +73,7 @@ export const InvitationsPage = () => {
       organizationApi.cancelInvitation(orgId!, invitationId),
     onSuccess: () => {
       showToast.success('Invitation cancelled');
-      queryClient.invalidateQueries({ queryKey: ['org-invitations', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['org-invitations-all', orgId] });
     },
     onError: (err: unknown) => {
       showToast.error(extractErrorMessage(err));
@@ -114,22 +114,22 @@ export const InvitationsPage = () => {
   /* ───── Compute stats ───── */
 
   const now = new Date();
-  const expiringSoon =
-    invitations?.filter((inv) => {
-      const expiresAt = new Date(inv.expires_at);
-      const diffHours = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
-      return diffHours > 0 && diffHours <= 48;
-    }).length ?? 0;
+  const pendingCount = invitations?.filter((inv) => {
+    const expiresAt = new Date(inv.expires_at);
+    return !inv.status || inv.status === 'pending' && expiresAt > now;
+  }).length ?? 0;
+
+  const acceptedCount = invitations?.filter((inv) => inv.status === 'accepted').length ?? 0;
 
   const expiredCount =
-    invitations?.filter((inv) => new Date(inv.expires_at) <= now).length ?? 0;
+    invitations?.filter((inv) => inv.status === 'expired' || new Date(inv.expires_at) <= now).length ?? 0;
 
   return (
     <div className="space-y-6">
       {/* Header with Invite button */}
       <Header
         orgName={orgName}
-        pendingCount={invitations?.length ?? 0}
+        pendingCount={pendingCount}
         onInvite={() => setShowInviteModal(true)}
       />
 
@@ -140,20 +140,18 @@ export const InvitationsPage = () => {
             <FaPaperPlane className="w-6 h-6 text-[#1E40AF]" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#0A2E4A] dark:text-white">
-              {invitations?.length ?? 0}
-            </p>
-            <p className="text-sm text-[#94A3B8]">Pending invitations</p>
+            <p className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{pendingCount}</p>
+            <p className="text-sm text-[#94A3B8]">Pending</p>
           </div>
         </Card>
 
         <Card variant="elevated" className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-[#FEF3C7] dark:bg-[#92400E]/30 flex items-center justify-center">
-            <FaClock className="w-6 h-6 text-[#92400E]" />
+          <div className="w-12 h-12 rounded-xl bg-[#D1FAE5] dark:bg-[#1F7A52]/30 flex items-center justify-center">
+            <FaCheckCircle className="w-6 h-6 text-[#065F46]" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{expiringSoon}</p>
-            <p className="text-sm text-[#94A3B8]">Expiring within 7 days</p>
+            <p className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{acceptedCount}</p>
+            <p className="text-sm text-[#94A3B8]">Accepted</p>
           </div>
         </Card>
 
@@ -173,7 +171,7 @@ export const InvitationsPage = () => {
         <Card variant="bordered" className="p-12 text-center">
           <FaEnvelope className="mx-auto w-12 h-12 text-[#94A3B8] mb-4" />
           <h3 className="text-lg font-semibold text-[#0A2E4A] dark:text-white mb-1">
-            No pending invitations
+            No invitations yet
           </h3>
           <p className="text-sm text-[#94A3B8] max-w-sm mx-auto mb-4">
             Invite team members to collaborate on shipments and track cargo together.
@@ -194,6 +192,7 @@ export const InvitationsPage = () => {
                 <tr className="border-b border-[#E2E8F0] dark:border-[#334155]">
                   <Th>Email</Th>
                   <Th>Role</Th>
+                  <Th>Status</Th>
                   <Th>Sent</Th>
                   <Th>Expires</Th>
                   <Th className="text-right">Actions</Th>
@@ -202,9 +201,7 @@ export const InvitationsPage = () => {
               <tbody>
                 {invitations.map((inv) => {
                   const expiresAt = new Date(inv.expires_at);
-                  const isExpired = expiresAt <= now;
-                  const diffHours = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
-                  const isExpiringSoon = !isExpired && diffHours <= 48;
+                  const isExpired = inv.status === 'expired' || expiresAt <= now;
 
                   return (
                     <tr
@@ -232,49 +229,59 @@ export const InvitationsPage = () => {
                         </Badge>
                       </Td>
                       <Td>
+                        {inv.status === 'accepted' ? (
+                          <span className="inline-flex items-center gap-1 text-sm text-[#065F46]">
+                            <FaCheckCircle className="w-3.5 h-3.5" />
+                            Accepted
+                          </span>
+                        ) : isExpired ? (
+                          <span className="inline-flex items-center gap-1 text-sm text-[#DC2626]">
+                            <FaTimesCircle className="w-3.5 h-3.5" />
+                            Expired
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-sm text-[#92400E]">
+                            <FaClock className="w-3.5 h-3.5" />
+                            Pending
+                          </span>
+                        )}
+                      </Td>
+                      <Td>
                         <span className="text-sm text-[#64748B] dark:text-[#94A3B8]">
                           {formatDate(inv.created_at)}
                         </span>
                       </Td>
                       <Td>
-                        <div className="flex items-center gap-1.5">
-                          {isExpired ? (
-                            <span className="text-sm text-[#DC2626] flex items-center gap-1">
-                              <FaExclamationTriangle className="w-3 h-3" />
-                              Expired
-                            </span>
-                          ) : isExpiringSoon ? (
-                            <span className="text-sm text-[#92400E] flex items-center gap-1">
-                              <FaClock className="w-3 h-3" />
-                              {formatDate(inv.expires_at)}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-[#64748B] dark:text-[#94A3B8]">
-                              {formatDate(inv.expires_at)}
-                            </span>
-                          )}
-                        </div>
+                        <span className="text-sm text-[#64748B] dark:text-[#94A3B8]">
+                          {formatDate(inv.expires_at)}
+                        </span>
                       </Td>
                       <Td className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={resendMutation.isPending}
-                            onClick={() => resendMutation.mutate(inv.invitation_id)}
-                          >
-                            <FaRedo className="w-3.5 h-3.5" />
-                            Resend
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={cancelMutation.isPending}
-                            onClick={() => cancelMutation.mutate(inv.invitation_id)}
-                          >
-                            <FaBan className="w-3.5 h-3.5" />
-                            Cancel
-                          </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {inv.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => resendMutation.mutate(inv.invitation_id)}
+                                className="p-1.5 rounded-lg text-[#2D9B6E] hover:bg-[#D1FAE5] transition-colors"
+                                title="Resend"
+                                disabled={resendMutation.isPending}
+                              >
+                                <FaRedo className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('Cancel this invitation?')) {
+                                    cancelMutation.mutate(inv.invitation_id);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                                title="Cancel"
+                                disabled={cancelMutation.isPending}
+                              >
+                                <FaBan className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </Td>
                     </tr>
