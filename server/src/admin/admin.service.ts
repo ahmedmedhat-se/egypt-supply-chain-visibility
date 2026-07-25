@@ -327,6 +327,19 @@ export class AdminService {
     return { success: true, message: 'Organization deactivated successfully' };
   }
 
+  async activateOrganization(id: string, adminUser: any) {
+    const org = await this.prisma.organization.findUnique({ where: { organization_id: id } });
+    if (!org) throw new NotFoundException('Organization not found');
+
+    const updated = await this.prisma.organization.update({
+      where: { organization_id: id },
+      data: { organization_is_active: true },
+    });
+
+    await this.logAdminAction(adminUser, 'ACTIVATE_ORGANIZATION', 'organization', id, org, updated);
+    return { success: true, message: 'Organization activated successfully' };
+  }
+
   async listShipments(query: AdminQueryShipmentsDto) {
     const { page = 1, limit = 20, status, originCity, destinationCity, shipperId, carrierId } = query;
     const skip = (page - 1) * limit;

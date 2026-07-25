@@ -43,6 +43,9 @@ export const adminApi = {
   deactivateOrganization: (id: string) =>
     apiClient.patch<{ success: boolean; message: string }>(`/api/admin/organizations/${id}/deactivate`),
 
+  activateOrganization: (id: string) =>
+    apiClient.patch<{ success: boolean; message: string }>(`/api/admin/organizations/${id}/activate`),
+
   getInvitations: (params?: { page?: number; limit?: number; status?: string }) =>
     apiClient.get<PaginatedResponse<AdminInvitation>>('/api/admin/invitations', { params }),
 

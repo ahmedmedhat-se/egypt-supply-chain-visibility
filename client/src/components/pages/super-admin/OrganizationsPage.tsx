@@ -36,8 +36,9 @@ export const SuperAdminOrganizationsPage = () => {
     },
   });
 
-  const deactivateMutate = useMutation({
-    mutationFn: (id: string) => adminApi.deactivateOrganization(id),
+  const orgMutate = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: 'activate' | 'deactivate' }) =>
+      action === 'activate' ? adminApi.activateOrganization(id) : adminApi.deactivateOrganization(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-organizations'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
@@ -187,7 +188,7 @@ export const SuperAdminOrganizationsPage = () => {
                           <button
                             onClick={() => {
                               if (window.confirm(`Deactivate "${o.organization_name}"? All members will also be deactivated.`)) {
-                                deactivateMutate.mutate(o.organization_id);
+                                orgMutate.mutate({ id: o.organization_id, action: 'deactivate' });
                               }
                             }}
                             className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
@@ -195,7 +196,19 @@ export const SuperAdminOrganizationsPage = () => {
                           >
                             <FaBan className="w-3.5 h-3.5" />
                           </button>
-                        ) : null}
+                        ) : (
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Activate "${o.organization_name}"?`)) {
+                                orgMutate.mutate({ id: o.organization_id, action: 'activate' });
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-[#065F46] hover:bg-[#D1FAE5] transition-colors"
+                            title="Activate Organization"
+                          >
+                            <FaCheckCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

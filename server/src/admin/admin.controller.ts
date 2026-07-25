@@ -127,6 +127,16 @@ export class AdminController {
     return this.adminService.deactivateOrganization(id, user);
   }
 
+  @Patch('organizations/:id/activate')
+  @ApiOperation({ summary: 'Activate organization' })
+  @ApiResponse({ status: 200, description: 'Organization activated' })
+  async activateOrganization(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.adminService.activateOrganization(id, user);
+  }
+
   @Get('shipments')
   @ApiOperation({ summary: 'List all shipments' })
   @ApiResponse({ status: 200, description: 'Shipments list returned' })
