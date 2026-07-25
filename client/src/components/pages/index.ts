@@ -11,6 +11,5 @@ export { TrackingPage } from './TrackingPage';
 export { AlertsPage } from './AlertsPage';
 export { OrganizationsPage } from './OrganizationsPage';
 export { ReportsPage } from './ReportsPage';
-export { AdminPage } from './AdminPage';
 export { ProfilePage } from './ProfilePage';
 export { SettingsPage } from './SettingsPage';
