@@ -56,7 +56,10 @@ export const ProtectedRoute = ({
       .getCurrentUser()
       .then((res) => {
         if (cancelled) return;
-        setAuth(res.data, accessToken);
+        // Use the current token from the store (the interceptor may have
+        // refreshed it while processing the 401 from /me)
+        const currentToken = useAuthStore.getState().accessToken || accessToken;
+        setAuth(res.data, currentToken);
         setIsValid(true);
         setIsVerifying(false);
       })
