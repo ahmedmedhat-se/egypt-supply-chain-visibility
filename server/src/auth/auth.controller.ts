@@ -112,6 +112,7 @@ export class AuthController {
     return { accessToken: result.accessToken };
   }
 
+  @Public()
   @ApiOperation({ summary: 'Logout and invalidate refresh token' })
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -123,7 +124,7 @@ export class AuthController {
     if (cookie) {
       await this.authService.logout(cookie);
     }
-    reply.clearCookie('refresh_token', { path: '/api/auth/refresh' });
+    reply.clearCookie('refresh_token', { path: '/api/auth' });
     return;
   }
 
@@ -132,7 +133,7 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/api/auth/refresh',
+      path: '/api/auth',
       maxAge: 7 * 24 * 60 * 60,
       signed: true,
     });
