@@ -52,11 +52,27 @@ export class ShipmentsService {
     // Resolve the user's organization
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
-      select: { organization_id: true, user_role: true },
+      select: { 
+        organization_id: true, 
+        user_role: true,
+        organization: { select: { organization_type: true } }
+      },
     });
 
     if (!dbUser) {
       throw new NotFoundException('User not found');
+    }
+
+    if (dbUser.user_role === 'super_admin') {
+      throw new ForbiddenException(
+        'Super admins cannot directly create shipments; they must act on behalf of a shipper organization.',
+      );
+    }
+
+    if (dbUser.organization?.organization_type !== 'shipper') {
+      throw new ForbiddenException(
+        'Only users belonging to a shipper organization can create shipments.',
+      );
     }
 
     // Validate carrier org exists if provided
