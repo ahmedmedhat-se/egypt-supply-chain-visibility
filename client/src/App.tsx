@@ -103,9 +103,6 @@ const ReportsPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('./components/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
-const SettingsPage = lazy(() =>
-  import('./components/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
-);
 const TermsPage = lazy(() =>
   import('./components/pages/TermsPage').then((m) => ({ default: m.TermsPage })),
 );
@@ -339,15 +336,6 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path={ROUTES.SETTINGS}
-                element={
-                  <ProtectedRoute>
-                    <PageLoader><SettingsPage /></PageLoader>
-                  </ProtectedRoute>
-                }
-              />
-
               {/* ═══════════════════════════════════════════════
                  FALLBACKS
                ═══════════════════════════════════════════════ */}
