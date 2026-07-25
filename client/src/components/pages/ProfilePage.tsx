@@ -37,10 +37,7 @@ export const ProfilePage = () => {
             <p className="text-xs text-[#94A3B8] uppercase tracking-wider">Email</p>
             <p className="text-sm font-medium text-[#1A2A3A] dark:text-white">{user.email}</p>
           </div>
-          <div>
-            <p className="text-xs text-[#94A3B8] uppercase tracking-wider">Organization ID</p>
-            <p className="text-sm font-medium text-[#1A2A3A] dark:text-white font-mono">{user.organizationId.slice(0, 12)}...</p>
-          </div>
+
         </div>
       </Card>
     </div>
