@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Modal } from '../../../ui/Modal';
-import { Input } from '../../../ui/Input';
-import { Select } from '../../../ui/Select';
-import { Button } from '../../../ui/Button';
-import { useCreateCheckpoint, useUpdateCheckpoint } from '../../../../hooks/useCheckpoints';
-import type { Checkpoint } from '../../../../types/checkpoint.types';
+import { Modal } from '../../ui/Modal';
+import { Input } from '../../ui/Input';
+import { Select } from '../../ui/Select';
+import { Button } from '../../ui/Button';
+import { useCreateCheckpoint, useUpdateCheckpoint } from '../../../hooks/useCheckpoints';
+import type { Checkpoint } from '../../../types/checkpoint.types';
 
 interface CheckpointModalProps {
   isOpen: boolean;

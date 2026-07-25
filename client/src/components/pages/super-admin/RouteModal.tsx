@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Modal } from '../../../ui/Modal';
-import { Input } from '../../../ui/Input';
-import { Button } from '../../../ui/Button';
-import { useCreateRoute, useUpdateRoute } from '../../../../hooks/useRoutes';
-import type { Route } from '../../../../types/route.types';
+import { Modal } from '../../ui/Modal';
+import { Input } from '../../ui/Input';
+import { Button } from '../../ui/Button';
+import { useCreateRoute, useUpdateRoute } from '../../../hooks/useRoutes';
+import type { Route } from '../../../types/route.types';
 
 interface RouteModalProps {
   isOpen: boolean;
