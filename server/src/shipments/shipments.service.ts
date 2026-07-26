@@ -574,6 +574,12 @@ export class ShipmentsService {
       throw new NotFoundException('User not found');
     }
 
+    if (dbUser.user_role === 'super_admin') {
+      throw new ForbiddenException(
+        'Super admins cannot directly claim shipments; they must act on behalf of a carrier organization.',
+      );
+    }
+
     if (dbUser.organization?.organization_type !== 'carrier') {
       throw new ForbiddenException(
         'Only users belonging to a carrier organization can claim shipments.',
