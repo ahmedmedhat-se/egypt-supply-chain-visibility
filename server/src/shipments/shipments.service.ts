@@ -563,11 +563,21 @@ export class ShipmentsService {
 
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
-      select: { organization_id: true },
+      select: { 
+        organization_id: true,
+        user_role: true,
+        organization: { select: { organization_type: true } }
+      },
     });
 
     if (!dbUser) {
       throw new NotFoundException('User not found');
+    }
+
+    if (dbUser.organization?.organization_type !== 'carrier') {
+      throw new ForbiddenException(
+        'Only users belonging to a carrier organization can claim shipments.',
+      );
     }
 
     // If the shipment already has a carrier org, only users from that org can claim it
