@@ -62,6 +62,11 @@ const RegulatorDashboardPage = lazy(() =>
 const ShipmentsPage = lazy(() =>
   import('./components/pages/ShipmentsPage').then((m) => ({ default: m.ShipmentsPage })),
 );
+const CarrierShipmentsPage = lazy(() =>
+  import('./components/pages/carrier/CarrierShipmentsPage').then((m) => ({
+    default: m.CarrierShipmentsPage,
+  })),
+);
 const TrackingPage = lazy(() =>
   import('./components/pages/TrackingPage').then((m) => ({ default: m.TrackingPage })),
 );
@@ -290,7 +295,7 @@ function App() {
                 path={ROUTES.SHIPMENTS_CARRIER}
                 element={
                   <RoleRoute roles={['carrier']}>
-                    <PageLoader><ShipmentsPage /></PageLoader>
+                    <PageLoader><CarrierShipmentsPage /></PageLoader>
                   </RoleRoute>
                 }
               />
