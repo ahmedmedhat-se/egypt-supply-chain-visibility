@@ -479,8 +479,15 @@ export class ShipmentsService {
       shipment.shipper_organization_id === dbUser.organization_id;
     const isCarrierOrg =
       shipment.carrier_organization_id === dbUser.organization_id;
+    const isAssignedCarrier = shipment.carrier_user_id === dbUser.user_id;
 
-    if (user.role !== 'super_admin' && !isShipperOrg && !isCarrierOrg) {
+    // Allow super_admin, shipper org members, carrier org members, or the specific assigned carrier user
+    if (
+      user.role !== 'super_admin' &&
+      !isShipperOrg &&
+      !isCarrierOrg &&
+      !isAssignedCarrier
+    ) {
       throw new ForbiddenException(
         'You do not have permission to update this shipment status',
       );
@@ -497,7 +504,29 @@ export class ShipmentsService {
       );
     }
 
-    // Carrier has no special restriction — the state machine is sufficient
+    // Only super_admin and the shipper org's admin can restore a cancelled shipment.
+    if (shipment.shipment_status === 'cancelled') {
+      // Allow super_admin unconditionally
+      if (user.role !== 'super_admin') {
+        // Check if this user is an admin of the shipper organization
+        const dbUserForRestore = await this.prisma.user.findUnique({
+          where: { user_id: user.sub },
+          select: {
+            user_role: true,
+            organization_id: true,
+          },
+        });
+        if (
+          !dbUserForRestore ||
+          dbUserForRestore.user_role !== 'admin' ||
+          dbUserForRestore.organization_id !== shipment.shipper_organization_id
+        ) {
+          throw new ForbiddenException(
+            'Only the shipper organization admin or super admin can restore a cancelled shipment.',
+          );
+        }
+      }
+    }
 
     const [updatedShipment, event] = await this.prisma.$transaction([
       this.prisma.shipment.update({

@@ -23,6 +23,6 @@ export const STATUS_TRANSITIONS: Record<string, string[]> = {
   customs_cleared: ['in_transit', 'out_for_delivery'],
   out_for_delivery: ['delivered', 'cancelled'],
   delivered: [],
-  cancelled: [],
+  cancelled: ['draft', 'confirmed'],
   delayed: ['in_transit', 'cancelled'],
 };
