@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
@@ -170,6 +171,22 @@ export class RoutesService {
       throw new NotFoundException('Route not found');
     }
 
+    // Check if any active (non-delivered, non-cancelled) shipment uses this route
+    const activeShipmentCount = await this.prisma.shipment.count({
+      where: {
+        route_id: id,
+        shipment_status: {
+          notIn: ['delivered', 'cancelled'],
+        },
+      },
+    });
+
+    if (activeShipmentCount > 0) {
+      throw new ConflictException(
+        `Cannot deactivate route "${route.route_code}" — there ${activeShipmentCount === 1 ? 'is 1 active shipment' : `are ${activeShipmentCount} active shipments`} assigned to it. Complete or cancel them first.`,
+      );
+    }
+
     const updated = await this.prisma.route.update({
       where: { route_id: id },
       data: { route_is_active: false },
@@ -269,6 +286,20 @@ export class RoutesService {
 
     if (!routeCheckpoint) {
       throw new NotFoundException('Checkpoint is not assigned to this route');
+    }
+
+    // Check if any shipment event on THIS route's shipments references this checkpoint
+    const eventCount = await this.prisma.shipmentEvent.count({
+      where: {
+        checkpoint_id: checkpointId,
+        shipment: { route_id: routeId },
+      },
+    });
+
+    if (eventCount > 0) {
+      throw new BadRequestException(
+        `Cannot remove this checkpoint — it has been passed by ${eventCount} shipment event${eventCount > 1 ? 's' : ''} on this route and is part of the shipment history.`,
+      );
     }
 
     await this.prisma.routeCheckpoint.delete({
