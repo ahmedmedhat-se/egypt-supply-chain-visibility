@@ -20,4 +20,10 @@ export const checkpointsApi = {
 
   remove: (id: string) =>
     apiClient.delete(`/api/checkpoints/${id}`),
+
+  activate: (id: string) =>
+    apiClient.patch<Checkpoint>(`/api/checkpoints/${id}/activate`),
+
+  deactivate: (id: string) =>
+    apiClient.patch<Checkpoint>(`/api/checkpoints/${id}/deactivate`),
 };

@@ -130,6 +130,42 @@ export class CheckpointsService {
     return { message: 'Checkpoint deactivated successfully' };
   }
 
+  async activate(id: string) {
+    const checkpoint = await this.prisma.checkpoint.findUnique({
+      where: { checkpoint_id: id },
+    });
+
+    if (!checkpoint) {
+      throw new NotFoundException('Checkpoint not found');
+    }
+
+    const updated = await this.prisma.checkpoint.update({
+      where: { checkpoint_id: id },
+      data: { checkpoint_is_active: true },
+    });
+
+    this.logger.log(`Checkpoint activated: ${updated.checkpoint_code} (${id})`);
+    return this.formatCheckpoint(updated);
+  }
+
+  async deactivate(id: string) {
+    const checkpoint = await this.prisma.checkpoint.findUnique({
+      where: { checkpoint_id: id },
+    });
+
+    if (!checkpoint) {
+      throw new NotFoundException('Checkpoint not found');
+    }
+
+    const updated = await this.prisma.checkpoint.update({
+      where: { checkpoint_id: id },
+      data: { checkpoint_is_active: false },
+    });
+
+    this.logger.log(`Checkpoint deactivated: ${updated.checkpoint_code} (${id})`);
+    return this.formatCheckpoint(updated);
+  }
+
   private formatCheckpoint(checkpoint: any) {
     return {
       id: checkpoint.checkpoint_id,

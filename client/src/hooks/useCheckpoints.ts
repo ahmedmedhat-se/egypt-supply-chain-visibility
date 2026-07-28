@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { checkpointsApi } from '../api/checkpoints.api';
+import { extractErrorMessage } from '../api/client';
 import type { CreateCheckpointData, UpdateCheckpointData } from '../types/checkpoint.types';
 import toast from 'react-hot-toast';
 
@@ -25,8 +26,44 @@ export const useCreateCheckpoint = () => {
       toast.success('Checkpoint created successfully!');
       queryClient.invalidateQueries({ queryKey: ['checkpoints'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create checkpoint');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to create checkpoint');
+    },
+  });
+};
+
+export const useActivateCheckpoint = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await checkpointsApi.activate(id);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Checkpoint activated!');
+      queryClient.invalidateQueries({ queryKey: ['checkpoints'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to activate checkpoint');
+    },
+  });
+};
+
+export const useDeactivateCheckpoint = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await checkpointsApi.deactivate(id);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Checkpoint deactivated!');
+      queryClient.invalidateQueries({ queryKey: ['checkpoints'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to deactivate checkpoint');
     },
   });
 };
@@ -43,8 +80,8 @@ export const useUpdateCheckpoint = () => {
       toast.success('Checkpoint updated successfully!');
       queryClient.invalidateQueries({ queryKey: ['checkpoints'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update checkpoint');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to update checkpoint');
     },
   });
 };

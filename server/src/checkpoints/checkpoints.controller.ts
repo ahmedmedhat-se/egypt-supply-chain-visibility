@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -61,5 +62,23 @@ export class CheckpointsController {
   @ApiResponse({ status: 404, description: 'Checkpoint not found.' })
   async remove(@Param('id') id: string) {
     return this.checkpointsService.remove(id);
+  }
+
+  @Patch(':id/activate')
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Activate a checkpoint' })
+  @ApiResponse({ status: 200, description: 'Checkpoint activated.' })
+  @ApiResponse({ status: 404, description: 'Checkpoint not found.' })
+  async activate(@Param('id') id: string) {
+    return this.checkpointsService.activate(id);
+  }
+
+  @Patch(':id/deactivate')
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Deactivate a checkpoint' })
+  @ApiResponse({ status: 200, description: 'Checkpoint deactivated.' })
+  @ApiResponse({ status: 404, description: 'Checkpoint not found.' })
+  async deactivate(@Param('id') id: string) {
+    return this.checkpointsService.deactivate(id);
   }
 }

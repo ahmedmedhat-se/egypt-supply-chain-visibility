@@ -45,7 +45,6 @@ export class RoutesService {
 
   async findAll() {
     const routes = await this.prisma.route.findMany({
-      where: { route_is_active: true },
       orderBy: { route_name: 'asc' },
       include: {
         route_checkpoints: {
@@ -142,6 +141,42 @@ export class RoutesService {
     this.logger.log(`Route deactivated: ${route.route_code} (${id})`);
 
     return { message: 'Route deactivated successfully' };
+  }
+
+  async activate(id: string) {
+    const route = await this.prisma.route.findUnique({
+      where: { route_id: id },
+    });
+
+    if (!route) {
+      throw new NotFoundException('Route not found');
+    }
+
+    const updated = await this.prisma.route.update({
+      where: { route_id: id },
+      data: { route_is_active: true },
+    });
+
+    this.logger.log(`Route activated: ${updated.route_code} (${id})`);
+    return this.formatRoute(updated);
+  }
+
+  async deactivate(id: string) {
+    const route = await this.prisma.route.findUnique({
+      where: { route_id: id },
+    });
+
+    if (!route) {
+      throw new NotFoundException('Route not found');
+    }
+
+    const updated = await this.prisma.route.update({
+      where: { route_id: id },
+      data: { route_is_active: false },
+    });
+
+    this.logger.log(`Route deactivated: ${updated.route_code} (${id})`);
+    return this.formatRoute(updated);
   }
 
   // ---------- Route Checkpoint sub-resource ----------

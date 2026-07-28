@@ -27,4 +27,10 @@ export const routesApi = {
 
   removeCheckpoint: (routeId: string, checkpointId: string) =>
     apiClient.delete(`/api/routes/${routeId}/checkpoints/${checkpointId}`),
+
+  activate: (id: string) =>
+    apiClient.patch<Route>(`/api/routes/${id}/activate`),
+
+  deactivate: (id: string) =>
+    apiClient.patch<Route>(`/api/routes/${id}/deactivate`),
 };

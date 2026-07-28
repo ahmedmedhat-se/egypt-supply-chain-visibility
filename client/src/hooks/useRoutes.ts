@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { routesApi } from '../api/routes.api';
+import { extractErrorMessage } from '../api/client';
 import type { CreateRouteData, UpdateRouteData, AddRouteCheckpointData } from '../types/route.types';
 import toast from 'react-hot-toast';
 
@@ -25,8 +26,8 @@ export const useCreateRoute = () => {
       toast.success('Route created successfully!');
       queryClient.invalidateQueries({ queryKey: ['routes'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create route');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to create route');
     },
   });
 };
@@ -43,8 +44,8 @@ export const useUpdateRoute = () => {
       toast.success('Route updated successfully!');
       queryClient.invalidateQueries({ queryKey: ['routes'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update route');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to update route');
     },
   });
 };
@@ -61,8 +62,44 @@ export const useAddRouteCheckpoint = () => {
       toast.success('Checkpoint added to route!');
       queryClient.invalidateQueries({ queryKey: ['routes'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to add checkpoint to route');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to add checkpoint to route');
+    },
+  });
+};
+
+export const useActivateRoute = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await routesApi.activate(id);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Route activated!');
+      queryClient.invalidateQueries({ queryKey: ['routes'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to activate route');
+    },
+  });
+};
+
+export const useDeactivateRoute = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await routesApi.deactivate(id);
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success('Route deactivated!');
+      queryClient.invalidateQueries({ queryKey: ['routes'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to deactivate route');
     },
   });
 };
@@ -79,8 +116,8 @@ export const useRemoveRouteCheckpoint = () => {
       toast.success('Checkpoint removed from route!');
       queryClient.invalidateQueries({ queryKey: ['routes'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to remove checkpoint');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to remove checkpoint');
     },
   });
 };

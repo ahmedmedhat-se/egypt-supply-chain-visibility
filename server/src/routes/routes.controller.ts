@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Delete,
+  Patch,
   Body,
   Param,
   HttpCode,
@@ -64,6 +65,24 @@ export class RoutesController {
   @ApiResponse({ status: 404, description: 'Route not found.' })
   async remove(@Param('id') id: string) {
     return this.routesService.remove(id);
+  }
+
+  @Patch(':id/activate')
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Activate a route' })
+  @ApiResponse({ status: 200, description: 'Route activated.' })
+  @ApiResponse({ status: 404, description: 'Route not found.' })
+  async activate(@Param('id') id: string) {
+    return this.routesService.activate(id);
+  }
+
+  @Patch(':id/deactivate')
+  @Roles('super_admin')
+  @ApiOperation({ summary: 'Deactivate a route' })
+  @ApiResponse({ status: 200, description: 'Route deactivated.' })
+  @ApiResponse({ status: 404, description: 'Route not found.' })
+  async deactivate(@Param('id') id: string) {
+    return this.routesService.deactivate(id);
   }
 
   // ---------- Route Checkpoint sub-resource ----------
