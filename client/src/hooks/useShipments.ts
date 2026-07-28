@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { shipmentsApi } from '../api/shipments.api';
+import { extractErrorMessage } from '../api/client';
 import type { ShipmentQueryParams, CreateShipmentData, UpdateShipmentData, UpdateShipmentStatusData } from '../types/shipment.types';
 import toast from 'react-hot-toast';
 
@@ -25,8 +26,8 @@ export const useCreateShipment = () => {
       toast.success('Shipment created successfully!');
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create shipment');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to create shipment');
     },
   });
 };
@@ -43,8 +44,8 @@ export const useAcceptShipment = () => {
       toast.success('Shipment accepted successfully!');
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to accept shipment');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to accept shipment');
     },
   });
 };
@@ -61,8 +62,8 @@ export const useUpdateShipmentStatus = () => {
       toast.success('Shipment status updated!');
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update status');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to update status');
     },
   });
 };
@@ -79,8 +80,8 @@ export const useUpdateShipment = () => {
       toast.success('Shipment updated successfully!');
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update shipment');
+    onError: (error: unknown) => {
+      toast.error(extractErrorMessage(error) || 'Failed to update shipment');
     },
   });
 };
