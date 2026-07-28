@@ -383,14 +383,16 @@ function ShipmentDetailPanel({
   const { mutate: updateStatus } = useUpdateShipmentStatus();
   const { mutate: updateShipment } = useUpdateShipment();
 
-  const [latitude, setLatitude] = useState(shipment.currentLatitude?.toString() || '');
-  const [longitude, setLongitude] = useState(shipment.currentLongitude?.toString() || '');
+  // Location starts empty — carrier must use "Use My Location" to set it
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
   const [localRouteId, setLocalRouteId] = useState(shipment.route?.route_id || '');
 
-  // Sync state when the selected shipment changes
+  // Sync when the selected shipment changes
   useEffect(() => {
-    setLatitude(shipment.currentLatitude?.toString() || '');
-    setLongitude(shipment.currentLongitude?.toString() || '');
+    // Always reset location — don't pre-fill from shipment data
+    setLatitude('');
+    setLongitude('');
     setLocalRouteId(shipment.route?.route_id || '');
   }, [shipment.id]);
 
