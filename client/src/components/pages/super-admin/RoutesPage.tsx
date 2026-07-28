@@ -5,16 +5,20 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '.
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { EmptyState } from '../../ui/EmptyState';
 import { Badge } from '../../ui/Badge';
-import { FaRoute, FaPlus, FaEdit, FaMapSigns } from 'react-icons/fa';
-import { useRoutes } from '../../../hooks/useRoutes';
+import { FaRoute, FaPlus, FaEdit, FaMapSigns, FaToggleOn, FaToggleOff, FaLayerGroup } from 'react-icons/fa';
+import { useRoutes, useActivateRoute, useDeactivateRoute } from '../../../hooks/useRoutes';
 import { RouteModal } from './RouteModal';
+import { RouteCheckpointsModal } from './RouteCheckpointsModal';
 import type { Route } from '../../../types/route.types';
 
 export const RoutesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<Route | undefined>();
-  
+  const [checkpointsRoute, setCheckpointsRoute] = useState<Route | null>(null);
+
   const { data, isLoading } = useRoutes();
+  const { mutate: activateRoute, isPending: isActivating } = useActivateRoute();
+  const { mutate: deactivateRoute, isPending: isDeactivating } = useDeactivateRoute();
 
   const handleEdit = (route: Route) => {
     setSelectedRoute(route);
@@ -24,6 +28,14 @@ export const RoutesPage = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedRoute(undefined);
+  };
+
+  const handleToggleActive = (route: Route) => {
+    if (route.isActive) {
+      deactivateRoute(route.id);
+    } else {
+      activateRoute(route.id);
+    }
   };
 
   return (
@@ -64,6 +76,7 @@ export const RoutesPage = () => {
                 <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Origin / Destination</TableHead>
+                <TableHead>Checkpoints</TableHead>
                 <TableHead>Est. Time</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -82,19 +95,45 @@ export const RoutesPage = () => {
                       </span>
                     </div>
                   </TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-1 text-sm">
+                      <FaLayerGroup className="w-3.5 h-3.5 text-[#1E40AF]" />
+                      {route.checkpoints?.length ?? 0}
+                    </span>
+                  </TableCell>
                   <TableCell>{route.estimatedDays} Days</TableCell>
                   <TableCell>
-                    <Badge variant={route.isActive ? 'success' : 'default'} size="sm">
-                      {route.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
+                    <button
+                      onClick={() => handleToggleActive(route)}
+                      disabled={isActivating || isDeactivating}
+                      className="flex items-center gap-1.5"
+                      title={route.isActive ? 'Deactivate route' : 'Activate route'}
+                    >
+                      {route.isActive ? (
+                        <FaToggleOn className="w-5 h-5 text-[#2D9B6E]" />
+                      ) : (
+                        <FaToggleOff className="w-5 h-5 text-[#94A3B8]" />
+                      )}
+                      <Badge variant={route.isActive ? 'success' : 'default'} size="sm">
+                        {route.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </button>
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(route)}>
-                      <FaEdit className="mr-2" /> Edit
-                    </Button>
-                    <Button variant="default" size="sm">
-                      Manage Checkpoints
-                    </Button>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(route)}>
+                        <FaEdit className="mr-1.5" /> Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCheckpointsRoute(route)}
+                        className="flex items-center gap-1.5"
+                      >
+                        <FaLayerGroup className="w-3.5 h-3.5" />
+                        Checkpoints
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -104,6 +143,11 @@ export const RoutesPage = () => {
       </Card>
 
       <RouteModal isOpen={isModalOpen} onClose={handleCloseModal} route={selectedRoute} />
+      <RouteCheckpointsModal
+        isOpen={!!checkpointsRoute}
+        onClose={() => setCheckpointsRoute(null)}
+        route={checkpointsRoute}
+      />
     </div>
   );
 };

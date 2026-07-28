@@ -3,8 +3,9 @@ import { Modal } from '../../ui/Modal';
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { Button } from '../../ui/Button';
+import { MapPicker } from '../../ui/MapPicker';
 import { useCreateCheckpoint, useUpdateCheckpoint } from '../../../hooks/useCheckpoints';
-import type { Checkpoint } from '../../../types/checkpoint.types';
+import type { Checkpoint, CheckpointType, CreateCheckpointData } from '../../../types/checkpoint.types';
 
 interface CheckpointModalProps {
   isOpen: boolean;
@@ -20,7 +21,6 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
     city: '',
     latitude: '',
     longitude: '',
-    isActive: true,
   });
 
   const { mutate: createCheckpoint, isPending: isCreating } = useCreateCheckpoint();
@@ -37,7 +37,6 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
         city: checkpoint.city,
         latitude: checkpoint.latitude ? checkpoint.latitude.toString() : '',
         longitude: checkpoint.longitude ? checkpoint.longitude.toString() : '',
-        isActive: checkpoint.isActive,
       });
     } else {
       setFormData({
@@ -47,23 +46,22 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
         city: '',
         latitude: '',
         longitude: '',
-        isActive: true,
       });
     }
   }, [checkpoint, isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      ...formData,
+    const payload: CreateCheckpointData = {
+      name: formData.name,
+      code: formData.code,
+      type: formData.type as CheckpointType,
+      city: formData.city,
       latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
       longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
     };
@@ -79,7 +77,7 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={checkpoint ? 'Edit Checkpoint' : 'Create Checkpoint'}>
+    <Modal isOpen={isOpen} onClose={onClose} title={checkpoint ? 'Edit Checkpoint' : 'Create Checkpoint'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Input label="Name" name="name" value={formData.name} onChange={handleChange} required placeholder="e.g. Alexandria Port" />
@@ -105,25 +103,16 @@ export const CheckpointModal: React.FC<CheckpointModalProps> = ({ isOpen, onClos
           <Input label="City" name="city" value={formData.city} onChange={handleChange} required placeholder="e.g. Alexandria" />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Input label="Latitude" name="latitude" type="number" step="any" value={formData.latitude} onChange={handleChange} required placeholder="e.g. 31.2001" />
-          <Input label="Longitude" name="longitude" type="number" step="any" value={formData.longitude} onChange={handleChange} required placeholder="e.g. 29.9187" />
-        </div>
-
-
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="isActive"
-            name="isActive"
-            checked={formData.isActive}
-            onChange={handleChange}
-            className="rounded border-[#E2E8F0] text-[#0A2E4A] focus:ring-[#0A2E4A]"
-          />
-          <label htmlFor="isActive" className="text-sm font-medium text-[#1A2A3A]">
-            Active
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-[#1A2A3A] dark:text-white mb-2">
+            Location <span className="text-red-500">*</span>
           </label>
+          <MapPicker
+            latitude={formData.latitude}
+            longitude={formData.longitude}
+            onLatitudeChange={(v) => setFormData((prev) => ({ ...prev, latitude: v }))}
+            onLongitudeChange={(v) => setFormData((prev) => ({ ...prev, longitude: v }))}
+          />
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-[#E2E8F0]">

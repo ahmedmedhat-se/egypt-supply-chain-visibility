@@ -5,8 +5,8 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '.
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { EmptyState } from '../../ui/EmptyState';
 import { Badge } from '../../ui/Badge';
-import { FaMapMarkerAlt, FaPlus, FaEdit } from 'react-icons/fa';
-import { useCheckpoints } from '../../../hooks/useCheckpoints';
+import { FaMapMarkerAlt, FaPlus, FaEdit, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import { useCheckpoints, useActivateCheckpoint, useDeactivateCheckpoint } from '../../../hooks/useCheckpoints';
 import { CheckpointModal } from './CheckpointModal';
 import type { Checkpoint } from '../../../types/checkpoint.types';
 
@@ -15,6 +15,8 @@ export const CheckpointsPage = () => {
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<Checkpoint | undefined>();
   
   const { data, isLoading } = useCheckpoints();
+  const { mutate: activateCheckpoint, isPending: isActivating } = useActivateCheckpoint();
+  const { mutate: deactivateCheckpoint, isPending: isDeactivating } = useDeactivateCheckpoint();
 
   const handleEdit = (checkpoint: Checkpoint) => {
     setSelectedCheckpoint(checkpoint);
@@ -24,6 +26,14 @@ export const CheckpointsPage = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedCheckpoint(undefined);
+  };
+
+  const handleToggleActive = (checkpoint: Checkpoint) => {
+    if (checkpoint.isActive) {
+      deactivateCheckpoint(checkpoint.id);
+    } else {
+      activateCheckpoint(checkpoint.id);
+    }
   };
 
   return (
@@ -79,9 +89,21 @@ export const CheckpointsPage = () => {
                   </TableCell>
                   <TableCell>{checkpoint.city}</TableCell>
                   <TableCell>
-                    <Badge variant={checkpoint.isActive ? 'success' : 'default'} size="sm">
-                      {checkpoint.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
+                    <button
+                      onClick={() => handleToggleActive(checkpoint)}
+                      disabled={isActivating || isDeactivating}
+                      className="flex items-center gap-1.5"
+                      title={checkpoint.isActive ? 'Deactivate checkpoint' : 'Activate checkpoint'}
+                    >
+                      {checkpoint.isActive ? (
+                        <FaToggleOn className="w-5 h-5 text-[#2D9B6E]" />
+                      ) : (
+                        <FaToggleOff className="w-5 h-5 text-[#94A3B8]" />
+                      )}
+                      <Badge variant={checkpoint.isActive ? 'success' : 'default'} size="sm">
+                        {checkpoint.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </button>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="sm" onClick={() => handleEdit(checkpoint)} className="gap-2">

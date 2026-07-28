@@ -18,7 +18,6 @@ export const RouteModal: React.FC<RouteModalProps> = ({ isOpen, onClose, route }
     originCity: '',
     destinationCity: '',
     estimatedDays: '',
-    isActive: true,
   });
 
   const { mutate: createRoute, isPending: isCreating } = useCreateRoute();
@@ -34,7 +33,6 @@ export const RouteModal: React.FC<RouteModalProps> = ({ isOpen, onClose, route }
         originCity: route.originCity,
         destinationCity: route.destinationCity,
         estimatedDays: route.estimatedDays ? route.estimatedDays.toString() : '',
-        isActive: route.isActive,
       });
     } else {
       setFormData({
@@ -43,23 +41,22 @@ export const RouteModal: React.FC<RouteModalProps> = ({ isOpen, onClose, route }
         originCity: '',
         destinationCity: '',
         estimatedDays: '',
-        isActive: true,
       });
     }
   }, [route, isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      ...formData,
+      name: formData.name,
+      code: formData.code,
+      originCity: formData.originCity,
+      destinationCity: formData.destinationCity,
       estimatedDays: formData.estimatedDays ? parseInt(formData.estimatedDays, 10) : undefined,
     };
 
@@ -88,20 +85,6 @@ export const RouteModal: React.FC<RouteModalProps> = ({ isOpen, onClose, route }
 
         <div>
           <Input label="Estimated Transit Time (Days)" name="estimatedDays" type="number" min="1" value={formData.estimatedDays} onChange={handleChange} required placeholder="e.g. 2" />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="isActive"
-            name="isActive"
-            checked={formData.isActive}
-            onChange={handleChange}
-            className="rounded border-[#E2E8F0] text-[#0A2E4A] focus:ring-[#0A2E4A]"
-          />
-          <label htmlFor="isActive" className="text-sm font-medium text-[#1A2A3A]">
-            Active
-          </label>
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-[#E2E8F0]">
