@@ -104,9 +104,10 @@ export class AuthController {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const cookie = request.cookies['refresh_token'];
+    let cookie = request.cookies['refresh_token'];
     if (!cookie) throw new UnauthorizedException('No refresh token');
 
+    cookie = this.unsignCookie(cookie);
     const result = await this.authService.refreshToken(cookie);
 
     this.setRefreshCookie(reply, result.refreshToken);
@@ -121,8 +122,9 @@ export class AuthController {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const cookie = request.cookies['refresh_token'];
+    let cookie = request.cookies['refresh_token'];
     if (cookie) {
+      cookie = this.unsignCookie(cookie);
       await this.authService.logout(cookie);
     }
     reply.clearCookie('refresh_token', { path: '/api/auth' });
@@ -138,5 +140,18 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60,
       signed: true,
     });
+  }
+
+  /**
+   * @fastify/cookie with `signed: true` appends `.HMAC_SIGNATURE` to the value.
+   * In this environment the auto-unsigning doesn't work reliably, so we manually
+   * strip the signature suffix if present.
+   *
+   * The raw value before signing is `familyId:randomUUID` (no dots), so stripping
+   * everything after the last `.` safely removes only the signature.
+   */
+  private unsignCookie(value: string): string {
+    const dotIndex = value.lastIndexOf('.');
+    return dotIndex !== -1 ? value.substring(0, dotIndex) : value;
   }
 }
