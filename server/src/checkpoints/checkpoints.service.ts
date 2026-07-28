@@ -157,6 +157,20 @@ export class CheckpointsService {
       throw new NotFoundException('Checkpoint not found');
     }
 
+    // Check if checkpoint is used by any active route
+    const activeRouteCount = await this.prisma.routeCheckpoint.count({
+      where: {
+        checkpoint_id: id,
+        route: { route_is_active: true },
+      },
+    });
+
+    if (activeRouteCount > 0) {
+      throw new ConflictException(
+        `Cannot deactivate checkpoint "${checkpoint.checkpoint_code}" — it is used by ${activeRouteCount} active route${activeRouteCount > 1 ? 's' : ''}. Remove it from the route(s) first.`,
+      );
+    }
+
     const updated = await this.prisma.checkpoint.update({
       where: { checkpoint_id: id },
       data: { checkpoint_is_active: false },
