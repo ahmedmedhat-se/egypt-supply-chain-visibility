@@ -52,9 +52,9 @@ export const ProtectedRoute = ({
       return;
     }
 
-    const verifySession = async () => {
-      try {
-        const res = await authApi.getCurrentUser();
+    authApi
+      .getCurrentUser()
+      .then((res) => {
         if (cancelled) return;
         // Use the current token from the store (the interceptor may have
         // refreshed it while processing the 401 from /me)
@@ -62,27 +62,13 @@ export const ProtectedRoute = ({
         setAuth(res.data, currentToken);
         setIsValid(true);
         setIsVerifying(false);
-      } catch {
+      })
+      .catch(() => {
         if (cancelled) return;
-
-        // Retry once — the first failure might be a transient network glitch
-        try {
-          const res = await authApi.getCurrentUser();
-          if (cancelled) return;
-          const currentToken = useAuthStore.getState().accessToken || accessToken;
-          setAuth(res.data, currentToken);
-          setIsValid(true);
-          setIsVerifying(false);
-        } catch {
-          if (cancelled) return;
-          clearAuth();
-          setIsValid(false);
-          setIsVerifying(false);
-        }
-      }
-    };
-
-    verifySession();
+        clearAuth();
+        setIsValid(false);
+        setIsVerifying(false);
+      });
 
     return () => {
       cancelled = true;

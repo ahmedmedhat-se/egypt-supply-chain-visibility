@@ -95,10 +95,7 @@ apiClient.interceptors.response.use(
         processQueue(refreshError, null);
         useAuthStore.getState().clearAuth();
         window.location.href = "/login";
-        // Return a clean error
-        return Promise.reject(
-          new Error("Session expired. Please log in again."),
-        );
+        return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }

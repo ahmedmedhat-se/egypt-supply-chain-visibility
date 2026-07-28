@@ -5,7 +5,6 @@ import { AppLayout } from './components/layout/AppLayout';
 import { ROUTES } from './constants/routes';
 import { useAuthStore } from './store/auth.store';
 import { ProtectedRoute, RoleRoute } from './router';
-import { useTokenRefresh } from './hooks/useTokenRefresh';
 import type { User } from './store/auth.store';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
@@ -184,9 +183,6 @@ function App() {
 
   const userName = user?.name || 'Guest User';
   const userRole = user?.role || 'Guest';
-
-  // Silently refresh the access token every 10min + on tab return
-  useTokenRefresh();
 
   return (
     <QueryClientProvider client={queryClient}>
