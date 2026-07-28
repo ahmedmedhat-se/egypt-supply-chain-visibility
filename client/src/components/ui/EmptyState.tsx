@@ -6,6 +6,7 @@ interface EmptyStateProps {
   title: string;
   description?: string;
   icon?: ComponentType<{ className?: string }> | ReactNode;
+  action?: ReactNode;
   actionText?: string;
   onAction?: () => void;
   className?: string;
@@ -15,6 +16,7 @@ export const EmptyState = ({
   title,
   description,
   icon,
+  action,
   actionText,
   onAction,
   className,
@@ -35,6 +37,7 @@ export const EmptyState = ({
       {description && (
         <p className="mt-1 text-sm text-[#94A3B8] max-w-sm">{description}</p>
       )}
+      {action && <div className="mt-4">{action}</div>}
       {actionText && onAction && (
         <Button className="mt-4" onClick={onAction}>
           {actionText}
