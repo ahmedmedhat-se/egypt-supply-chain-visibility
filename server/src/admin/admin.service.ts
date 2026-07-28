@@ -360,6 +360,7 @@ export class AdminService {
         include: {
           shipper_organization: { select: { organization_name: true } },
           carrier_organization: { select: { organization_name: true } },
+          carrier_user: { select: { user_id: true, user_first_name: true, user_last_name: true, user_email: true } },
           current_checkpoint: true,
           created_by: { select: { user_email: true, user_first_name: true, user_last_name: true } },
           events: {
@@ -385,6 +386,7 @@ export class AdminService {
       include: {
         shipper_organization: true,
         carrier_organization: true,
+        carrier_user: { select: { user_id: true, user_first_name: true, user_last_name: true, user_email: true } },
         route: {
           include: {
             route_checkpoints: {

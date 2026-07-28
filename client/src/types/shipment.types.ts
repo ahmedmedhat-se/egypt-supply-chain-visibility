@@ -28,9 +28,12 @@ export interface Shipment {
   estimatedArrivalAt: string | null;
   actualDepartureAt: string | null;
   actualArrivalAt: string | null;
+  currentLatitude: number | null;
+  currentLongitude: number | null;
   notes: string | null;
   shipperOrganization: { organization_id: string; organization_name: string } | null;
   carrierOrganization: { organization_id: string; organization_name: string } | null;
+  carrierUser: { id: string; firstName: string; lastName: string; email: string } | null;
   route: { route_id: string; route_name: string; route_code: string } | null;
   currentCheckpoint: { checkpoint_id: string; checkpoint_name: string; checkpoint_code: string; checkpoint_city: string } | null;
   createdAt: string;
@@ -73,6 +76,8 @@ export interface UpdateShipmentStatusData {
   status: ShipmentStatus;
   checkpointId?: string;
   notes?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface ShipmentQueryParams {

@@ -44,12 +44,13 @@ model User {
   user_updated_at    DateTime  @updatedAt @db.Timestamptz()
 
   organization      Organization    @relation(fields: [organization_id], references: [organization_id])
-  created_shipments Shipment[]      @relation("CreatedByUser")
-  recorded_events   ShipmentEvent[]
-  user_alerts       UserAlert[]
-  audit_logs        AuditLog[]
-  reports           Report[]
-  created_invitations Invitation[]
+  created_shipments  Shipment[]      @relation("CreatedByUser")
+  assigned_shipments Shipment[]      @relation("CarrierUser")
+  recorded_events    ShipmentEvent[]
+  user_alerts        UserAlert[]
+  audit_logs         AuditLog[]
+  reports            Report[]
+  created_invitations  Invitation[]
 
   @@index([organization_id])
   @@index([user_role])
@@ -116,6 +117,7 @@ model Shipment {
   shipment_id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   shipper_organization_id          String    @db.Uuid
   carrier_organization_id          String?   @db.Uuid
+  carrier_user_id                  String?   @db.Uuid
   route_id                         String?   @db.Uuid
   created_by_user_id               String    @db.Uuid
   shipment_reference_number        String    @unique @db.VarChar(100)
@@ -141,6 +143,7 @@ model Shipment {
 
   shipper_organization   Organization   @relation("ShipperOrganization", fields: [shipper_organization_id], references: [organization_id])
   carrier_organization   Organization?  @relation("CarrierOrganization", fields: [carrier_organization_id], references: [organization_id])
+  carrier_user           User?          @relation("CarrierUser", fields: [carrier_user_id], references: [user_id])
   route                  Route?         @relation(fields: [route_id], references: [route_id])
   created_by             User           @relation("CreatedByUser", fields: [created_by_user_id], references: [user_id])
   current_checkpoint     Checkpoint?    @relation(fields: [shipment_current_checkpoint_id], references: [checkpoint_id])
@@ -149,6 +152,7 @@ model Shipment {
 
   @@index([shipper_organization_id])
   @@index([carrier_organization_id])
+  @@index([carrier_user_id])
   @@index([shipment_status])
   @@index([shipment_current_checkpoint_id])
   @@index([shipment_created_at(sort: Desc)])

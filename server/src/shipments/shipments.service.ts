@@ -52,10 +52,10 @@ export class ShipmentsService {
     // Resolve the user's organization
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
-      select: { 
-        organization_id: true, 
+      select: {
+        organization_id: true,
         user_role: true,
-        organization: { select: { organization_type: true } }
+        organization: { select: { organization_type: true } },
       },
     });
 
@@ -144,6 +144,14 @@ export class ShipmentsService {
           carrier_organization: {
             select: { organization_id: true, organization_name: true },
           },
+          carrier_user: {
+            select: {
+              user_id: true,
+              user_first_name: true,
+              user_last_name: true,
+              user_email: true,
+            },
+          },
           route: {
             select: { route_id: true, route_name: true, route_code: true },
           },
@@ -197,6 +205,14 @@ export class ShipmentsService {
           carrier_organization: {
             select: { organization_id: true, organization_name: true },
           },
+          carrier_user: {
+            select: {
+              user_id: true,
+              user_first_name: true,
+              user_last_name: true,
+              user_email: true,
+            },
+          },
           route: {
             select: { route_id: true, route_name: true, route_code: true },
           },
@@ -242,6 +258,14 @@ export class ShipmentsService {
         },
         carrier_organization: {
           select: { organization_id: true, organization_name: true },
+        },
+        carrier_user: {
+          select: {
+            user_id: true,
+            user_first_name: true,
+            user_last_name: true,
+            user_email: true,
+          },
         },
         route: {
           select: { route_id: true, route_name: true, route_code: true },
@@ -294,12 +318,14 @@ export class ShipmentsService {
     await this.enforceEditAccess(user, shipment);
 
     // Cannot update if delivered or cancelled
-    if (
-      shipment.shipment_status === 'delivered' ||
-      shipment.shipment_status === 'cancelled'
-    ) {
+    if (shipment.shipment_status === 'delivered') {
       throw new BadRequestException(
         `Cannot update a shipment with status "${shipment.shipment_status}"`,
+      );
+    }
+    if (shipment.shipment_status === 'cancelled' && user.role === 'carrier') {
+      throw new ForbiddenException(
+        'You cannot modify a cancelled shipment. Contact your admin to restore it.',
       );
     }
 
@@ -396,6 +422,14 @@ export class ShipmentsService {
         carrier_organization: {
           select: { organization_id: true, organization_name: true },
         },
+        carrier_user: {
+          select: {
+            user_id: true,
+            user_first_name: true,
+            user_last_name: true,
+            user_email: true,
+          },
+        },
         route: {
           select: { route_id: true, route_name: true, route_code: true },
         },
@@ -434,7 +468,7 @@ export class ShipmentsService {
     // Shippers, carriers (of the same org), and admins can update status
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
-      select: { organization_id: true },
+      select: { organization_id: true, user_id: true },
     });
 
     if (!dbUser) {
@@ -456,7 +490,7 @@ export class ShipmentsService {
     const validTransition =
       shipment.shipment_status === dto.status ||
       this.isValidTransition(shipment.shipment_status, dto.status);
-      
+
     if (!validTransition) {
       throw new BadRequestException(
         `Cannot transition from "${shipment.shipment_status}" to "${dto.status}"`,
@@ -493,6 +527,14 @@ export class ShipmentsService {
           },
           carrier_organization: {
             select: { organization_id: true, organization_name: true },
+          },
+          carrier_user: {
+            select: {
+              user_id: true,
+              user_first_name: true,
+              user_last_name: true,
+              user_email: true,
+            },
           },
           route: {
             select: { route_id: true, route_name: true, route_code: true },
@@ -554,19 +596,26 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
+    // Cannot accept a cancelled shipment
+    if (shipment.shipment_status === 'cancelled') {
+      throw new BadRequestException('Cannot accept a cancelled shipment');
+    }
+
     // Only carriers can accept shipments
-    if (user.role !== 'carrier' && user.role !== 'admin' && user.role !== 'super_admin') {
-      throw new ForbiddenException(
-        'Only carrier users can accept shipments',
-      );
+    if (
+      user.role !== 'carrier' &&
+      user.role !== 'admin' &&
+      user.role !== 'super_admin'
+    ) {
+      throw new ForbiddenException('Only carrier users can accept shipments');
     }
 
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
-      select: { 
+      select: {
         organization_id: true,
         user_role: true,
-        organization: { select: { organization_type: true } }
+        organization: { select: { organization_type: true } },
       },
     });
 
@@ -587,25 +636,102 @@ export class ShipmentsService {
     }
 
     // If the shipment already has a carrier org, only users from that org can claim it
-    if (shipment.carrier_organization_id &&
-        shipment.carrier_organization_id !== dbUser.organization_id) {
+    if (
+      shipment.carrier_organization_id &&
+      shipment.carrier_organization_id !== dbUser.organization_id
+    ) {
       throw new ForbiddenException(
         'This shipment is already assigned to another carrier organization',
       );
     }
 
-    // If already assigned to this org, no need to reassign
-    if (shipment.carrier_organization_id === dbUser.organization_id) {
+    // Enforce 'one carrier user = one shipment at a time' (checked BEFORE any assignment)
+    const activeShipmentCount = await this.prisma.shipment.count({
+      where: {
+        carrier_user_id: user.sub,
+        shipment_status: {
+          notIn: ['delivered', 'cancelled'],
+        },
+      },
+    });
+
+    if (activeShipmentCount > 0) {
+      throw new ConflictException(
+        'You already have an active shipment. Please complete or cancel it before accepting a new one.',
+      );
+    }
+
+    // If already assigned to this org and already has a specific carrier user, skip
+    if (
+      shipment.carrier_organization_id === dbUser.organization_id &&
+      shipment.carrier_user_id
+    ) {
       return this.formatShipment(shipment);
     }
 
-    // Assign the carrier organization
+    // If the org is assigned but no specific carrier user is set, assign this user
+    if (
+      shipment.carrier_organization_id === dbUser.organization_id &&
+      !shipment.carrier_user_id
+    ) {
+      const updated = await this.prisma.shipment.update({
+        where: { shipment_id: id },
+        data: { carrier_user_id: user.sub },
+        include: {
+          shipper_organization: {
+            select: { organization_id: true, organization_name: true },
+          },
+          carrier_organization: {
+            select: { organization_id: true, organization_name: true },
+          },
+          carrier_user: {
+            select: {
+              user_id: true,
+              user_first_name: true,
+              user_last_name: true,
+              user_email: true,
+            },
+          },
+          route: {
+            select: { route_id: true, route_name: true, route_code: true },
+          },
+          created_by: {
+            select: {
+              user_id: true,
+              user_first_name: true,
+              user_last_name: true,
+            },
+          },
+        },
+      });
+
+      await this.prisma.shipmentEvent.create({
+        data: {
+          shipment_id: id,
+          event_type: 'carrier_assigned',
+          event_status: 'confirmed',
+          event_description: `Carrier user assigned to this shipment`,
+          recorded_by_user_id: user.sub,
+        },
+      });
+
+      this.logger.log(
+        `Shipment ${updated.shipment_reference_number}: carrier user ${user.sub} assigned (org already claimed)`,
+      );
+
+      return this.formatShipment(updated);
+    }
+
+    // Assign the carrier organization and the specific carrier user
     // Only transition to 'confirmed' if the shipment is still in 'draft'
     const updated = await this.prisma.shipment.update({
       where: { shipment_id: id },
       data: {
         carrier_organization_id: dbUser.organization_id,
-        ...(shipment.shipment_status === 'draft' && { shipment_status: 'confirmed' }),
+        carrier_user_id: user.sub,
+        ...(shipment.shipment_status === 'draft' && {
+          shipment_status: 'confirmed',
+        }),
       },
       include: {
         shipper_organization: {
@@ -613,6 +739,14 @@ export class ShipmentsService {
         },
         carrier_organization: {
           select: { organization_id: true, organization_name: true },
+        },
+        carrier_user: {
+          select: {
+            user_id: true,
+            user_first_name: true,
+            user_last_name: true,
+            user_email: true,
+          },
         },
         route: {
           select: { route_id: true, route_name: true, route_code: true },
@@ -633,13 +767,13 @@ export class ShipmentsService {
         shipment_id: id,
         event_type: 'carrier_assigned',
         event_status: 'confirmed',
-        event_description: `Carrier organization claimed this shipment`,
+        event_description: `Carrier user claimed this shipment`,
         recorded_by_user_id: user.sub,
       },
     });
 
     this.logger.log(
-      `Shipment ${updated.shipment_reference_number} accepted by carrier org ${dbUser.organization_id}`,
+      `Shipment ${updated.shipment_reference_number} accepted by carrier user ${user.sub} (org ${dbUser.organization_id})`,
     );
 
     return this.formatShipment(updated);
@@ -695,6 +829,20 @@ export class ShipmentsService {
           { shipper_organization_id: dbUser.organization_id },
           { carrier_organization_id: dbUser.organization_id },
         ];
+
+        // Carriers can also see unassigned shipments (available to claim, but NOT cancelled)
+        // and shipments they are personally assigned to (even if cancelled)
+        if (user.role === 'carrier') {
+          where.OR.push(
+            {
+              AND: [
+                { carrier_organization_id: null },
+                { shipment_status: { not: 'cancelled' } },
+              ],
+            },
+            { carrier_user_id: user.sub },
+          );
+        }
       }
     }
 
@@ -746,7 +894,7 @@ export class ShipmentsService {
    * Enforce that a user can view a given shipment.
    * - Admins and regulators see everything.
    * - Shippers see shipments where their org is the shipper.
-   * - Carriers see shipments where their org is the carrier.
+   * - Carriers see shipments where their org is the carrier, OR they are the assigned carrier user.
    */
   private async enforceViewAccess(user: RequestUser, shipment: any) {
     if (user.role === 'regulator') return;
@@ -764,8 +912,9 @@ export class ShipmentsService {
       shipment.shipper_organization_id === dbUser.organization_id;
     const isCarrierOrg =
       shipment.carrier_organization_id === dbUser.organization_id;
+    const isAssignedCarrier = shipment.carrier_user_id === user.sub;
 
-    if (!isShipperOrg && !isCarrierOrg) {
+    if (!isShipperOrg && !isCarrierOrg && !isAssignedCarrier) {
       throw new ForbiddenException('You do not have access to this shipment');
     }
   }
@@ -832,6 +981,14 @@ export class ShipmentsService {
       notes: shipment.shipment_notes,
       shipperOrganization: shipment.shipper_organization,
       carrierOrganization: shipment.carrier_organization,
+      carrierUser: shipment.carrier_user
+        ? {
+            id: shipment.carrier_user.user_id,
+            firstName: shipment.carrier_user.user_first_name,
+            lastName: shipment.carrier_user.user_last_name,
+            email: shipment.carrier_user.user_email,
+          }
+        : null,
       route: shipment.route,
       currentCheckpoint: shipment.current_checkpoint,
       createdBy: shipment.created_by
