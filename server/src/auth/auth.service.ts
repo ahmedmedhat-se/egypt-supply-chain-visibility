@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   Logger,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -28,12 +29,10 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  // ---------- Registration ----------
   async register(dto: RegisterDto) {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) throw new ConflictException('Email already registered');
 
-    // Check if organization email is already taken
     const existingOrg = await this.prisma.organization.findUnique({
       where: { organization_email: dto.organizationEmail },
     });
@@ -47,7 +46,7 @@ export class AuthService {
         user_password_hash: passwordHash,
         user_first_name: dto.firstName,
         user_last_name: dto.lastName,
-        user_role: 'admin', // The creator of an organization is always the admin
+        user_role: 'admin',
         user_phone: dto.phone,
         organization: {
           create: {
@@ -76,14 +75,9 @@ export class AuthService {
     };
   }
 
-  // ---------- Login ----------
   async login(email: string, password: string) {
-    // Rate limiting is handled by the global NestJS ThrottlerModule
-    // (5 requests per 60 seconds on the login endpoint)
-
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      // Don't reveal whether the email exists
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -100,11 +94,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Success — update last login
     await this.prisma.user.update({
       where: { user_id: user.user_id },
       data: { user_last_login_at: new Date() },
-    }).catch(() => {}); // non-critical
+    }).catch(() => {});
 
     const tokens = await this.createTokenPair(user.user_id);
 
@@ -121,25 +114,21 @@ export class AuthService {
     };
   }
 
-  // ---------- Refresh ----------
   async refreshToken(refreshTokenCookie: string) {
     const [familyId, rawToken] = refreshTokenCookie.split(':');
     if (!familyId || !rawToken) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Check if token is still valid in Redis
     const tokenData = await this.redisService.getJson<{
       userId: string;
       familyId: string;
     }>(`rt:${rawToken}`);
 
     if (tokenData) {
-      // Normal rotation
       return this.rotateToken(rawToken, tokenData.userId, tokenData.familyId);
     }
 
-    // Check consumed marker for replay detection
     const consumedFamily = await this.redisService.get(
       `rt_consumed:${rawToken}`,
     );
@@ -156,7 +145,6 @@ export class AuthService {
     throw new UnauthorizedException('Refresh token expired');
   }
 
-  // ---------- Logout ----------
   async logout(refreshTokenCookie: string) {
     const [, rawToken] = refreshTokenCookie.split(':');
     if (!rawToken) return;
@@ -165,7 +153,6 @@ export class AuthService {
       `rt:${rawToken}`,
     );
     if (tokenData) {
-      // Remove the token and its family
       await this.redisService.del(
         `rt:${rawToken}`,
         `rt_family:${tokenData.familyId}`,
@@ -174,7 +161,6 @@ export class AuthService {
   }
 
   async acceptInvitation(dto: AcceptInvitationDto) {
-    // 1. Find invitation
     const invitation = await this.prisma.invitation.findUnique({
       where: { token: dto.token },
     });
@@ -191,18 +177,15 @@ export class AuthService {
       throw new BadRequestException('Invitation has expired');
     }
 
-    // 2. Email match test
     if (invitation.invited_email.toLowerCase() !== dto.email.toLowerCase()) {
       throw new BadRequestException('Email does not match the invitation');
     }
 
-    // 3. Check duplicate
     const existingUser = await this.usersService.findByEmail(dto.email);
     if (existingUser) {
       throw new ConflictException('User already exists');
     }
 
-    // 4 & 5. Create user and mark invitation accepted in a single transaction
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const [user] = await this.prisma.$transaction([
       this.prisma.user.create({
@@ -281,7 +264,91 @@ export class AuthService {
     };
   }
 
-  // ---------- Private helpers ----------
+  async getSessions(userId: string, page: number = 1, limit: number = 10) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const pattern = `rt_family:*`;
+    const keys = await this.redisService.keys(pattern);
+    
+    const sessions = [];
+    for (const key of keys) {
+      const data = await this.redisService.getJson<{
+        userId: string;
+        latestToken: string;
+      }>(key);
+      if (data && data.userId === userId) {
+        const familyId = key.replace('rt_family:', '');
+        sessions.push({
+          sessionId: familyId,
+          userId: data.userId,
+          createdAt: new Date(),
+          isCurrent: false,
+        });
+      }
+    }
+
+    const totalItems = sessions.length;
+    const skip = (page - 1) * limit;
+    const paginatedSessions = sessions.slice(skip, skip + limit);
+
+    const totalPages = Math.ceil(totalItems / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return {
+      data: paginatedSessions,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
+    };
+  }
+
+  async revokeSession(userId: string, sessionId: string) {
+    const familyKey = `rt_family:${sessionId}`;
+    const familyData = await this.redisService.getJson<{
+      userId: string;
+      latestToken: string;
+    }>(familyKey);
+
+    if (!familyData || familyData.userId !== userId) {
+      throw new NotFoundException('Session not found');
+    }
+
+    await this.redisService.del(familyKey, `rt:${familyData.latestToken}`);
+    
+    return { message: 'Session revoked successfully' };
+  }
+
+  async revokeAllSessions(userId: string) {
+    const pattern = `rt_family:*`;
+    const keys = await this.redisService.keys(pattern);
+
+    let revokedCount = 0;
+    for (const key of keys) {
+      const data = await this.redisService.getJson<{
+        userId: string;
+        latestToken: string;
+      }>(key);
+      if (data && data.userId === userId) {
+        await this.redisService.del(key, `rt:${data.latestToken}`);
+        revokedCount++;
+      }
+    }
+
+    await this.usersService.incrementTokenVersion(userId);
+
+    return {
+      message: `Revoked ${revokedCount} session${revokedCount !== 1 ? 's' : ''}`,
+    };
+  }
 
   private async createTokenPair(userId: string) {
     const familyId = randomUUID();
@@ -325,12 +392,10 @@ export class AuthService {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    // Mark old token as consumed (replay detection)
-    const markerTtl = 7 * 24 * 60 * 60; // 7 days
+    const markerTtl = 7 * 24 * 60 * 60;
     await this.redisService.del(`rt:${oldToken}`);
     await this.redisService.set(`rt_consumed:${oldToken}`, familyId, markerTtl);
 
-    // Generate new refresh token in same family
     const newRefreshToken = randomUUID();
     const ttlSeconds = 7 * 24 * 60 * 60;
     await this.redisService.setJson(

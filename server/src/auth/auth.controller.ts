@@ -10,12 +10,16 @@ import {
   Get,
   Query,
   BadRequestException,
+  DefaultValuePipe,
+  ParseIntPipe,
+  Param,
+  Delete
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
@@ -131,6 +135,36 @@ export class AuthController {
     return;
   }
 
+  @Get('sessions')
+  @ApiOperation({ summary: 'Get active sessions for current user' })
+  @ApiResponse({ status: 200, description: 'Returns active sessions.' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  async getSessions(
+    @CurrentUser() user: any,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.authService.getSessions(user.sub, page, limit);
+  }
+
+  @Delete('sessions/:sessionId')
+  @ApiOperation({ summary: 'Revoke a specific session' })
+  @ApiResponse({ status: 200, description: 'Session revoked successfully.' })
+  async revokeSession(
+    @CurrentUser() user: any,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.authService.revokeSession(user.sub, sessionId);
+  }
+
+  @Delete('sessions')
+  @ApiOperation({ summary: 'Revoke all sessions except current' })
+  @ApiResponse({ status: 200, description: 'All other sessions revoked.' })
+  async revokeAllSessions(@CurrentUser() user: any) {
+    return this.authService.revokeAllSessions(user.sub);
+  }
+
   private setRefreshCookie(reply: FastifyReply, token: string) {
     reply.setCookie('refresh_token', token, {
       httpOnly: true,
@@ -142,14 +176,6 @@ export class AuthController {
     });
   }
 
-  /**
-   * @fastify/cookie with `signed: true` appends `.HMAC_SIGNATURE` to the value.
-   * In this environment the auto-unsigning doesn't work reliably, so we manually
-   * strip the signature suffix if present.
-   *
-   * The raw value before signing is `familyId:randomUUID` (no dots), so stripping
-   * everything after the last `.` safely removes only the signature.
-   */
   private unsignCookie(value: string): string {
     const dotIndex = value.lastIndexOf('.');
     return dotIndex !== -1 ? value.substring(0, dotIndex) : value;
