@@ -15,7 +15,6 @@ export class CheckpointsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateCheckpointDto) {
-    // Check unique code
     const existing = await this.prisma.checkpoint.findUnique({
       where: { checkpoint_code: dto.code },
     });
@@ -43,14 +42,33 @@ export class CheckpointsService {
     return this.formatCheckpoint(checkpoint);
   }
 
-  async findAll() {
-    const checkpoints = await this.prisma.checkpoint.findMany({
-      orderBy: { checkpoint_name: 'asc' },
-    });
+  async findAll(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    const [checkpoints, totalItems] = await Promise.all([
+      this.prisma.checkpoint.findMany({
+        skip,
+        take,
+        orderBy: { checkpoint_name: 'asc' },
+      }),
+      this.prisma.checkpoint.count(),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
 
     return {
       data: checkpoints.map((c) => this.formatCheckpoint(c)),
-      meta: { total: checkpoints.length },
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
     };
   }
 
@@ -75,7 +93,6 @@ export class CheckpointsService {
       throw new NotFoundException('Checkpoint not found');
     }
 
-    // Check unique code if being changed
     if (dto.code && dto.code !== checkpoint.checkpoint_code) {
       const existing = await this.prisma.checkpoint.findUnique({
         where: { checkpoint_code: dto.code },
@@ -117,7 +134,6 @@ export class CheckpointsService {
       throw new NotFoundException('Checkpoint not found');
     }
 
-    // Soft delete — mark as inactive
     await this.prisma.checkpoint.update({
       where: { checkpoint_id: id },
       data: { checkpoint_is_active: false },
@@ -157,7 +173,6 @@ export class CheckpointsService {
       throw new NotFoundException('Checkpoint not found');
     }
 
-    // Check if checkpoint is used by any active route
     const activeRouteCount = await this.prisma.routeCheckpoint.count({
       where: {
         checkpoint_id: id,
