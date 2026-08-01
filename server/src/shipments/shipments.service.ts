@@ -36,7 +36,6 @@ export class ShipmentsService {
   // ---------- Create ----------
 
   async create(user: RequestUser, dto: CreateShipmentDto) {
-    // Only shippers, org admins, and super admins can create shipments
     if (
       user.role !== 'shipper' &&
       user.role !== 'admin' &&
@@ -47,9 +46,6 @@ export class ShipmentsService {
       );
     }
 
-    // Removed manual reference number check; will auto-generate below
-
-    // Resolve the user's organization
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
       select: {
@@ -75,7 +71,6 @@ export class ShipmentsService {
       );
     }
 
-    // Validate carrier org exists if provided
     if (dto.carrierOrganizationId) {
       if (dto.carrierOrganizationId === dbUser.organization_id) {
         throw new BadRequestException(
@@ -90,7 +85,6 @@ export class ShipmentsService {
       }
     }
 
-    // Validate route exists if provided
     if (dto.routeId) {
       const route = await this.prisma.route.findUnique({
         where: { route_id: dto.routeId },
@@ -192,7 +186,7 @@ export class ShipmentsService {
     const { page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
-    const [shipments, total] = await Promise.all([
+    const [shipments, totalItems] = await Promise.all([
       this.prisma.shipment.findMany({
         where,
         skip,
@@ -236,13 +230,19 @@ export class ShipmentsService {
       this.prisma.shipment.count({ where }),
     ]);
 
+    const totalPages = Math.ceil(totalItems / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
     return {
       data: shipments.map((s) => this.formatShipment(s)),
       meta: {
-        total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        totalItems,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
       },
     };
   }
@@ -297,7 +297,6 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    // Enforce visibility based on role
     await this.enforceViewAccess(user, shipment);
 
     return this.formatShipment(shipment);
@@ -314,10 +313,8 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    // Only shipper (of the same org) or admin can update
     await this.enforceEditAccess(user, shipment);
 
-    // Cannot update if delivered or cancelled
     if (shipment.shipment_status === 'delivered') {
       throw new BadRequestException(
         `Cannot update a shipment with status "${shipment.shipment_status}"`,
@@ -329,9 +326,6 @@ export class ShipmentsService {
       );
     }
 
-    // Reference number uniqueness check removed since it's no longer editable
-
-    // Validate carrier org if provided
     if (dto.carrierOrganizationId) {
       if (dto.carrierOrganizationId === shipment.shipper_organization_id) {
         throw new BadRequestException(
@@ -346,7 +340,6 @@ export class ShipmentsService {
       }
     }
 
-    // Validate route if provided
     if (dto.routeId) {
       const route = await this.prisma.route.findUnique({
         where: { route_id: dto.routeId },
@@ -465,7 +458,6 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    // Shippers, carriers (of the same org), and admins can update status
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },
       select: { organization_id: true, user_id: true },
@@ -481,7 +473,6 @@ export class ShipmentsService {
       shipment.carrier_organization_id === dbUser.organization_id;
     const isAssignedCarrier = shipment.carrier_user_id === dbUser.user_id;
 
-    // Allow super_admin, shipper org members, carrier org members, or the specific assigned carrier user
     if (
       user.role !== 'super_admin' &&
       !isShipperOrg &&
@@ -493,7 +484,6 @@ export class ShipmentsService {
       );
     }
 
-    // Validate status transition
     const validTransition =
       shipment.shipment_status === dto.status ||
       this.isValidTransition(shipment.shipment_status, dto.status);
@@ -504,11 +494,8 @@ export class ShipmentsService {
       );
     }
 
-    // Only super_admin and the shipper org's admin can restore a cancelled shipment.
     if (shipment.shipment_status === 'cancelled') {
-      // Allow super_admin unconditionally
       if (user.role !== 'super_admin') {
-        // Check if this user is an admin of the shipper organization
         const dbUserForRestore = await this.prisma.user.findUnique({
           where: { user_id: user.sub },
           select: {
@@ -594,7 +581,6 @@ export class ShipmentsService {
       }),
     ]);
 
-    // Publish RabbitMQ event
     await this.amqpConnection.publish(
       'escv.events',
       'shipment.status_changed',
@@ -625,12 +611,10 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    // Cannot accept a cancelled shipment
     if (shipment.shipment_status === 'cancelled') {
       throw new BadRequestException('Cannot accept a cancelled shipment');
     }
 
-    // Only carriers can accept shipments
     if (
       user.role !== 'carrier' &&
       user.role !== 'admin' &&
@@ -664,7 +648,6 @@ export class ShipmentsService {
       );
     }
 
-    // If the shipment already has a carrier org, only users from that org can claim it
     if (
       shipment.carrier_organization_id &&
       shipment.carrier_organization_id !== dbUser.organization_id
@@ -674,7 +657,6 @@ export class ShipmentsService {
       );
     }
 
-    // Enforce 'one carrier user = one shipment at a time' (checked BEFORE any assignment)
     const activeShipmentCount = await this.prisma.shipment.count({
       where: {
         carrier_user_id: user.sub,
@@ -690,7 +672,6 @@ export class ShipmentsService {
       );
     }
 
-    // If already assigned to this org and already has a specific carrier user, skip
     if (
       shipment.carrier_organization_id === dbUser.organization_id &&
       shipment.carrier_user_id
@@ -698,7 +679,6 @@ export class ShipmentsService {
       return this.formatShipment(shipment);
     }
 
-    // If the org is assigned but no specific carrier user is set, assign this user
     if (
       shipment.carrier_organization_id === dbUser.organization_id &&
       !shipment.carrier_user_id
@@ -751,8 +731,6 @@ export class ShipmentsService {
       return this.formatShipment(updated);
     }
 
-    // Assign the carrier organization and the specific carrier user
-    // Only transition to 'confirmed' if the shipment is still in 'draft'
     const updated = await this.prisma.shipment.update({
       where: { shipment_id: id },
       data: {
@@ -790,7 +768,6 @@ export class ShipmentsService {
       },
     });
 
-    // Log the acceptance event
     await this.prisma.shipmentEvent.create({
       data: {
         shipment_id: id,
@@ -819,10 +796,8 @@ export class ShipmentsService {
       throw new NotFoundException('Shipment not found');
     }
 
-    // Only shipper of the org or admin can delete
     await this.enforceEditAccess(user, shipment);
 
-    // Only draft shipments can be deleted
     if (shipment.shipment_status !== 'draft') {
       throw new BadRequestException('Only draft shipments can be deleted');
     }
@@ -846,7 +821,6 @@ export class ShipmentsService {
   ): Promise<Prisma.ShipmentWhereInput> {
     const where: Prisma.ShipmentWhereInput = {};
 
-    // Role-based visibility
     if (user.role !== 'regulator' && user.role !== 'super_admin') {
       const dbUser = await this.prisma.user.findUnique({
         where: { user_id: user.sub },
@@ -859,8 +833,6 @@ export class ShipmentsService {
           { carrier_organization_id: dbUser.organization_id },
         ];
 
-        // Carriers can also see unassigned shipments (available to claim, but NOT cancelled)
-        // and shipments they are personally assigned to (even if cancelled)
         if (user.role === 'carrier') {
           where.OR.push(
             {
@@ -875,7 +847,6 @@ export class ShipmentsService {
       }
     }
 
-    // Filters
     if (query.status) {
       where.shipment_status = query.status;
     }
@@ -901,7 +872,6 @@ export class ShipmentsService {
       ];
     }
 
-    // Only regulators can arbitrarily filter by carrier org
     if (query.carrierOrganizationId && user.role === 'regulator') {
       where.carrier_organization_id = query.carrierOrganizationId;
     }
@@ -919,12 +889,6 @@ export class ShipmentsService {
     return where;
   }
 
-  /**
-   * Enforce that a user can view a given shipment.
-   * - Admins and regulators see everything.
-   * - Shippers see shipments where their org is the shipper.
-   * - Carriers see shipments where their org is the carrier, OR they are the assigned carrier user.
-   */
   private async enforceViewAccess(user: RequestUser, shipment: any) {
     if (user.role === 'regulator') return;
 
@@ -948,10 +912,6 @@ export class ShipmentsService {
     }
   }
 
-  /**
-   * Enforce that a user can edit a given shipment.
-   * Only the shipper org or an admin can edit.
-   */
   private async enforceEditAccess(user: RequestUser, shipment: any) {
     if (user.role === 'super_admin') {
       return;
@@ -972,9 +932,6 @@ export class ShipmentsService {
     }
   }
 
-  /**
-   * Validates status transition against the full state machine.
-   */
   private isValidTransition(current: string, next: string): boolean {
     const allowed = STATUS_TRANSITIONS[current];
     return allowed ? allowed.includes(next) : false;
