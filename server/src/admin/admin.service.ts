@@ -93,10 +93,21 @@ export class AdminService {
       this.prisma.user.count({ where }),
     ]);
 
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
     return {
       success: true,
       data: users,
-      meta: { page, limit, total, pages: Math.ceil(total / limit) },
+      meta: {
+        page,
+        limit,
+        totalItems: total,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
     };
   }
 
@@ -261,10 +272,21 @@ export class AdminService {
       this.prisma.organization.count({ where }),
     ]);
 
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
     return {
       success: true,
       data: orgs,
-      meta: { page, limit, total, pages: Math.ceil(total / limit) },
+      meta: {
+        page,
+        limit,
+        totalItems: total,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
     };
   }
 
@@ -373,10 +395,21 @@ export class AdminService {
       this.prisma.shipment.count({ where }),
     ]);
 
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
     return {
       success: true,
       data: shipments,
-      meta: { page, limit, total, pages: Math.ceil(total / limit) },
+      meta: {
+        page,
+        limit,
+        totalItems: total,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
     };
   }
 
@@ -532,35 +565,71 @@ export class AdminService {
       this.prisma.invitation.count({ where }),
     ]);
 
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
     return {
       success: true,
       data: invitations,
-      meta: { page, limit, total, pages: Math.ceil(total / limit) },
+      meta: {
+        page,
+        limit,
+        totalItems: total,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
     };
   }
 
-  async getAuditLogs(resourceType?: string, resourceId?: string, limit: number = 50) {
+  async getAuditLogs(
+    resourceType?: string,
+    resourceId?: string,
+    page: number = 1,
+    limit: number = 50,
+  ) {
+    const skip = (page - 1) * limit;
     const where: any = {};
     if (resourceType) where.audit_resource_type = resourceType;
     if (resourceId) where.audit_resource_id = resourceId;
 
-    const logs = await this.prisma.auditLog.findMany({
-      where,
-      take: Math.min(limit, 100),
-      orderBy: { audit_performed_at: 'desc' },
-      include: {
-        user: {
-          select: {
-            user_id: true,
-            user_email: true,
-            user_first_name: true,
-            user_last_name: true,
+    const [logs, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        skip,
+        take: Math.min(limit, 100),
+        orderBy: { audit_performed_at: 'desc' },
+        include: {
+          user: {
+            select: {
+              user_id: true,
+              user_email: true,
+              user_first_name: true,
+              user_last_name: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
 
-    return { success: true, data: logs };
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return {
+      success: true,
+      data: logs,
+      meta: {
+        page,
+        limit,
+        totalItems: total,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
+    };
   }
 
   private async logAdminAction(

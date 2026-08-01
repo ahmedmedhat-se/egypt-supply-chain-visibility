@@ -10,6 +10,8 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import {
@@ -27,6 +29,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 
 @ApiTags('Admin')
@@ -172,9 +175,12 @@ export class AdminController {
   @Get('invitations')
   @ApiOperation({ summary: 'List all invitations across platform' })
   @ApiResponse({ status: 200, description: 'Invitations list returned' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'status', required: false, type: String })
   async listInvitations(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('status') status?: string,
   ) {
     return this.adminService.listInvitations(page, limit, status);
@@ -183,11 +189,16 @@ export class AdminController {
   @Get('audit-logs')
   @ApiOperation({ summary: 'View audit logs' })
   @ApiResponse({ status: 200, description: 'Audit logs returned' })
+  @ApiQuery({ name: 'resourceType', required: false, type: String })
+  @ApiQuery({ name: 'resourceId', required: false, type: String })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 50 })
   async getAuditLogs(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
     @Query('resourceType') resourceType?: string,
     @Query('resourceId') resourceId?: string,
-    @Query('limit') limit?: number,
   ) {
-    return this.adminService.getAuditLogs(resourceType, resourceId, limit);
+    return this.adminService.getAuditLogs(resourceType, resourceId, page, limit);
   }
 }
