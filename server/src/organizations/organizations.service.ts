@@ -36,7 +36,6 @@ export class OrganizationsService {
       throw new ConflictException('A user with this email already exists');
     }
 
-    // Verify organization exists and role matches org type
     const org = await this.prisma.organization.findUnique({
       where: { organization_id: orgId },
     });
@@ -51,7 +50,6 @@ export class OrganizationsService {
       );
     }
 
-    // Create invitation
     const token = randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
@@ -66,14 +64,12 @@ export class OrganizationsService {
       },
     });
 
-    // Build invite link
     const frontendUrl = this.configService.get<string>(
       'CORS_ORIGIN',
       'http://localhost:5173',
     );
     const inviteLink = `${frontendUrl}/accept-invitation?token=${token}`;
 
-    // Publish event to RabbitMQ
     await this.amqpConnection.publish('escv.events', 'invitation.created', {
       email: dto.email,
       inviteLink,
@@ -89,24 +85,54 @@ export class OrganizationsService {
     };
   }
 
-  async getInvitations(orgId: string, status?: string, userId?: string) {
+  async getInvitations(
+    orgId: string,
+    status?: string,
+    page: number = 1,
+    limit: number = 10,
+    userId?: string,
+  ) {
     if (userId) await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
+
+    const skip = (page - 1) * limit;
+    const take = limit;
 
     const where: any = { organization_id: orgId };
     if (status) where.status = status;
 
-    return this.prisma.invitation.findMany({
-      where,
-      select: {
-        invitation_id: true,
-        invited_email: true,
-        invited_role: true,
-        status: true,
-        expires_at: true,
-        created_at: true,
+    const [invitations, totalItems] = await Promise.all([
+      this.prisma.invitation.findMany({
+        where,
+        skip,
+        take,
+        select: {
+          invitation_id: true,
+          invited_email: true,
+          invited_role: true,
+          status: true,
+          expires_at: true,
+          created_at: true,
+        },
+        orderBy: { created_at: 'desc' },
+      }),
+      this.prisma.invitation.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return {
+      data: invitations,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
       },
-      orderBy: { created_at: 'desc' },
-    });
+    };
   }
 
   async resendInvitation(orgId: string, invitationId: string, userId: string) {
@@ -164,22 +190,48 @@ export class OrganizationsService {
     return { message: 'Invitation canceled successfully' };
   }
 
-  async getMembers(orgId: string, userId: string) {
+  async getMembers(orgId: string, page: number = 1, limit: number = 10, userId: string) {
     await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
 
-    return this.prisma.user.findMany({
-      where: { organization_id: orgId },
-      select: {
-        user_id: true,
-        user_email: true,
-        user_first_name: true,
-        user_last_name: true,
-        user_role: true,
-        user_is_active: true,
-        user_created_at: true,
+    const skip = (page - 1) * limit;
+    const take = limit;
+
+    const where = { organization_id: orgId };
+
+    const [members, totalItems] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take,
+        select: {
+          user_id: true,
+          user_email: true,
+          user_first_name: true,
+          user_last_name: true,
+          user_role: true,
+          user_is_active: true,
+          user_created_at: true,
+        },
+        orderBy: { user_first_name: 'asc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return {
+      data: members,
+      meta: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
       },
-      orderBy: { user_first_name: 'asc' },
-    });
+    };
   }
 
   async deactivateMember(orgId: string, targetUserId: string, requestingUserId: string) {
@@ -246,12 +298,10 @@ export class OrganizationsService {
       throw new ForbiddenException('Access denied');
     }
 
-    // super_admin can manage any organization
     if (user.user_role === 'super_admin') {
       return;
     }
 
-    // org admin must belong to the target organization
     if (user.user_role === 'admin' && user.organization_id === orgId) {
       return;
     }
