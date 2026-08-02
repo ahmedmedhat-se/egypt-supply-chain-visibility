@@ -271,23 +271,24 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const pattern = `rt_family:*`;
-    const keys = await this.redisService.keys(pattern);
+    const familyIds = await this.redisService.smembers(`user_sessions:${userId}`);
     
-    const sessions = [];
-    for (const key of keys) {
+    const sessions: any[] = [];
+    for (const familyId of familyIds) {
       const data = await this.redisService.getJson<{
         userId: string;
         latestToken: string;
-      }>(key);
+      }>(`rt_family:${familyId}`);
+
       if (data && data.userId === userId) {
-        const familyId = key.replace('rt_family:', '');
         sessions.push({
           sessionId: familyId,
           userId: data.userId,
           createdAt: new Date(),
           isCurrent: false,
         });
+      } else {
+        await this.redisService.srem(`user_sessions:${userId}`, familyId);
       }
     }
 
