@@ -111,7 +111,11 @@ export class AuthController {
     let cookie = request.cookies['refresh_token'];
     if (!cookie) throw new UnauthorizedException('No refresh token');
 
-    cookie = this.unsignCookie(cookie);
+    const unsignResult = request.unsignCookie(cookie);
+    if (!unsignResult.valid || !unsignResult.value) {
+      throw new UnauthorizedException('Invalid or tampered cookie signature');
+    }
+    cookie = unsignResult.value;
     const result = await this.authService.refreshToken(cookie);
 
     this.setRefreshCookie(reply, result.refreshToken);
@@ -128,8 +132,10 @@ export class AuthController {
   ) {
     let cookie = request.cookies['refresh_token'];
     if (cookie) {
-      cookie = this.unsignCookie(cookie);
-      await this.authService.logout(cookie);
+      const result = request.unsignCookie(cookie);
+      if (result.valid && result.value) {
+        await this.authService.logout(result.value);
+      }
     }
     reply.clearCookie('refresh_token', { path: '/api/auth' });
     return;
@@ -176,8 +182,4 @@ export class AuthController {
     });
   }
 
-  private unsignCookie(value: string): string {
-    const dotIndex = value.lastIndexOf('.');
-    return dotIndex !== -1 ? value.substring(0, dotIndex) : value;
-  }
 }
