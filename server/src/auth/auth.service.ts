@@ -149,7 +149,7 @@ export class AuthService {
     const [, rawToken] = refreshTokenCookie.split(':');
     if (!rawToken) return;
 
-    const tokenData = await this.redisService.getJson<{ familyId: string }>(
+    const tokenData = await this.redisService.getJson<{ userId: string; familyId: string }>(
       `rt:${rawToken}`,
     );
     if (tokenData) {
@@ -157,6 +157,7 @@ export class AuthService {
         `rt:${rawToken}`,
         `rt_family:${tokenData.familyId}`,
       );
+      await this.redisService.srem(`user_sessions:${tokenData.userId}`, tokenData.familyId);
     }
   }
 
@@ -323,6 +324,7 @@ export class AuthService {
     }
 
     await this.redisService.del(familyKey, `rt:${familyData.latestToken}`);
+    await this.redisService.srem(`user_sessions:${userId}`, sessionId);
     
     return { message: 'Session revoked successfully' };
   }
@@ -366,6 +368,7 @@ export class AuthService {
       { userId, latestToken: refreshToken },
       ttlSeconds,
     );
+    await this.redisService.sadd(`user_sessions:${userId}`, familyId);
 
     const user = await this.usersService.findById(userId);
     const accessToken = this.jwtService.sign({
@@ -435,6 +438,7 @@ export class AuthService {
         `rt_family:${familyId}`,
       );
       await this.usersService.incrementTokenVersion(familyData.userId);
+      await this.redisService.srem(`user_sessions:${familyData.userId}`, familyId);
     }
   }
 }
