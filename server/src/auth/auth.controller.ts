@@ -167,8 +167,16 @@ export class AuthController {
   @Delete('sessions')
   @ApiOperation({ summary: 'Revoke all sessions except current' })
   @ApiResponse({ status: 200, description: 'All other sessions revoked.' })
-  async revokeAllSessions(@CurrentUser() user: any) {
-    return this.authService.revokeAllSessions(user.sub);
+  async revokeAllSessions(@CurrentUser() user: any, @Req() request: FastifyRequest) {
+    let cookie = request.cookies['refresh_token'];
+    let currentSessionId: string | null = null;
+    if (cookie) {
+      const result = request.unsignCookie(cookie);
+      if (result.valid && result.value) {
+        currentSessionId = result.value.split(':')[0];
+      }
+    }
+    return this.authService.revokeAllSessions(user.sub, currentSessionId);
   }
 
   private setRefreshCookie(reply: FastifyReply, token: string) {

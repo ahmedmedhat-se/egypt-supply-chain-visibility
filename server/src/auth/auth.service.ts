@@ -330,23 +330,32 @@ export class AuthService {
     return { message: 'Session revoked successfully' };
   }
 
-  async revokeAllSessions(userId: string) {
-    const pattern = `rt_family:*`;
-    const keys = await this.redisService.keys(pattern);
+  async revokeAllSessions(userId: string, currentSessionId: string | null = null) {
+    const familyIds = await this.redisService.smembers(`user_sessions:${userId}`);
 
     let revokedCount = 0;
-    for (const key of keys) {
+    for (const familyId of familyIds) {
+      if (currentSessionId && familyId === currentSessionId) {
+        continue;
+      }
+
       const data = await this.redisService.getJson<{
         userId: string;
         latestToken: string;
-      }>(key);
+      }>(`rt_family:${familyId}`);
+      
       if (data && data.userId === userId) {
-        await this.redisService.del(key, `rt:${data.latestToken}`);
+        await this.redisService.del(`rt_family:${familyId}`, `rt:${data.latestToken}`);
+        await this.redisService.srem(`user_sessions:${userId}`, familyId);
         revokedCount++;
+      } else {
+        await this.redisService.srem(`user_sessions:${userId}`, familyId);
       }
     }
 
-    await this.usersService.incrementTokenVersion(userId);
+    if (!currentSessionId) {
+      await this.usersService.incrementTokenVersion(userId);
+    }
 
     return {
       message: `Revoked ${revokedCount} session${revokedCount !== 1 ? 's' : ''}`,
