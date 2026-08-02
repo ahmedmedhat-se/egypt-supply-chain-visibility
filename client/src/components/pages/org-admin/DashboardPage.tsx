@@ -149,7 +149,7 @@ export const AdminDashboardPage = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate(ROUTES.ORGANIZATIONS_INVITATIONS)}
+              onClick={() => navigate(ROUTES.INVITATIONS)}
             >
               <FaEye className="w-3.5 h-3.5" />
               Manage
