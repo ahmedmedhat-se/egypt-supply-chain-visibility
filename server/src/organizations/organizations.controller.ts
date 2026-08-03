@@ -1,9 +1,11 @@
-import { Controller, Post, Body, Param, Get, Delete, Patch, Query, DefaultValuePipe, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Body, Param, Get, Delete, Patch, Query } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
+import { QueryOrgInvitationsDto } from './dto/query-invitations.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Organizations')
 @Controller('organizations')
@@ -24,17 +26,13 @@ export class OrganizationsController {
   @Get(':orgId/invitations')
   @Roles('admin')
   @ApiOperation({ summary: 'Get all invitations for the organization' })
-  @ApiQuery({ name: 'status', required: false, type: String })
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiResponse({ status: 200, description: 'List of invitations.' })
   async getInvitations(
     @Param('orgId') orgId: string,
-    @Query('status') status: string | undefined,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query() query: QueryOrgInvitationsDto,
     @CurrentUser() user: any,
   ) {
-    return this.organizationsService.getInvitations(orgId, status, page, limit, user.sub);
+    return this.organizationsService.getInvitations(orgId, query.status, query.page, query.limit, user.sub);
   }
 
   @Post(':orgId/invitations/:invitationId/resend')
@@ -70,15 +68,13 @@ export class OrganizationsController {
   @Get(':orgId/members')
   @Roles('admin')
   @ApiOperation({ summary: 'Get all members in the organization' })
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiResponse({ status: 200, description: 'List of members.' })
   async getMembers(
     @Param('orgId') orgId: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query() query: PaginationDto,
     @CurrentUser() user: any,
   ) {
-    return this.organizationsService.getMembers(orgId, page, limit, user.sub);
+    return this.organizationsService.getMembers(orgId, query.page, query.limit, user.sub);
   }
 
   @Patch(':orgId/members/:userId/deactivate')
