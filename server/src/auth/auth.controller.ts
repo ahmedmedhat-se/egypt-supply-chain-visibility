@@ -147,7 +147,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'List of active sessions returned' })
   async getSessions(
     @CurrentUser() user: any,
-    @Query() query: PagnationDto,
+    @Query() query: PaginationDto,
   ) {
     return this.authService.getSessions(user.sub, query.page, query.limit);
   }
