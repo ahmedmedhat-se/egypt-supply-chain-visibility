@@ -16,6 +16,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class AdminUpdateUserDto {
   @ApiPropertyOptional({ example: 'Ahmed' })
@@ -219,4 +220,23 @@ export class AdminBulkActionDto {
   @IsOptional()
   @IsObject()
   data?: Record<string, any>;
+}
+
+export class AdminQueryInvitationsDto extends PaginationDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  status?: string;
+}
+
+export class AdminQueryAuditLogsDto extends PaginationDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  resourceType?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  resourceId?: string;
 }
