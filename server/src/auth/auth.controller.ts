@@ -19,11 +19,12 @@ import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { PaginationDto } from '../common/dto/pagination.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -142,16 +143,13 @@ export class AuthController {
   }
 
   @Get('sessions')
-  @ApiOperation({ summary: 'Get active sessions for current user' })
-  @ApiResponse({ status: 200, description: 'Returns active sessions.' })
-  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiOperation({ summary: 'List all active sessions for current user' })
+  @ApiResponse({ status: 200, description: 'List of active sessions returned' })
   async getSessions(
     @CurrentUser() user: any,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query() query: PagnationDto,
   ) {
-    return this.authService.getSessions(user.sub, page, limit);
+    return this.authService.getSessions(user.sub, query.page, query.limit);
   }
 
   @Delete('sessions/:sessionId')
