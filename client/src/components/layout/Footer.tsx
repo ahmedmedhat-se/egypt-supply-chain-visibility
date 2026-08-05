@@ -37,6 +37,7 @@ export const Footer = ({ className }: FooterProps) => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Show/hide scroll to top button
   useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 400);
@@ -45,10 +46,12 @@ export const Footer = ({ className }: FooterProps) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Scroll to top function
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Handle navigation with scroll to top
   const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
     e.preventDefault();
     if (location.pathname === path) {
@@ -94,59 +97,59 @@ export const Footer = ({ className }: FooterProps) => {
 
   return (
     <footer className={cn(
-      'bg-white dark:bg-[#0A2E4A] border-t border-[#E2E8F0] dark:border-[#1A3D5A]',
+      'bg-white dark:bg-[#0A2E4A] border-t border-[#E2E8F0] dark:border-[#1A3D5A] mt-auto',
       className
     )}>
-      {/* Main Footer */}
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+      {/* Main footer content */}
+      <div className="px-4 py-8 md:px-6 lg:px-8 lg:py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
           
-          {/* Brand Column */}
+          {/* Brand column */}
           <div className="lg:col-span-1">
             <Link 
               to={ROUTES.HOME} 
               onClick={(e) => handleNavigation(e, ROUTES.HOME)}
-              className="inline-flex items-center gap-3 group mb-4"
+              className="inline-flex items-center gap-3 group mb-3"
             >
-              <div className="w-12 h-12 rounded-xl bg-[#2D9B6E] flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-[#2D9B6E]/20 group-hover:shadow-[#2D9B6E]/40 transition-all duration-300 group-hover:scale-105">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2D9B6E] to-[#1F7A52] flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-[#2D9B6E]/20 group-hover:shadow-[#2D9B6E]/40 transition-all duration-300 group-hover:scale-105">
                 E
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight text-[#0A2E4A] dark:text-white">
+                <h1 className="text-lg font-bold tracking-tight text-[#0A2E4A] dark:text-white">
                   ESCV
                 </h1>
-                <p className="text-xs text-[#94A3B8] dark:text-[#94A3B8] font-medium tracking-wider uppercase">
-                  Supply Chain Visibility
+                <p className="text-[10px] text-[#94A3B8] dark:text-[#94A3B8] font-medium tracking-wider uppercase">
+                  Supply Chain
                 </p>
               </div>
             </Link>
             <p className="text-sm text-[#64748B] dark:text-[#94A3B8] leading-relaxed max-w-xs">
               Egypt's leading supply chain intelligence platform. Real-time visibility across ports, customs, and logistics networks.
             </p>
-            <div className="flex flex-wrap items-center gap-3 mt-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D1FAE5] dark:bg-[#1F7A52]/30 text-xs font-medium text-[#065F46] dark:text-[#2D9B6E]">
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#D1FAE5] dark:bg-[#1F7A52]/30 text-xs font-medium text-[#065F46] dark:text-[#2D9B6E]">
                 <FaLock className="w-3 h-3" />
                 SSL Secure
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E8F0F8] dark:bg-[#1A3D5A] text-xs font-medium text-[#0A2E4A] dark:text-[#94A3B8]">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E8F0F8] dark:bg-[#1A3D5A] text-xs font-medium text-[#0A2E4A] dark:text-[#94A3B8]">
                 <FaShieldAlt className="w-3 h-3" />
                 ISO 27001
               </span>
             </div>
           </div>
 
-          {/* Company Links */}
+          {/* Company links */}
           <div>
-            <h3 className="text-sm font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-5">
+            <h3 className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-4">
               Company
             </h3>
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {companyLinks.map((link) => (
                 <li key={link.path}>
                   <Link
                     to={link.path}
                     onClick={(e) => handleNavigation(e, link.path)}
-                    className="text-base text-[#64748B] dark:text-[#94A3B8] hover:text-[#2D9B6E] dark:hover:text-[#2D9B6E] transition-all duration-200 font-medium"
+                    className="text-sm text-[#64748B] dark:text-[#94A3B8] hover:text-[#2D9B6E] dark:hover:text-[#2D9B6E] transition-colors duration-200 font-medium"
                   >
                     {link.label}
                   </Link>
@@ -155,18 +158,18 @@ export const Footer = ({ className }: FooterProps) => {
             </ul>
           </div>
 
-          {/* Legal & Contact */}
+          {/* Legal and contact */}
           <div>
-            <h3 className="text-sm font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-5">
+            <h3 className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-4">
               Legal
             </h3>
-            <ul className="space-y-3 mb-6">
+            <ul className="space-y-2 mb-6">
               {legalLinks.map((link) => (
                 <li key={link.path}>
                   <Link
                     to={link.path}
                     onClick={(e) => handleNavigation(e, link.path)}
-                    className="text-base text-[#64748B] dark:text-[#94A3B8] hover:text-[#2D9B6E] dark:hover:text-[#2D9B6E] transition-all duration-200 font-medium"
+                    className="text-sm text-[#64748B] dark:text-[#94A3B8] hover:text-[#2D9B6E] dark:hover:text-[#2D9B6E] transition-colors duration-200 font-medium"
                   >
                     {link.label}
                   </Link>
@@ -174,33 +177,33 @@ export const Footer = ({ className }: FooterProps) => {
               ))}
             </ul>
 
-            <h3 className="text-sm font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-5">
+            <h3 className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-4">
               Connect
             </h3>
-            <ul className="space-y-3">
-              <li className="flex items-center gap-3 text-base text-[#64748B] dark:text-[#94A3B8] group">
+            <ul className="space-y-2">
+              <li className="flex items-center gap-3 text-sm text-[#64748B] dark:text-[#94A3B8] group">
                 <FaEnvelope className="text-[#2D9B6E] w-4 h-4 flex-shrink-0" />
                 <a href="mailto:xoperations.contact@gmail.com" className="hover:text-[#2D9B6E] dark:hover:text-[#2D9B6E] transition-colors font-medium">
                   xoperations.contact@gmail.com
                 </a>
               </li>
-              <li className="flex items-center gap-3 text-base text-[#64748B] dark:text-[#94A3B8] group">
+              <li className="flex items-center gap-3 text-sm text-[#64748B] dark:text-[#94A3B8] group">
                 <FaPhone className="text-[#2D9B6E] w-4 h-4 flex-shrink-0" />
                 <a href="tel:+201234567890" className="hover:text-[#2D9B6E] dark:hover:text-[#2D9B6E] transition-colors font-medium">
                   +20 123 456 7890
                 </a>
               </li>
-              <li className="flex items-center gap-3 text-base text-[#64748B] dark:text-[#94A3B8] group">
+              <li className="flex items-center gap-3 text-sm text-[#64748B] dark:text-[#94A3B8] group">
                 <FaMapMarkerAlt className="text-[#2D9B6E] w-4 h-4 flex-shrink-0" />
                 <span className="font-medium">Cairo, Egypt</span>
               </li>
             </ul>
             
-            <div className="mt-6">
-              <p className="text-sm font-medium text-[#0A2E4A] dark:text-[#94A3B8] mb-3">
+            <div className="mt-4">
+              <p className="text-sm font-medium text-[#0A2E4A] dark:text-[#94A3B8] mb-2">
                 Follow us
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 {socialLinks.map((social) => {
                   const Icon = social.icon;
                   return (
@@ -208,14 +211,14 @@ export const Footer = ({ className }: FooterProps) => {
                       key={social.label}
                       href={social.href}
                       className={cn(
-                        'w-11 h-11 rounded-xl bg-[#E8F0F8] dark:bg-[#1A3D5A] flex items-center justify-center text-[#0A2E4A] dark:text-white transition-all duration-300 hover:scale-110 hover:text-white',
+                        'w-9 h-9 rounded-xl bg-[#E8F0F8] dark:bg-[#1A3D5A] flex items-center justify-center text-[#0A2E4A] dark:text-white transition-all duration-300 hover:scale-110 hover:text-white',
                         social.color
                       )}
                       aria-label={social.label}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Icon className="w-5 h-5" />
+                      <Icon className="w-4 h-4" />
                     </a>
                   );
                 })}
@@ -225,12 +228,12 @@ export const Footer = ({ className }: FooterProps) => {
         </div>
       </div>
 
-      {/* Bottom Bar */}
+      {/* Bottom bar */}
       <div className="border-t border-[#E2E8F0] dark:border-[#1A3D5A] bg-[#F8FAFC] dark:bg-[#061F33]">
-        <div className="max-w-7xl mx-auto px-6 py-5">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-sm text-[#64748B] dark:text-[#94A3B8]">
-              <FaRegCopyright className="w-4 h-4" />
+        <div className="px-4 py-3 md:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs text-[#64748B] dark:text-[#94A3B8]">
+              <FaRegCopyright className="w-3 h-3" />
               <span>{currentYear} ESCV. All rights reserved.</span>
               <span className="hidden sm:inline text-[#94A3B8]/30">|</span>
               <Link 
@@ -250,24 +253,25 @@ export const Footer = ({ className }: FooterProps) => {
               </Link>
             </div>
             
-            <div className="flex items-center gap-4 text-sm text-[#64748B] dark:text-[#94A3B8]">
-              <span className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#2D9B6E] animate-pulse"></span>
+            <div className="flex items-center gap-3 text-xs text-[#64748B] dark:text-[#94A3B8]">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#2D9B6E] animate-pulse"></span>
                 <span className="font-medium">All systems operational</span>
               </span>
               <span className="hidden sm:inline text-[#94A3B8]/30">|</span>
               <span className="hidden sm:inline font-mono text-[#94A3B8]/70">v1.0.0</span>
             </div>
 
+            {/* Scroll to top button */}
             <button
               onClick={scrollToTop}
               className={cn(
-                'p-2.5 rounded-xl bg-[#0A2E4A] dark:bg-[#2D9B6E] text-white hover:bg-[#2D9B6E] dark:hover:bg-[#1F7A52] transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-[#2D9B6E]/30',
+                'p-2 rounded-xl bg-[#0A2E4A] dark:bg-[#2D9B6E] text-white hover:bg-[#2D9B6E] dark:hover:bg-[#1F7A52] transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-[#2D9B6E]/30',
                 showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
               )}
               aria-label="Scroll to top"
             >
-              <FaArrowUp className="w-4 h-4" />
+              <FaArrowUp className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
