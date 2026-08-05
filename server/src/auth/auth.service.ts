@@ -8,7 +8,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { UsersService } from '../users/users.service';
@@ -16,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +26,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
-    private readonly configService: ConfigService,
+    private readonly amqpConnection: AmqpConnection,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -150,9 +150,9 @@ export class AuthService {
     throw new UnauthorizedException('Refresh token expired');
   }
 
-  async logout(refreshTokenCookie: string) {
+  async logout(refreshTokenCookie: string): Promise<string | null> {
     const [, rawToken] = refreshTokenCookie.split(':');
-    if (!rawToken) return;
+    if (!rawToken) return null;
 
     const tokenData = await this.redisService.getJson<{
       userId: string;
@@ -167,7 +167,10 @@ export class AuthService {
         `user_sessions:${tokenData.userId}`,
         tokenData.familyId,
       );
+      await this.publishSessionRevoked(tokenData.userId, tokenData.familyId);
+      return tokenData.userId;
     }
+    return null;
   }
 
   async acceptInvitation(dto: AcceptInvitationDto) {
@@ -340,6 +343,8 @@ export class AuthService {
     await this.redisService.del(familyKey, `rt:${familyData.latestToken}`);
     await this.redisService.srem(`user_sessions:${userId}`, sessionId);
 
+    await this.publishSessionRevoked(userId, sessionId);
+
     return { message: 'Session revoked successfully' };
   }
 
@@ -368,6 +373,7 @@ export class AuthService {
           `rt:${data.latestToken}`,
         );
         await this.redisService.srem(`user_sessions:${userId}`, familyId);
+        await this.publishSessionRevoked(userId, familyId);
         revokedCount++;
       } else {
         await this.redisService.srem(`user_sessions:${userId}`, familyId);
@@ -408,6 +414,7 @@ export class AuthService {
       role: user!.user_role,
       organizationId: user!.organization_id,
       tokenVersion: user!.user_token_version,
+      sessionId: familyId,
     });
 
     return {
@@ -450,6 +457,7 @@ export class AuthService {
       role: user.user_role,
       organizationId: user.organization_id,
       tokenVersion: user.user_token_version,
+      sessionId: familyId,
     });
 
     return {
@@ -472,6 +480,20 @@ export class AuthService {
       await this.redisService.srem(
         `user_sessions:${familyData.userId}`,
         familyId,
+      );
+      await this.publishSessionRevoked(familyData.userId, familyId);
+    }
+  }
+
+  private async publishSessionRevoked(userId: string, sessionId: string) {
+    try {
+      await this.amqpConnection.publish('escv.events', 'auth.session_revoked', {
+        userId,
+        sessionId,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to publish session revocation for user ${userId}: ${(error as Error).message}`,
       );
     }
   }
