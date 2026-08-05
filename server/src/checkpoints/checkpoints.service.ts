@@ -7,12 +7,16 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCheckpointDto } from './dto/create-checkpoint.dto';
 import { UpdateCheckpointDto } from './dto/update-checkpoint.dto';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class CheckpointsService {
   private readonly logger = new Logger(CheckpointsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   async create(dto: CreateCheckpointDto) {
     const existing = await this.prisma.checkpoint.findUnique({
@@ -38,6 +42,13 @@ export class CheckpointsService {
     this.logger.log(
       `Checkpoint created: ${checkpoint.checkpoint_code} (${checkpoint.checkpoint_id})`,
     );
+
+    this.auditService.log({
+      action: 'CHECKPOINT_CREATE',
+      resourceType: 'checkpoint',
+      resourceId: checkpoint.checkpoint_id,
+      newValue: this.auditPayload(checkpoint),
+    });
 
     return this.formatCheckpoint(checkpoint);
   }
@@ -122,6 +133,14 @@ export class CheckpointsService {
 
     this.logger.log(`Checkpoint updated: ${updated.checkpoint_code}`);
 
+    this.auditService.log({
+      action: 'CHECKPOINT_UPDATE',
+      resourceType: 'checkpoint',
+      resourceId: updated.checkpoint_id,
+      oldValue: this.auditPayload(checkpoint),
+      newValue: this.auditPayload(updated),
+    });
+
     return this.formatCheckpoint(updated);
   }
 
@@ -143,6 +162,14 @@ export class CheckpointsService {
       `Checkpoint deactivated: ${checkpoint.checkpoint_code} (${id})`,
     );
 
+    this.auditService.log({
+      action: 'CHECKPOINT_REMOVE',
+      resourceType: 'checkpoint',
+      resourceId: id,
+      oldValue: this.auditPayload(checkpoint),
+      newValue: { isActive: false },
+    });
+
     return { message: 'Checkpoint deactivated successfully' };
   }
 
@@ -161,6 +188,15 @@ export class CheckpointsService {
     });
 
     this.logger.log(`Checkpoint activated: ${updated.checkpoint_code} (${id})`);
+
+    this.auditService.log({
+      action: 'CHECKPOINT_ACTIVATE',
+      resourceType: 'checkpoint',
+      resourceId: id,
+      oldValue: this.auditPayload(checkpoint),
+      newValue: this.auditPayload(updated),
+    });
+
     return this.formatCheckpoint(updated);
   }
 
@@ -191,7 +227,18 @@ export class CheckpointsService {
       data: { checkpoint_is_active: false },
     });
 
-    this.logger.log(`Checkpoint deactivated: ${updated.checkpoint_code} (${id})`);
+    this.logger.log(
+      `Checkpoint deactivated: ${updated.checkpoint_code} (${id})`,
+    );
+
+    this.auditService.log({
+      action: 'CHECKPOINT_DEACTIVATE',
+      resourceType: 'checkpoint',
+      resourceId: id,
+      oldValue: this.auditPayload(checkpoint),
+      newValue: this.auditPayload(updated),
+    });
+
     return this.formatCheckpoint(updated);
   }
 
@@ -207,6 +254,25 @@ export class CheckpointsService {
       isActive: checkpoint.checkpoint_is_active,
       createdAt: checkpoint.checkpoint_created_at,
       updatedAt: checkpoint.checkpoint_updated_at,
+    };
+  }
+
+  /** Whitelisted snapshot for audit rows — never includes anything sensitive. */
+  private auditPayload(checkpoint: any) {
+    return {
+      name: checkpoint.checkpoint_name,
+      code: checkpoint.checkpoint_code,
+      type: checkpoint.checkpoint_type,
+      city: checkpoint.checkpoint_city,
+      latitude:
+        checkpoint.checkpoint_latitude != null
+          ? Number(checkpoint.checkpoint_latitude)
+          : null,
+      longitude:
+        checkpoint.checkpoint_longitude != null
+          ? Number(checkpoint.checkpoint_longitude)
+          : null,
+      isActive: checkpoint.checkpoint_is_active,
     };
   }
 }

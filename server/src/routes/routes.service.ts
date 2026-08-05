@@ -9,12 +9,16 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
 import { AddRouteCheckpointDto } from './dto/add-route-checkpoint.dto';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class RoutesService {
   private readonly logger = new Logger(RoutesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   // ---------- Route CRUD ----------
 
@@ -40,6 +44,13 @@ export class RoutesService {
     });
 
     this.logger.log(`Route created: ${route.route_code} (${route.route_id})`);
+
+    this.auditService.log({
+      action: 'ROUTE_CREATE',
+      resourceType: 'route',
+      resourceId: route.route_id,
+      newValue: this.auditPayload(route),
+    });
 
     return this.formatRoute(route);
   }
@@ -121,6 +132,14 @@ export class RoutesService {
 
     this.logger.log(`Route updated: ${updated.route_code}`);
 
+    this.auditService.log({
+      action: 'ROUTE_UPDATE',
+      resourceType: 'route',
+      resourceId: id,
+      oldValue: this.auditPayload(route),
+      newValue: this.auditPayload(updated),
+    });
+
     return this.formatRoute(updated);
   }
 
@@ -141,6 +160,14 @@ export class RoutesService {
 
     this.logger.log(`Route deactivated: ${route.route_code} (${id})`);
 
+    this.auditService.log({
+      action: 'ROUTE_REMOVE',
+      resourceType: 'route',
+      resourceId: id,
+      oldValue: this.auditPayload(route),
+      newValue: { isActive: false },
+    });
+
     return { message: 'Route deactivated successfully' };
   }
 
@@ -157,8 +184,16 @@ export class RoutesService {
       where: { route_id: id },
       data: { route_is_active: true },
     });
-
     this.logger.log(`Route activated: ${updated.route_code} (${id})`);
+
+    this.auditService.log({
+      action: 'ROUTE_ACTIVATE',
+      resourceType: 'route',
+      resourceId: id,
+      oldValue: this.auditPayload(route),
+      newValue: this.auditPayload(updated),
+    });
+
     return this.formatRoute(updated);
   }
 
@@ -191,8 +226,16 @@ export class RoutesService {
       where: { route_id: id },
       data: { route_is_active: false },
     });
-
     this.logger.log(`Route deactivated: ${updated.route_code} (${id})`);
+
+    this.auditService.log({
+      action: 'ROUTE_DEACTIVATE',
+      resourceType: 'route',
+      resourceId: id,
+      oldValue: this.auditPayload(route),
+      newValue: this.auditPayload(updated),
+    });
+
     return this.formatRoute(updated);
   }
 
@@ -256,6 +299,16 @@ export class RoutesService {
       `Checkpoint ${dto.checkpointId} added to route ${routeId} at position ${dto.sequenceOrder}`,
     );
 
+    this.auditService.log({
+      action: 'ROUTE_CHECKPOINT_ADD',
+      resourceType: 'route',
+      resourceId: routeId,
+      newValue: {
+        checkpointId: dto.checkpointId,
+        sequenceOrder: dto.sequenceOrder,
+      },
+    });
+
     return {
       checkpointId: routeCheckpoint.checkpoint_id,
       sequenceOrder: routeCheckpoint.sequence_order,
@@ -310,6 +363,13 @@ export class RoutesService {
 
     this.logger.log(`Checkpoint ${checkpointId} removed from route ${routeId}`);
 
+    this.auditService.log({
+      action: 'ROUTE_CHECKPOINT_REMOVE',
+      resourceType: 'route',
+      resourceId: routeId,
+      oldValue: { checkpointId, sequenceOrder: routeCheckpoint.sequence_order },
+    });
+
     return { message: 'Checkpoint removed from route successfully' };
   }
 
@@ -339,6 +399,18 @@ export class RoutesService {
       shipmentCount: route._count?.shipments ?? undefined,
       createdAt: route.route_created_at,
       updatedAt: route.route_updated_at,
+    };
+  }
+
+  /** Whitelisted snapshot for audit rows — never includes anything sensitive. */
+  private auditPayload(route: any) {
+    return {
+      name: route.route_name,
+      code: route.route_code,
+      originCity: route.route_origin_city,
+      destinationCity: route.route_destination_city,
+      estimatedDays: route.route_estimated_days,
+      isActive: route.route_is_active,
     };
   }
 }
