@@ -70,6 +70,7 @@ export class AuthService {
         role: user.user_role,
         organizationId: user.organization_id,
         organizationName: user.organization?.organization_name,
+        organizationType: user.organization?.organization_type ?? null,
       },
       ...tokens,
     };
@@ -84,7 +85,8 @@ export class AuthService {
     if (!user.user_is_active) {
       throw new ForbiddenException({
         statusCode: 403,
-        message: 'Your account has been deactivated. Please contact your administrator.',
+        message:
+          'Your account has been deactivated. Please contact your administrator.',
         reason: 'ACCOUNT_INACTIVE',
       });
     }
@@ -94,10 +96,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    await this.prisma.user.update({
-      where: { user_id: user.user_id },
-      data: { user_last_login_at: new Date() },
-    }).catch(() => {});
+    await this.prisma.user
+      .update({
+        where: { user_id: user.user_id },
+        data: { user_last_login_at: new Date() },
+      })
+      .catch(() => {});
 
     const tokens = await this.createTokenPair(user.user_id);
 
@@ -109,6 +113,7 @@ export class AuthService {
         role: user.user_role,
         organizationId: user.organization_id,
         organizationName: user.organization?.organization_name,
+        organizationType: user.organization?.organization_type ?? null,
       },
       ...tokens,
     };
@@ -149,15 +154,19 @@ export class AuthService {
     const [, rawToken] = refreshTokenCookie.split(':');
     if (!rawToken) return;
 
-    const tokenData = await this.redisService.getJson<{ userId: string; familyId: string }>(
-      `rt:${rawToken}`,
-    );
+    const tokenData = await this.redisService.getJson<{
+      userId: string;
+      familyId: string;
+    }>(`rt:${rawToken}`);
     if (tokenData) {
       await this.redisService.del(
         `rt:${rawToken}`,
         `rt_family:${tokenData.familyId}`,
       );
-      await this.redisService.srem(`user_sessions:${tokenData.userId}`, tokenData.familyId);
+      await this.redisService.srem(
+        `user_sessions:${tokenData.userId}`,
+        tokenData.familyId,
+      );
     }
   }
 
@@ -216,6 +225,7 @@ export class AuthService {
         role: user.user_role,
         organizationId: user.organization_id,
         organizationName: user.organization?.organization_name,
+        organizationType: user.organization?.organization_type ?? null,
       },
       ...tokens,
     };
@@ -262,6 +272,7 @@ export class AuthService {
       role: user.user_role,
       organizationId: user.organization_id,
       organizationName: user.organization?.organization_name,
+      organizationType: user.organization?.organization_type ?? null,
     };
   }
 
@@ -271,8 +282,10 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const familyIds = await this.redisService.smembers(`user_sessions:${userId}`);
-    
+    const familyIds = await this.redisService.smembers(
+      `user_sessions:${userId}`,
+    );
+
     const sessions: any[] = [];
     for (const familyId of familyIds) {
       const data = await this.redisService.getJson<{
@@ -326,12 +339,17 @@ export class AuthService {
 
     await this.redisService.del(familyKey, `rt:${familyData.latestToken}`);
     await this.redisService.srem(`user_sessions:${userId}`, sessionId);
-    
+
     return { message: 'Session revoked successfully' };
   }
 
-  async revokeAllSessions(userId: string, currentSessionId: string | null = null) {
-    const familyIds = await this.redisService.smembers(`user_sessions:${userId}`);
+  async revokeAllSessions(
+    userId: string,
+    currentSessionId: string | null = null,
+  ) {
+    const familyIds = await this.redisService.smembers(
+      `user_sessions:${userId}`,
+    );
 
     let revokedCount = 0;
     for (const familyId of familyIds) {
@@ -343,9 +361,12 @@ export class AuthService {
         userId: string;
         latestToken: string;
       }>(`rt_family:${familyId}`);
-      
+
       if (data && data.userId === userId) {
-        await this.redisService.del(`rt_family:${familyId}`, `rt:${data.latestToken}`);
+        await this.redisService.del(
+          `rt_family:${familyId}`,
+          `rt:${data.latestToken}`,
+        );
         await this.redisService.srem(`user_sessions:${userId}`, familyId);
         revokedCount++;
       } else {
@@ -448,7 +469,10 @@ export class AuthService {
         `rt_family:${familyId}`,
       );
       await this.usersService.incrementTokenVersion(familyData.userId);
-      await this.redisService.srem(`user_sessions:${familyData.userId}`, familyId);
+      await this.redisService.srem(
+        `user_sessions:${familyData.userId}`,
+        familyId,
+      );
     }
   }
 }

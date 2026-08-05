@@ -18,7 +18,10 @@ export class UsersService {
         organization_id: true,
         user_is_active: true,
         organization: {
-          select: { organization_name: true },
+          select: {
+            organization_name: true,
+            organization_type: true,
+          },
         },
       },
     });
