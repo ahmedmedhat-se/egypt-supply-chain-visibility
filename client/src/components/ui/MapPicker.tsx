@@ -6,9 +6,6 @@ import { Button } from './Button';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { FaMapMarkerAlt, FaCrosshairs } from 'react-icons/fa';
 
-// fix default marker icon issue with webpack/vite
-// https://github.com/Leaflet/Leaflet/issues/4968
-
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -22,7 +19,16 @@ interface MapPickerProps {
   onLatitudeChange: (value: string) => void;
   onLongitudeChange: (value: string) => void;
   geolocationOnly?: boolean;
+  defaultZoom?: number;
+  zoomOnLocate?: number;
 }
+
+const pulsingIcon = L.divIcon({
+  className: '',
+  html: '<div class="pulsing-marker"></div>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
 
 function LocationMarker({
   lat,
@@ -39,18 +45,26 @@ function LocationMarker({
     },
   });
 
-  return <Marker position={[lat, lng]} draggable eventHandlers={{ dragend: (e) => {
+  return <Marker position={[lat, lng]} icon={pulsingIcon} draggable eventHandlers={{ dragend: (e) => {
     const marker = e.target;
     const pos = marker.getLatLng();
     onMove(pos.lat, pos.lng);
   }}} />;
 }
 
-function FlyToCenter({ lat, lng }: { lat: number; lng: number }) {
+function FlyToCenter({
+  lat,
+  lng,
+  zoom,
+}: {
+  lat: number;
+  lng: number;
+  zoom?: number | null;
+}) {
   const map = useMap();
   useEffect(() => {
-    map.flyTo([lat, lng], map.getZoom());
-  }, [lat, lng, map]);
+    map.flyTo([lat, lng], zoom ?? map.getZoom());
+  }, [lat, lng, zoom, map]);
   return null;
 }
 
@@ -60,12 +74,19 @@ export function MapPicker({
   onLatitudeChange,
   onLongitudeChange,
   geolocationOnly = false,
+  defaultZoom,
+  zoomOnLocate = 14,
 }: MapPickerProps) {
   // Default: center of Egypt
   const lat = parseFloat(latitude) || 26.8206; 
   const lng = parseFloat(longitude) || 30.8025;
   const [centerLat, setCenterLat] = useState(lat);
   const [centerLng, setCenterLng] = useState(lng);
+  const [flyZoom, setFlyZoom] = useState<number | null>(null);
+
+  // Pre-filled coordinates get a closer starting zoom so the area is visible
+  const hasPreFilled = !!(latitude && longitude && parseFloat(latitude));
+  const initialZoom = defaultZoom ?? (hasPreFilled ? 10 : 6);
 
   const { latitude: geoLat, longitude: geoLng, loading: geoLoading, getCurrentPosition } = useGeolocation();
 
@@ -78,24 +99,29 @@ export function MapPicker({
     await getCurrentPosition();
   };
 
-  // When geolocation resolves, update the marker position
+  // When geolocation resolves, update the marker position and zoom in
   useEffect(() => {
     if (geoLat !== null && geoLng !== null) {
       onLatitudeChange(geoLat.toFixed(6));
       onLongitudeChange(geoLng.toFixed(6));
       setCenterLat(geoLat);
       setCenterLng(geoLng);
+      setFlyZoom(zoomOnLocate);
     }
-  }, [geoLat, geoLng, onLatitudeChange, onLongitudeChange]);
+  }, [geoLat, geoLng, onLatitudeChange, onLongitudeChange, zoomOnLocate]);
 
   // Sync center when coordinates change externally
   useEffect(() => {
     setCenterLat(lat);
     setCenterLng(lng);
+    setFlyZoom(null);
   }, [latitude, longitude]);
 
   const currentLat = parseFloat(latitude) || lat;
   const currentLng = parseFloat(longitude) || lng;
+
+  const hasLastPosition =
+    geolocationOnly && !!(latitude && longitude && parseFloat(latitude) && parseFloat(longitude));
 
   return (
     <div className="space-y-3">
@@ -103,7 +129,7 @@ export function MapPicker({
       <div className="rounded-lg overflow-hidden border border-[#E2E8F0] dark:border-[#1A3D5A]">
         <MapContainer
           center={[centerLat, centerLng]}
-          zoom={6}
+          zoom={initialZoom}
           className="h-64 w-full"
           scrollWheelZoom={true}
         >
@@ -111,9 +137,12 @@ export function MapPicker({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <FlyToCenter lat={centerLat} lng={centerLng} />
+          <FlyToCenter lat={centerLat} lng={centerLng} zoom={flyZoom} />
           {!geolocationOnly && (
             <LocationMarker lat={currentLat} lng={currentLng} onMove={handleMove} />
+          )}
+          {geolocationOnly && hasLastPosition && (
+            <Marker position={[currentLat, currentLng]} icon={pulsingIcon} />
           )}
         </MapContainer>
       </div>

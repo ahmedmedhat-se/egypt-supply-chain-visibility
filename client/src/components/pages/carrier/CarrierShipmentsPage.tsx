@@ -6,12 +6,13 @@ import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { EmptyState } from '../../ui/EmptyState';
 import { ShipmentStatusBadge } from '../../shipments/ShipmentStatusBadge';
 import { MapPicker } from '../../ui/MapPicker';
+import { Modal } from '../../ui/Modal';
 import { useAuthStore } from '../../../store/auth.store';
 import {
   useShipments,
   useAcceptShipment,
   useUpdateShipmentStatus,
-  useUpdateShipment,
+  useAssignRoute,
 } from '../../../hooks/useShipments';
 import { shipmentsApi } from '../../../api/shipments.api';
 import { routesApi } from '../../../api/routes.api';
@@ -42,11 +43,13 @@ export const CarrierShipmentsPage = () => {
   const user = useAuthStore((state) => state.user);
   const [activeTab, setActiveTab] = useState<ActiveTab>('my');
   const [selectedShipment, setSelectedShipment] = useState<string | null>(null);
+  const [routeModalId, setRouteModalId] = useState<string | null>(null);
   const [statusOpenId, setStatusOpenId] = useState<string | null>(null);
   const [statusDropdownDir, setStatusDropdownDir] = useState<'down' | 'up'>('down');
 
-  // Data fetching
-  const { data: shipmentsData, isLoading: shipmentsLoading } = useShipments();
+  // Data fetching — server-side scope filtering (T9)
+  const { data: assignedData, isLoading: assignedLoading } = useShipments({ scope: 'assigned' });
+  const { data: availableData, isLoading: availableLoading } = useShipments({ scope: 'available' });
   const { mutate: acceptShipment, isPending: isAccepting } = useAcceptShipment();
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateShipmentStatus();
 
@@ -60,14 +63,11 @@ export const CarrierShipmentsPage = () => {
 
   const routes: Route[] = routesData || [];
 
-  // Separate shipments into My Shipments and Available
-  const allShipments: Shipment[] = shipmentsData?.data || [];
-  const myShipments = allShipments.filter(
-    (s) => s.carrierOrganization?.organization_id === user?.organizationId,
-  );
-  const availableShipments = allShipments.filter(
-    (s) => !s.carrierOrganization && s.status !== 'cancelled',
-  );
+  // Separate shipments into My Shipments and Available (server-scoped)
+  const myShipments: Shipment[] = assignedData?.data || [];
+  const availableShipments: Shipment[] = availableData?.data || [];
+  const shipmentsLoading = assignedLoading || availableLoading;
+  const allShipments = [...myShipments, ...availableShipments];
 
   // Check if carrier has an active shipment (one carrier = one shipment at a time)
   const hasActiveShipment = myShipments.some(
@@ -91,7 +91,14 @@ export const CarrierShipmentsPage = () => {
       return;
     }
     if (window.confirm(`Accept shipment "${shipment.referenceNumber}"?`)) {
-      acceptShipment(shipment.id);
+      acceptShipment(shipment.id, {
+        onSuccess: () => {
+          // Jump straight into route assignment for the freshly claimed shipment
+          setActiveTab('my');
+          setSelectedShipment(shipment.id);
+          setRouteModalId(shipment.id);
+        },
+      });
     }
   };
 
@@ -118,8 +125,19 @@ export const CarrierShipmentsPage = () => {
     ? allShipments.find((s) => s.id === selectedShipment)
     : null;
 
+  const routeModalShipment = routeModalId
+    ? allShipments.find((s) => s.id === routeModalId)
+    : null;
+
   return (
     <div className="space-y-6">
+      {/* Route Assignment Modal */}
+      <RouteAssignModal
+        shipment={routeModalShipment ?? null}
+        routes={routes}
+        isOpen={!!routeModalShipment}
+        onClose={() => setRouteModalId(null)}
+      />
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Shipments</h1>
@@ -166,6 +184,7 @@ export const CarrierShipmentsPage = () => {
           isUpdatingStatus={isUpdatingStatus}
           routes={routes}
           statusDropdownDir={statusDropdownDir}
+          onOpenRouteModal={(id) => setRouteModalId(id)}
         />
       ) : (
         <AvailableShipmentsTab
@@ -238,6 +257,7 @@ function MyShipmentsTab({
   isUpdatingStatus,
   routes,
   statusDropdownDir,
+  onOpenRouteModal,
 }: {
   shipments: Shipment[];
   isLoading: boolean;
@@ -251,6 +271,7 @@ function MyShipmentsTab({
   isUpdatingStatus: boolean;
   routes: Route[];
   statusDropdownDir: 'down' | 'up';
+  onOpenRouteModal: (id: string) => void;
 }) {
   if (isLoading) {
     return (
@@ -341,6 +362,7 @@ function MyShipmentsTab({
             isUpdatingStatus={isUpdatingStatus}
             routes={routes}
             statusDropdownDir={statusDropdownDir}
+            onOpenRouteModal={onOpenRouteModal}
           />
         ) : (
           <Card variant="bordered" className="p-12 text-center">
@@ -370,6 +392,7 @@ function ShipmentDetailPanel({
   isUpdatingStatus,
   routes,
   statusDropdownDir,
+  onOpenRouteModal,
 }: {
   shipment: Shipment;
   statusOpenId: string | null;
@@ -379,20 +402,22 @@ function ShipmentDetailPanel({
   isUpdatingStatus: boolean;
   routes: Route[];
   statusDropdownDir: 'down' | 'up';
+  onOpenRouteModal: (id: string) => void;
 }) {
   const { mutate: updateStatus } = useUpdateShipmentStatus();
-  const { mutate: updateShipment } = useUpdateShipment();
 
-  // Location starts empty — carrier must use "Use My Location" to set it
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const toFixed6 = (value: number | null | undefined) =>
+    value != null ? value.toFixed(6) : '';
+
+  // Pre-fill from the shipment's last reported position so the map opens there
+  const [latitude, setLatitude] = useState(() => toFixed6(shipment.currentLatitude));
+  const [longitude, setLongitude] = useState(() => toFixed6(shipment.currentLongitude));
   const [localRouteId, setLocalRouteId] = useState(shipment.route?.route_id || '');
 
   // Sync when the selected shipment changes
   useEffect(() => {
-    // Always reset location — don't pre-fill from shipment data
-    setLatitude('');
-    setLongitude('');
+    setLatitude(toFixed6(shipment.currentLatitude));
+    setLongitude(toFixed6(shipment.currentLongitude));
     setLocalRouteId(shipment.route?.route_id || '');
   }, [shipment.id]);
 
@@ -419,18 +444,6 @@ function ShipmentDetailPanel({
         longitude: lng,
       },
     });
-  };
-
-  // Handle route assignment
-  const handleRouteAssign = () => {
-    if (!localRouteId) {
-      toast.error('Please select a route');
-      return;
-    }
-    updateShipment(
-      { id: shipment.id, data: { routeId: localRouteId } },
-      { onSuccess: () => toast.success('Route assigned successfully') },
-    );
   };
 
   // Handle checkpoint progress
@@ -468,7 +481,7 @@ function ShipmentDetailPanel({
     if (checkpointEvents.length > 0) {
       const lastCpId = checkpointEvents[0].checkpointId;
       const match = sortedCheckpoints.find(
-        (rc) => rc.checkpoint.id === lastCpId,
+        (rc) => rc.id === lastCpId,
       );
       return match ? match.sequenceOrder : 0;
     }
@@ -609,28 +622,33 @@ function ShipmentDetailPanel({
             </p>
           </div>
         ) : (
-          <div className="flex items-start gap-3">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex-1">
-              <select
-                value={localRouteId}
-                onChange={(e) => setLocalRouteId(e.target.value)}
-                className="w-full rounded-md border border-[#E2E8F0] dark:border-[#1A3D5A] bg-white dark:bg-[#1A3D5A] px-3 py-2 text-sm text-[#1A2A3A] dark:text-white focus:border-[#0A2E4A] dark:focus:border-[#2D9B6E] focus:outline-none focus:ring-1 focus:ring-[#0A2E4A] dark:focus:ring-[#2D9B6E]"
-              >
-                <option value="">Select a route...</option>
-                {routes.map((route) => (
-                  <option key={route.id} value={route.id}>
-                    {route.name} ({route.code}) — {route.originCity} → {route.destinationCity}
-                  </option>
-                ))}
-              </select>
-              {shipment.route && (
-                <p className="text-xs text-[#2D9B6E] mt-1">
-                  Currently: {shipment.route.route_name} ({shipment.route.route_code})
+              {shipment.route ? (
+                <div>
+                  <p className="text-sm font-medium text-[#1A2A3A] dark:text-white">
+                    {shipment.route.route_name}{' '}
+                    <span className="text-[#94A3B8]">({shipment.route.route_code})</span>
+                  </p>
+                  <p className="text-xs text-[#94A3B8] mt-0.5">
+                    {shipment.route.estimatedDays != null
+                      ? `Est. ${shipment.route.estimatedDays} day${shipment.route.estimatedDays === 1 ? '' : 's'} journey`
+                      : 'No estimated duration'}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-[#94A3B8]">
+                  No route assigned yet. Assign a route to enable checkpoint tracking.
                 </p>
               )}
             </div>
-            <Button size="sm" onClick={handleRouteAssign} disabled={!localRouteId}>
-              Assign Route
+            <Button
+              size="sm"
+              onClick={() => onOpenRouteModal(shipment.id)}
+              className="flex items-center gap-1.5 flex-shrink-0"
+            >
+              <FaRoute className="w-3 h-3" />
+              {shipment.route ? 'Change Route' : 'Assign Route'}
             </Button>
           </div>
         )}
@@ -691,10 +709,10 @@ function ShipmentDetailPanel({
                                 : 'text-[#1A2A3A] dark:text-white',
                             )}
                           >
-                            {rc.checkpoint.name}
+                            {rc.name}
                           </p>
                           <p className="text-xs text-[#94A3B8]">
-                            {rc.checkpoint.city} · {rc.checkpoint.type}
+                            {rc.city} · {rc.type}
                           </p>
                         </div>
                         {!isReached && (
@@ -702,7 +720,7 @@ function ShipmentDetailPanel({
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              handleCheckpointReached(rc.checkpoint.id)
+                              handleCheckpointReached(rc.id)
                             }
                             disabled={!isCurrent}
                             className={cn(
@@ -894,6 +912,101 @@ function AvailableShipmentsTab({
         ))}
       </div>
     </div>
+  );
+}
+
+/* ── Route Assignment Modal ──────────────────────────────── */
+
+function RouteAssignModal({
+  shipment,
+  routes,
+  isOpen,
+  onClose,
+}: {
+  shipment: Shipment | null;
+  routes: Route[];
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const { mutate: assignRoute, isPending: isAssigning } = useAssignRoute();
+  const [selectedRouteId, setSelectedRouteId] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedRouteId(shipment?.route?.route_id || '');
+    }
+  }, [isOpen, shipment?.id, shipment?.route?.route_id]);
+
+  if (!shipment) return null;
+
+  const handleConfirm = () => {
+    if (!selectedRouteId) return;
+    assignRoute(
+      { id: shipment.id, routeId: selectedRouteId },
+      { onSuccess: () => onClose() },
+    );
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Assign Route — ${shipment.referenceNumber}`}
+      size="md"
+    >
+      <p className="text-sm text-[#94A3B8] mb-4">
+        Choose the route this shipment will follow. Checkpoints and estimated duration come
+        from the selected route.
+      </p>
+      <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+        {routes.length === 0 && (
+          <p className="text-sm text-[#94A3B8] py-6 text-center">
+            No routes available yet.
+          </p>
+        )}
+        {routes.map((route) => {
+          const selected = selectedRouteId === route.id;
+          return (
+            <button
+              key={route.id}
+              type="button"
+              onClick={() => setSelectedRouteId(route.id)}
+              className={cn(
+                'w-full text-left p-3 rounded-xl border transition-all duration-200',
+                selected
+                  ? 'border-[#2D9B6E] bg-[#D1FAE5]/30 dark:bg-[#1F7A52]/20'
+                  : 'border-[#E2E8F0] dark:border-[#1A3D5A] hover:border-[#94A3B8]',
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[#0A2E4A] dark:text-white">
+                  {route.name} <span className="text-[#94A3B8]">({route.code})</span>
+                </span>
+                {selected && <FaCheckCircle className="w-4 h-4 text-[#2D9B6E]" />}
+              </div>
+              <p className="text-xs text-[#94A3B8] mt-1">
+                {route.originCity} → {route.destinationCity}
+                {route.estimatedDays != null && ` · ~${route.estimatedDays} days`}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-end gap-2 mt-5">
+        <Button size="sm" variant="outline" onClick={onClose} disabled={isAssigning}>
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleConfirm}
+          disabled={!selectedRouteId || isAssigning}
+          isLoading={isAssigning}
+        >
+          <FaRoute className="w-3 h-3 mr-1.5" />
+          {shipment.route ? 'Change Route' : 'Assign Route'}
+        </Button>
+      </div>
+    </Modal>
   );
 }
 
