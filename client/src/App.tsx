@@ -8,6 +8,7 @@ import { ProtectedRoute, RoleRoute } from './router';
 import type { User } from './store/auth.store';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import { LiveSocketBridge } from './components/live/LiveSocketBridge';
 
 // Lazy-loaded pages — each becomes its own chunk
 const HomePage = lazy(() =>
@@ -186,6 +187,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <LiveSocketBridge />
       <ErrorBoundary>
         <BrowserRouter>
           <Routes>
