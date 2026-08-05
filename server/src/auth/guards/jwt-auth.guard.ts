@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator';
 import { UsersService } from '../../users/users.service';
+import { RedisService } from '../../redis/redis.service';
 import { FastifyRequest } from 'fastify';
 
 @Injectable()
@@ -16,9 +17,13 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
     private readonly usersService: UsersService,
+    private readonly redisService: RedisService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // RabbitMQ/WebSocket handlers carry no HTTP auth semantics;
+    if (context.getType() !== 'http') return true;
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -51,6 +56,20 @@ export class JwtAuthGuard implements CanActivate {
       }
 
       if (user.user_token_version !== payload.tokenVersion) {
+        throw new UnauthorizedException(
+          'Session expired - please log in again',
+        );
+      }
+
+      // This kills access for OTHER browsers/tabs after logout/revoke
+      if (typeof payload.sessionId !== 'string') {
+        throw new UnauthorizedException('Invalid token claims');
+      }
+      const sessionAlive = await this.redisService.sismember(
+        `user_sessions:${user.user_id}`,
+        payload.sessionId,
+      );
+      if (sessionAlive !== 1) {
         throw new UnauthorizedException(
           'Session expired - please log in again',
         );

@@ -115,23 +115,23 @@ export class WebsocketGateway
    */
   @SubscribeMessage('join_page')
   handleJoinPage(@MessageBody() page, @ConnectedSocket() client: Socket) {
-    const user = client.data.user as SocketUser | undefined;
+    const user = this.requireUser(client);
     if (!user) return;
     const pageName = typeof page === 'string' ? page.trim().slice(0, 64) : '';
     if (!pageName) return;
     if (client.data.currentPage) {
-      void client.leave(`page:${client.data.currentPage}`);
+      client.leave(`page:${client.data.currentPage}`);
     }
-    void client.join(`page:${pageName}`);
+    client.join(`page:${pageName}`);
     client.data.currentPage = pageName;
     this.logger.debug(`user ${user.sub} joined page:${pageName}`);
   }
 
   @SubscribeMessage('leave_page')
   handleLeavePage(@ConnectedSocket() client: Socket) {
-    const user = client.data.user as SocketUser | undefined;
+    const user = this.requireUser(client);
     if (!user || !client.data.currentPage) return;
-    void client.leave(`page:${client.data.currentPage}`);
+    client.leave(`page:${client.data.currentPage}`);
     client.data.currentPage = undefined;
     this.logger.debug(`user ${user.sub} left page`);
   }
@@ -163,6 +163,15 @@ export class WebsocketGateway
         socket.disconnect(true);
       }
     }
+  }
+
+  private requireUser(client: Socket): SocketUser | undefined {
+    const user = client.data.user as SocketUser | undefined;
+    if (!user) {
+      this.authRequired(client);
+      return undefined;
+    }
+    return user;
   }
 
   private canViewShipment(
