@@ -11,6 +11,7 @@ import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { randomUUID } from 'crypto';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { ConfigService } from '@nestjs/config';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class OrganizationsService {
@@ -20,6 +21,7 @@ export class OrganizationsService {
     private readonly prisma: PrismaService,
     private readonly amqpConnection: AmqpConnection,
     private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
   ) {}
 
   async createInvitation(
@@ -39,12 +41,15 @@ export class OrganizationsService {
     const org = await this.prisma.organization.findUnique({
       where: { organization_id: orgId },
     });
-    
+
     if (!org) {
       throw new NotFoundException('Organization not found');
     }
 
-    if (dto.role !== 'admin' && dto.role.toLowerCase() !== org.organization_type.toLowerCase()) {
+    if (
+      dto.role !== 'admin' &&
+      dto.role.toLowerCase() !== org.organization_type.toLowerCase()
+    ) {
       throw new ConflictException(
         `Role mismatch: Cannot invite a '${dto.role}' to a '${org.organization_type}' organization.`,
       );
@@ -76,6 +81,19 @@ export class OrganizationsService {
     });
 
     this.logger.log(`Invitation created for ${dto.email} (role ${dto.role})`);
+
+    this.auditService.log({
+      action: 'ORG_INVITATION_CREATE',
+      resourceType: 'organization',
+      resourceId: orgId,
+      userId,
+      newValue: {
+        invitationId: invitation.invitation_id,
+        email: dto.email,
+        role: dto.role,
+        expiresAt,
+      },
+    });
 
     return {
       id: invitation.invitation_id,
@@ -167,6 +185,18 @@ export class OrganizationsService {
 
     this.logger.log(`Invitation resent for ${invitation.invited_email}`);
 
+    this.auditService.log({
+      action: 'ORG_INVITATION_RESEND',
+      resourceType: 'organization',
+      resourceId: orgId,
+      userId,
+      newValue: {
+        invitationId,
+        email: invitation.invited_email,
+        expiresAt,
+      },
+    });
+
     return { message: 'Invitation resent successfully' };
   }
 
@@ -187,10 +217,28 @@ export class OrganizationsService {
 
     this.logger.log(`Invitation ${invitationId} canceled and deleted`);
 
+    this.auditService.log({
+      action: 'ORG_INVITATION_CANCEL',
+      resourceType: 'organization',
+      resourceId: orgId,
+      userId,
+      oldValue: {
+        invitationId,
+        email: invitation.invited_email,
+        role: invitation.invited_role,
+        status: invitation.status,
+      },
+    });
+
     return { message: 'Invitation canceled successfully' };
   }
 
-  async getMembers(orgId: string, page: number = 1, limit: number = 10, userId: string) {
+  async getMembers(
+    orgId: string,
+    page: number = 1,
+    limit: number = 10,
+    userId: string,
+  ) {
     await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
 
     const skip = (page - 1) * limit;
@@ -234,7 +282,11 @@ export class OrganizationsService {
     };
   }
 
-  async deactivateMember(orgId: string, targetUserId: string, requestingUserId: string) {
+  async deactivateMember(
+    orgId: string,
+    targetUserId: string,
+    requestingUserId: string,
+  ) {
     await this.ensureOrgAdminOrSuperAdmin(requestingUserId, orgId);
 
     if (targetUserId === requestingUserId) {
@@ -249,7 +301,7 @@ export class OrganizationsService {
       throw new NotFoundException('User not found in this organization');
     }
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { user_id: targetUserId },
       data: { user_is_active: false },
       select: {
@@ -261,9 +313,24 @@ export class OrganizationsService {
         user_is_active: true,
       },
     });
+
+    this.auditService.log({
+      action: 'ORG_MEMBER_DEACTIVATE',
+      resourceType: 'organization',
+      resourceId: orgId,
+      userId: requestingUserId,
+      oldValue: { userId: targetUserId, isActive: user.user_is_active },
+      newValue: { userId: updated.user_id, isActive: updated.user_is_active },
+    });
+
+    return updated;
   }
 
-  async activateMember(orgId: string, targetUserId: string, requestingUserId: string) {
+  async activateMember(
+    orgId: string,
+    targetUserId: string,
+    requestingUserId: string,
+  ) {
     await this.ensureOrgAdminOrSuperAdmin(requestingUserId, orgId);
 
     const user = await this.prisma.user.findFirst({
@@ -274,7 +341,7 @@ export class OrganizationsService {
       throw new NotFoundException('User not found in this organization');
     }
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { user_id: targetUserId },
       data: { user_is_active: true },
       select: {
@@ -286,6 +353,17 @@ export class OrganizationsService {
         user_is_active: true,
       },
     });
+
+    this.auditService.log({
+      action: 'ORG_MEMBER_ACTIVATE',
+      resourceType: 'organization',
+      resourceId: orgId,
+      userId: requestingUserId,
+      oldValue: { userId: targetUserId, isActive: user.user_is_active },
+      newValue: { userId: updated.user_id, isActive: updated.user_is_active },
+    });
+
+    return updated;
   }
 
   private async ensureOrgAdminOrSuperAdmin(userId: string, orgId: string) {
