@@ -20,8 +20,9 @@ import { WebsocketModule } from './websocket/websocket.module';
 import { AuditModule } from './audit/audit.module';
 
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { RequestContextInterceptor } from './common/context/request-context.interceptor';
 
 @Module({
   imports: [
@@ -66,6 +67,10 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestContextInterceptor,
     },
   ],
 })
