@@ -7,9 +7,9 @@ import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { showToast } from '../ui/Toast';
 import { extractErrorMessage } from '../../api/client';
 import { FaUsers, FaEnvelope, FaCalendarAlt, FaCheckCircle, FaTimesCircle, FaBan } from 'react-icons/fa';
-import { formatDate } from '../../lib/utils';
+import { formatDate, cn } from '../../lib/utils';
 
-const roleBadgeVariant: Record<string, 'info' | 'success' | 'warning' | 'danger' | 'primary'> = {
+const roleBadgeVariant: Record<string, 'info' | 'success' | 'warning' | 'danger' | 'primary' | 'default'> = {
   super_admin: 'danger',
   admin: 'primary',
   shipper: 'info',
@@ -244,17 +244,17 @@ function Header({ orgName, memberCount }: { orgName?: string; memberCount: numbe
   );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
+function Th({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <th className="px-6 py-3 text-left text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">
+    <th className={cn('px-6 py-3 text-left text-xs font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider', className)}>
       {children}
     </th>
   );
 }
 
-function Td({ children }: { children: React.ReactNode }) {
+function Td({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <td className="px-6 py-4 whitespace-nowrap">
+    <td className={cn('px-6 py-4 whitespace-nowrap', className)}>
       {children}
     </td>
   );

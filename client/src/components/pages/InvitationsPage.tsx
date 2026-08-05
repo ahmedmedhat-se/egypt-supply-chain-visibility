@@ -18,10 +18,11 @@ import {
   FaExclamationTriangle,
   FaCheckCircle,
   FaPaperPlane,
+  FaTimesCircle,
 } from 'react-icons/fa';
 import { formatDate } from '../../lib/utils';
 
-const roleBadgeVariant: Record<string, 'info' | 'warning' | 'danger' | 'primary'> = {
+const roleBadgeVariant: Record<string, 'info' | 'warning' | 'danger' | 'primary' | 'default'> = {
   admin: 'primary',
   shipper: 'info',
   carrier: 'warning',
@@ -49,7 +50,6 @@ export const InvitationsPage = () => {
     },
     enabled: !!orgId,
     staleTime: 0,
-    refetchInterval: 30_000,
   });
 
   /* ───── Resend mutation ───── */

@@ -18,7 +18,7 @@ import {
   FaBuilding,
 } from 'react-icons/fa';
 
-const roleBadgeVariant: Record<string, 'info' | 'warning' | 'danger' | 'primary'> = {
+const roleBadgeVariant: Record<string, 'info' | 'warning' | 'danger' | 'primary' | 'default'> = {
   admin: 'primary',
   shipper: 'info',
   carrier: 'warning',
