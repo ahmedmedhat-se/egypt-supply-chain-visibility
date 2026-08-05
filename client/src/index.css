@@ -82,3 +82,146 @@ body {
 .animate-leave {
   animation: leave 150ms ease-in;
 }
+
+/* Live map markers */
+.live-pin {
+  background: transparent;
+  border: none;
+}
+
+.live-pin-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(10, 46, 74, 0.45);
+}
+
+.live-pin-ring {
+  position: absolute;
+  inset: -7px;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  animation: live-pulse 1.6s ease-out infinite;
+}
+
+@keyframes live-pulse {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+.live-popup {
+  font-family: system-ui, -apple-system, sans-serif;
+  min-width: 190px;
+}
+
+.live-popup-ref {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.live-popup-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  display: inline-block;
+}
+
+.live-popup-route {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.live-popup-row {
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.live-popup-row strong {
+  color: #0a2e4a;
+}
+
+.leaflet-container {
+  font: inherit;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 10px;
+}
+
+.marker-cluster-small {
+  background-color: rgba(14, 165, 233, 0.25);
+}
+
+.marker-cluster-small div {
+  background-color: rgba(14, 165, 233, 0.75);
+}
+
+.marker-cluster-medium {
+  background-color: rgba(45, 155, 110, 0.25);
+}
+
+.marker-cluster-medium div {
+  background-color: rgba(45, 155, 110, 0.75);
+}
+
+.marker-cluster-large {
+  background-color: rgba(239, 68, 68, 0.25);
+}
+
+.marker-cluster-large div {
+  background-color: rgba(239, 68, 68, 0.75);
+}
+
+.marker-cluster div {
+  color: #ffffff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* MapPicker pulsing pin */
+.pulsing-marker {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2D9B6E;
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(10, 46, 74, 0.35);
+}
+
+.pulsing-marker::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(45, 155, 110, 0.6);
+  animation: pulse-ring 1.6s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
