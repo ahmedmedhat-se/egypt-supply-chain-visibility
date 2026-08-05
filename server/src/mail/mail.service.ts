@@ -1,14 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MailService.name);
   private transporter: Transporter | null = null;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {}
+
+  onModuleInit() {
     const host = this.configService.get<string>('MAIL_HOST');
     if (host) {
       this.transporter = nodemailer.createTransport({
@@ -22,6 +29,13 @@ export class MailService {
       });
     } else {
       this.logger.warn('Mail host not configured - emails will be logged only');
+    }
+  }
+
+  async onModuleDestroy() {
+    if (this.transporter) {
+      this.transporter.close();
+      this.logger.log('SMTP transporter closed');
     }
   }
 
