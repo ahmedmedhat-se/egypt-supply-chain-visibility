@@ -16,6 +16,8 @@ import { AdminModule } from './admin/admin.module';
 import { CheckpointsModule } from './checkpoints/checkpoints.module';
 import { RoutesModule } from './routes/routes.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { WebsocketModule } from './websocket/websocket.module';
+import { AuditModule } from './audit/audit.module';
 
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
@@ -51,6 +53,8 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     CheckpointsModule,
     RoutesModule,
     DashboardModule,
+    WebsocketModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [
