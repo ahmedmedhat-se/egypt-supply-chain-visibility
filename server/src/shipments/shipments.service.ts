@@ -14,6 +14,7 @@ import { AssignRouteDto } from './dto/assign-route.dto';
 import { QueryShipmentDto } from './dto/query-shipment.dto';
 import { STATUS_TRANSITIONS } from './shipments.constants';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { AuditService } from '../audit/audit.service';
 import type { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
@@ -32,6 +33,7 @@ export class ShipmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly amqpConnection: AmqpConnection,
+    private readonly auditService: AuditService,
   ) {}
 
   // ---------- Create ----------
@@ -196,6 +198,22 @@ export class ShipmentsService {
     this.logger.log(
       `Shipment created: ${shipment.shipment_reference_number} (ID: ${shipment.shipment_id})`,
     );
+
+    this.auditService.log({
+      action: 'SHIPMENT_CREATE',
+      resourceType: 'shipment',
+      resourceId: shipment.shipment_id,
+      userId: user.sub,
+      newValue: {
+        referenceNumber: shipment.shipment_reference_number,
+        status: shipment.shipment_status,
+        shipperOrganizationId: shipment.shipper_organization_id,
+        carrierOrganizationId: shipment.carrier_organization_id,
+        routeId: shipment.route_id,
+        originCity: shipment.shipment_origin_city,
+        destinationCity: shipment.shipment_destination_city,
+      },
+    });
 
     await this.amqpConnection.publish('escv.events', 'shipment.created', {
       shipment_id: shipment.shipment_id,
@@ -534,6 +552,15 @@ export class ShipmentsService {
       `Shipment updated: ${updated.shipment_reference_number} (ID: ${updated.shipment_id})`,
     );
 
+    this.auditService.log({
+      action: 'SHIPMENT_UPDATE',
+      resourceType: 'shipment',
+      resourceId: id,
+      userId: user.sub,
+      oldValue: this.auditPayload(shipment),
+      newValue: this.auditPayload(updated),
+    });
+
     return this.formatShipment(updated);
   }
 
@@ -674,6 +701,15 @@ export class ShipmentsService {
     this.logger.log(
       `Shipment ${updated.shipment_reference_number}: route "${route.route_name}" assigned (ID: ${updated.shipment_id})`,
     );
+
+    this.auditService.log({
+      action: 'SHIPMENT_ROUTE_ASSIGN',
+      resourceType: 'shipment',
+      resourceId: id,
+      userId: user.sub,
+      oldValue: { routeId: shipment.route_id },
+      newValue: { routeId: route.route_id, routeName: route.route_name },
+    });
 
     return this.formatShipment(updated);
   }
@@ -883,6 +919,33 @@ export class ShipmentsService {
       `Shipment ${updatedShipment.shipment_reference_number} status updated to "${dto.status}"`,
     );
 
+    this.auditService.log({
+      action: 'SHIPMENT_STATUS_UPDATE',
+      resourceType: 'shipment',
+      resourceId: id,
+      userId: user.sub,
+      oldValue: {
+        status: shipment.shipment_status,
+        latitude: shipment.shipment_current_latitude
+          ? Number(shipment.shipment_current_latitude)
+          : null,
+        longitude: shipment.shipment_current_longitude
+          ? Number(shipment.shipment_current_longitude)
+          : null,
+        checkpointId: shipment.shipment_current_checkpoint_id,
+      },
+      newValue: {
+        status: updatedShipment.shipment_status,
+        latitude: updatedShipment.shipment_current_latitude
+          ? Number(updatedShipment.shipment_current_latitude)
+          : null,
+        longitude: updatedShipment.shipment_current_longitude
+          ? Number(updatedShipment.shipment_current_longitude)
+          : null,
+        checkpointId: updatedShipment.shipment_current_checkpoint_id,
+      },
+    });
+
     return this.formatShipment(updatedShipment);
   }
 
@@ -1034,6 +1097,18 @@ export class ShipmentsService {
         `Shipment ${updated.shipment_reference_number}: carrier user ${user.sub} assigned (org already claimed)`,
       );
 
+      this.auditService.log({
+        action: 'SHIPMENT_ACCEPT',
+        resourceType: 'shipment',
+        resourceId: id,
+        userId: user.sub,
+        oldValue: { carrierUserId: shipment.carrier_user_id },
+        newValue: {
+          carrierUserId: updated.carrier_user_id,
+          carrierOrganizationId: updated.carrier_organization_id,
+        },
+      });
+
       await this.amqpConnection.publish('escv.events', 'shipment.accepted', {
         shipment_id: updated.shipment_id,
         reference_number: updated.shipment_reference_number,
@@ -1121,6 +1196,23 @@ export class ShipmentsService {
       `Shipment ${updated.shipment_reference_number} accepted by carrier user ${user.sub} (org ${dbUser.organization_id})`,
     );
 
+    this.auditService.log({
+      action: 'SHIPMENT_ACCEPT',
+      resourceType: 'shipment',
+      resourceId: id,
+      userId: user.sub,
+      oldValue: {
+        carrierOrganizationId: shipment.carrier_organization_id,
+        carrierUserId: shipment.carrier_user_id,
+        status: shipment.shipment_status,
+      },
+      newValue: {
+        carrierOrganizationId: updated.carrier_organization_id,
+        carrierUserId: updated.carrier_user_id,
+        status: updated.shipment_status,
+      },
+    });
+
     await this.amqpConnection.publish('escv.events', 'shipment.accepted', {
       shipment_id: updated.shipment_id,
       reference_number: updated.shipment_reference_number,
@@ -1161,6 +1253,14 @@ export class ShipmentsService {
     this.logger.log(
       `Shipment deleted: ${shipment.shipment_reference_number} (ID: ${shipment.shipment_id})`,
     );
+
+    this.auditService.log({
+      action: 'SHIPMENT_DELETE',
+      resourceType: 'shipment',
+      resourceId: id,
+      userId: user.sub,
+      oldValue: this.auditPayload(shipment),
+    });
 
     await this.amqpConnection.publish('escv.events', 'shipment.removed', {
       shipment_id: shipment.shipment_id,
@@ -1331,6 +1431,28 @@ export class ShipmentsService {
   private isValidTransition(current: string, next: string): boolean {
     const allowed = STATUS_TRANSITIONS[current];
     return allowed ? allowed.includes(next) : false;
+  }
+
+  /** Whitelisted snapshot for audit rows — never includes content, notes, or identity data. */
+  private auditPayload(shipment: any) {
+    return {
+      status: shipment.shipment_status,
+      cargoType: shipment.shipment_cargo_type ?? null,
+      weightKg: shipment.shipment_weight_kg
+        ? Number(shipment.shipment_weight_kg)
+        : null,
+      volumeM3: shipment.shipment_volume_m3
+        ? Number(shipment.shipment_volume_m3)
+        : null,
+      originCity: shipment.shipment_origin_city,
+      destinationCity: shipment.shipment_destination_city,
+      shipperOrganizationId: shipment.shipper_organization_id,
+      carrierOrganizationId: shipment.carrier_organization_id,
+      carrierUserId: shipment.carrier_user_id,
+      routeId: shipment.route_id,
+      estimatedDepartureAt: shipment.shipment_estimated_departure_at,
+      estimatedArrivalAt: shipment.shipment_estimated_arrival_at,
+    };
   }
 
   private formatShipment(shipment: any) {
