@@ -28,14 +28,15 @@ export const AdminDashboardPage = () => {
       const res = await dashboardApi.getStats();
       return res.data;
     },
-    refetchInterval: 30_000,
   });
 
   const { data: pendingInvites } = useQuery({
     queryKey: ['org-invitations', user?.organizationId],
     queryFn: async () => {
-      const res = await organizationApi.getInvitations(user!.organizationId, 'pending');
-      return res.data;
+      const res = await organizationApi.getInvitations(user!.organizationId, 'pending', {
+        limit: 50,
+      });
+      return res.data.data;
     },
     enabled: !!user?.organizationId,
     staleTime: 0,

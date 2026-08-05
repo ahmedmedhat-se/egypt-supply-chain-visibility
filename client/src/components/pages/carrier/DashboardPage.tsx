@@ -20,7 +20,6 @@ export const CarrierDashboardPage = () => {
       const res = await dashboardApi.getStats();
       return res.data;
     },
-    refetchInterval: 30_000,
   });
 
   if (!user) return null;

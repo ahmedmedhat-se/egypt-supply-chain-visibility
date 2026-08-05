@@ -17,8 +17,6 @@ export const DashboardPage = () => {
       const res = await dashboardApi.getStats();
       return res.data;
     },
-    // Refetch every 30 seconds for live updates
-    refetchInterval: 30_000,
   });
 
   if (!user) return null;
