@@ -29,12 +29,16 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
       validationSchema,
       envFilePath: '.env',
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 100, // 100 requests per minute max globally
-      },
-    ]),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 100, // 100 requests per minute max globally
+        },
+      ],
+      // Only HTTP requests are rate-limited; RabbitMQ and WebSocket
+      skipIf: (context) => context.getType() !== 'http',
+    }),
     PrismaModule,
     RedisModule,
     UsersModule,
