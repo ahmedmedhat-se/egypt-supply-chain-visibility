@@ -10,6 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
+import { AssignRouteDto } from './dto/assign-route.dto';
 import { QueryShipmentDto } from './dto/query-shipment.dto';
 import { STATUS_TRANSITIONS } from './shipments.constants';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
@@ -438,6 +439,147 @@ export class ShipmentsService {
 
     this.logger.log(
       `Shipment updated: ${updated.shipment_reference_number} (ID: ${updated.shipment_id})`,
+    );
+
+    return this.formatShipment(updated);
+  }
+
+  // ---------- Assign Route ----------
+
+  async assignRoute(user: RequestUser, id: string, dto: AssignRouteDto) {
+    const shipment = await this.prisma.shipment.findUnique({
+      where: { shipment_id: id },
+    });
+
+    if (!shipment) {
+      throw new NotFoundException('Shipment not found');
+    }
+
+    if (shipment.shipment_status === 'delivered') {
+      throw new BadRequestException(
+        'Cannot change the route of a delivered shipment',
+      );
+    }
+    if (
+      shipment.shipment_status === 'cancelled' &&
+      user.role !== 'super_admin'
+    ) {
+      throw new ForbiddenException(
+        'Cannot change the route of a cancelled shipment. Contact your admin to restore it.',
+      );
+    }
+
+    const dbUser = await this.prisma.user.findUnique({
+      where: { user_id: user.sub },
+      select: {
+        organization_id: true,
+        organization: { select: { organization_type: true } },
+      },
+    });
+
+    if (!dbUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isShipperSide =
+      shipment.shipper_organization_id === dbUser.organization_id &&
+      (user.role === 'shipper' || user.role === 'admin');
+    const isCarrierSide =
+      shipment.carrier_organization_id === dbUser.organization_id &&
+      dbUser.organization?.organization_type === 'carrier' &&
+      (user.role === 'carrier' || user.role === 'admin');
+
+    if (user.role !== 'super_admin' && !isShipperSide && !isCarrierSide) {
+      throw new ForbiddenException(
+        'You do not have permission to assign a route to this shipment',
+      );
+    }
+
+    const route = await this.prisma.route.findUnique({
+      where: { route_id: dto.routeId },
+    });
+    if (!route) {
+      throw new BadRequestException('Route not found');
+    }
+
+    const updated = await this.prisma.shipment.update({
+      where: { shipment_id: id },
+      data: { route_id: dto.routeId },
+      include: {
+        shipper_organization: {
+          select: { organization_id: true, organization_name: true },
+        },
+        carrier_organization: {
+          select: { organization_id: true, organization_name: true },
+        },
+        carrier_user: {
+          select: {
+            user_id: true,
+            user_first_name: true,
+            user_last_name: true,
+            user_email: true,
+          },
+        },
+        route: {
+          select: {
+            route_id: true,
+            route_name: true,
+            route_code: true,
+            route_estimated_days: true,
+            route_checkpoints: {
+              orderBy: { sequence_order: 'asc' },
+              select: {
+                sequence_order: true,
+                checkpoint: {
+                  select: {
+                    checkpoint_id: true,
+                    checkpoint_name: true,
+                    checkpoint_city: true,
+                    checkpoint_latitude: true,
+                    checkpoint_longitude: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        created_by: {
+          select: {
+            user_id: true,
+            user_first_name: true,
+            user_last_name: true,
+          },
+        },
+      },
+    });
+
+    await this.prisma.shipmentEvent.create({
+      data: {
+        shipment_id: id,
+        event_type: 'route_assigned',
+        event_status: 'confirmed',
+        event_description: `Route "${route.route_name}" assigned to this shipment`,
+        recorded_by_user_id: user.sub,
+      },
+    });
+
+    await this.amqpConnection.publish(
+      'escv.events',
+      'shipment.route_assigned',
+      {
+        shipment_id: updated.shipment_id,
+        reference_number: shipment.shipment_reference_number,
+        route_id: route.route_id,
+        shipment_status: updated.shipment_status,
+        occurred_at: new Date().toISOString(),
+        shipperOrganizationId: shipment.shipper_organization_id,
+        carrierOrganizationId: shipment.carrier_organization_id,
+        carrierUserId: shipment.carrier_user_id,
+      },
+    );
+
+    this.logger.log(
+      `Shipment ${updated.shipment_reference_number}: route "${route.route_name}" assigned (ID: ${updated.shipment_id})`,
     );
 
     return this.formatShipment(updated);

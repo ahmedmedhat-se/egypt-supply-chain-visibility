@@ -16,6 +16,7 @@ import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { QueryShipmentDto } from './dto/query-shipment.dto';
+import { AssignRouteDto } from './dto/assign-route.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -76,6 +77,19 @@ export class ShipmentsController {
     @CurrentUser() user: any,
   ) {
     return this.shipmentsService.updateStatus(user, id, dto);
+  }
+
+  @Patch(':id/route')
+  @Roles('shipper', 'admin', 'carrier', 'super_admin')
+  @ApiOperation({ summary: 'Assign or change the route of a shipment' })
+  @ApiResponse({ status: 200, description: 'Shipment route updated.' })
+  @ApiResponse({ status: 404, description: 'Shipment or route not found.' })
+  async assignRoute(
+    @Param('id') id: string,
+    @Body() dto: AssignRouteDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.shipmentsService.assignRoute(user, id, dto);
   }
 
   @Post(':id/accept')
