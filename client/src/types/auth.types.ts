@@ -21,9 +21,10 @@ export interface ApiUser {
   id: string;
   email: string;
   name: string;
-  role: 'super_admin' | 'admin' | 'shipper' | 'carrier' | 'regulator';
+  role: "super_admin" | "admin" | "shipper" | "carrier" | "regulator";
   organizationId: string;
   organizationName: string;
+  organizationType: "shipper" | "carrier" | "regulator" | null;
 }
 
 export interface AuthResponse {

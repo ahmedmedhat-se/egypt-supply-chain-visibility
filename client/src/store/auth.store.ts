@@ -1,13 +1,14 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'super_admin' | 'admin' | 'shipper' | 'carrier' | 'regulator';
+  role: "super_admin" | "admin" | "shipper" | "carrier" | "regulator";
   organizationId: string;
   organizationName: string;
+  organizationType: "shipper" | "carrier" | "regulator" | null;
 }
 
 interface AuthState {
@@ -32,8 +33,8 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
 
       setAuth: (user, accessToken) => {
-        localStorage.setItem('access_token', accessToken);
-        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem("access_token", accessToken);
+        localStorage.setItem("user", JSON.stringify(user));
 
         set({
           user,
@@ -44,13 +45,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setAccessToken: (accessToken) => {
-        localStorage.setItem('access_token', accessToken);
+        localStorage.setItem("access_token", accessToken);
         set({ accessToken });
       },
 
       clearAuth: () => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
 
         set({
           user: null,
@@ -63,12 +64,12 @@ export const useAuthStore = create<AuthState>()(
       setLoading: (loading) => set({ isLoading: loading }),
     }),
     {
-      name: 'auth-storage',
+      name: "auth-storage",
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
         isAuthenticated: state.isAuthenticated,
       }),
-    }
-  )
+    },
+  ),
 );

@@ -31,8 +31,9 @@ export const ShipmentsPage = () => {
   const isShipper = user?.role === 'shipper';
   const isAdmin = user?.role === 'admin';
 
-  const canCreate = isShipper || isAdmin;
-  const canEdit = isShipper || isAdmin;
+  // A carrier-org admin must NOT see create/edit shipment
+  const canCreate = isShipper || (isAdmin && user?.organizationType === 'shipper');
+  const canEdit = isShipper || (isAdmin && user?.organizationType === 'shipper');
 
   const canUpdateStatus = (shipment?: Shipment) => {
     // Anyone can update status normally
