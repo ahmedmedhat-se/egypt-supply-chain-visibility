@@ -9,6 +9,7 @@ import {
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import fastifyCookie from '@fastify/cookie';
+import { SocketIoAdapter } from './websocket/socket-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -38,6 +39,9 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   });
+
+  // Socket.io adapter
+  app.useWebSocketAdapter(new SocketIoAdapter(app));
 
   const config = new DocumentBuilder()
     .setTitle('Egypt Supply Chain Visibility API')
