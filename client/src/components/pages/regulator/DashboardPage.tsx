@@ -1,5 +1,4 @@
 import { Card } from '../../ui/Card';
-import { Button } from '../../ui/Button';
 import { useAuthStore } from '../../../store/auth.store';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/routes';

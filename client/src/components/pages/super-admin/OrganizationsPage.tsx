@@ -14,7 +14,7 @@ import {
   TableCell,
 } from '../../ui/Table';
 import { adminApi } from '../../../api/admin.api';
-import { formatDate, cn } from '../../../lib/utils';
+import { formatDate } from '../../../lib/utils';
 import { FaBuilding, FaGlobe, FaCheckCircle, FaTimesCircle, FaBan } from 'react-icons/fa';
 
 export const SuperAdminOrganizationsPage = () => {

@@ -112,7 +112,7 @@ export const ContactPage = () => {
     return 'border-[#D1D9E6] dark:border-[#1A3D5A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E]';
   };
 
-  const onSubmit = async (data: ContactFormData) => {
+  const onSubmit = async () => {
     setIsSubmitting(true);
     // Simulate submission (no backend endpoint yet)
     await new Promise((resolve) => setTimeout(resolve, 1000));
