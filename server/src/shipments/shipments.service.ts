@@ -886,6 +886,33 @@ export class ShipmentsService {
       }
     }
 
+    if (query.scope) {
+      const scopeUser = await this.prisma.user.findUnique({
+        where: { user_id: user.sub },
+        select: { organization_id: true },
+      });
+      const orgId = scopeUser?.organization_id ?? null;
+      if (query.scope === 'assigned') {
+        where.OR = orgId
+          ? [
+              { carrier_organization_id: orgId },
+              ...(user.role === 'carrier'
+                ? [{ carrier_user_id: user.sub }]
+                : []),
+            ]
+          : [];
+      } else if (query.scope === 'available') {
+        where.OR = [
+          {
+            AND: [
+              { carrier_organization_id: null },
+              { shipment_status: { not: 'cancelled' } },
+            ],
+          },
+        ];
+      }
+    }
+
     return where;
   }
 

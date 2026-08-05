@@ -32,6 +32,16 @@ export class QueryShipmentDto {
   carrierOrganizationId?: string;
 
   @ApiPropertyOptional({
+    enum: ['available', 'assigned'],
+    description:
+      'Scope filter: "available" lists shipments still unclaimed by any carrier, "assigned" lists shipments claimed by the caller organization.',
+  })
+  @IsString()
+  @IsOptional()
+  @IsIn(['available', 'assigned'])
+  scope?: 'available' | 'assigned';
+
+  @ApiPropertyOptional({
     description: 'Filter shipments created after this date (ISO 8601)',
   })
   @IsDateString()
