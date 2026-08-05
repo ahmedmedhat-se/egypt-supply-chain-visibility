@@ -197,6 +197,19 @@ export class ShipmentsService {
       `Shipment created: ${shipment.shipment_reference_number} (ID: ${shipment.shipment_id})`,
     );
 
+    await this.amqpConnection.publish('escv.events', 'shipment.created', {
+      shipment_id: shipment.shipment_id,
+      reference_number: shipment.shipment_reference_number,
+      status: shipment.shipment_status,
+      occurred_at: new Date().toISOString(),
+      latitude: null,
+      longitude: null,
+      estimated_arrival_at: shipment.shipment_estimated_arrival_at,
+      shipperOrganizationId: shipment.shipper_organization_id,
+      carrierOrganizationId: shipment.carrier_organization_id,
+      carrierUserId: shipment.carrier_user_id,
+    });
+
     return this.formatShipment(shipment);
   }
 
@@ -1021,6 +1034,19 @@ export class ShipmentsService {
         `Shipment ${updated.shipment_reference_number}: carrier user ${user.sub} assigned (org already claimed)`,
       );
 
+      await this.amqpConnection.publish('escv.events', 'shipment.accepted', {
+        shipment_id: updated.shipment_id,
+        reference_number: updated.shipment_reference_number,
+        status: updated.shipment_status,
+        occurred_at: new Date().toISOString(),
+        latitude: null,
+        longitude: null,
+        estimated_arrival_at: updated.shipment_estimated_arrival_at,
+        shipperOrganizationId: updated.shipper_organization_id,
+        carrierOrganizationId: updated.carrier_organization_id,
+        carrierUserId: updated.carrier_user_id,
+      });
+
       return this.formatShipment(updated);
     }
 
@@ -1095,6 +1121,19 @@ export class ShipmentsService {
       `Shipment ${updated.shipment_reference_number} accepted by carrier user ${user.sub} (org ${dbUser.organization_id})`,
     );
 
+    await this.amqpConnection.publish('escv.events', 'shipment.accepted', {
+      shipment_id: updated.shipment_id,
+      reference_number: updated.shipment_reference_number,
+      status: updated.shipment_status,
+      occurred_at: new Date().toISOString(),
+      latitude: null,
+      longitude: null,
+      estimated_arrival_at: updated.shipment_estimated_arrival_at,
+      shipperOrganizationId: updated.shipper_organization_id,
+      carrierOrganizationId: updated.carrier_organization_id,
+      carrierUserId: updated.carrier_user_id,
+    });
+
     return this.formatShipment(updated);
   }
 
@@ -1122,6 +1161,23 @@ export class ShipmentsService {
     this.logger.log(
       `Shipment deleted: ${shipment.shipment_reference_number} (ID: ${shipment.shipment_id})`,
     );
+
+    await this.amqpConnection.publish('escv.events', 'shipment.removed', {
+      shipment_id: shipment.shipment_id,
+      reference_number: shipment.shipment_reference_number,
+      status: shipment.shipment_status,
+      occurred_at: new Date().toISOString(),
+      latitude: shipment.shipment_current_latitude
+        ? Number(shipment.shipment_current_latitude)
+        : null,
+      longitude: shipment.shipment_current_longitude
+        ? Number(shipment.shipment_current_longitude)
+        : null,
+      estimated_arrival_at: shipment.shipment_estimated_arrival_at,
+      shipperOrganizationId: shipment.shipper_organization_id,
+      carrierOrganizationId: shipment.carrier_organization_id,
+      carrierUserId: shipment.carrier_user_id,
+    });
 
     return { message: 'Shipment deleted successfully' };
   }
