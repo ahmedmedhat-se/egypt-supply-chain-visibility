@@ -1,4 +1,4 @@
-import type { Checkpoint } from './checkpoint.types';
+import type { Checkpoint } from "./checkpoint.types";
 
 export interface Route {
   id: string;
@@ -15,9 +15,13 @@ export interface Route {
 
 export interface RouteCheckpoint {
   id: string;
-  checkpointId: string;
+  name: string;
+  code: string;
+  type: Checkpoint["type"];
+  city: string;
+  latitude: number | null;
+  longitude: number | null;
   sequenceOrder: number;
-  checkpoint: Checkpoint;
 }
 
 export interface CreateRouteData {
