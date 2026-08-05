@@ -7,13 +7,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { 
-  AdminUpdateUserDto, 
+import { AuditService } from '../audit/audit.service';
+import {
+  AdminUpdateUserDto,
   AdminUpdateOrganizationDto,
   AdminQueryUsersDto,
   AdminQueryOrganizationsDto,
   AdminQueryShipmentsDto,
-  AdminBulkActionDto 
+  AdminBulkActionDto,
 } from './dto/admin.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -21,7 +22,10 @@ import * as bcrypt from 'bcrypt';
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   async getDashboardOverview(adminUser: any) {
     const [
@@ -37,14 +41,18 @@ export class AdminService {
       this.prisma.user.count(),
       this.prisma.user.count({ where: { user_is_active: true } }),
       this.prisma.organization.count(),
-      this.prisma.organization.count({ where: { organization_is_active: true } }),
+      this.prisma.organization.count({
+        where: { organization_is_active: true },
+      }),
       this.prisma.shipment.count(),
       this.prisma.shipment.groupBy({
         by: ['shipment_status'],
         _count: true,
       }),
       this.prisma.alert.count(),
-      this.prisma.alert.count({ where: { alert_severity: 'critical', alert_is_resolved: false } }),
+      this.prisma.alert.count({
+        where: { alert_severity: 'critical', alert_is_resolved: false },
+      }),
     ]);
 
     return {
@@ -59,7 +67,14 @@ export class AdminService {
   }
 
   async listUsers(query: AdminQueryUsersDto) {
-    const { page = 1, limit = 20, search, role, isActive, organizationId } = query;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      role,
+      isActive,
+      organizationId,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -117,7 +132,11 @@ export class AdminService {
       include: {
         organization: true,
         created_shipments: {
-          select: { shipment_id: true, shipment_reference_number: true, shipment_status: true },
+          select: {
+            shipment_id: true,
+            shipment_reference_number: true,
+            shipment_status: true,
+          },
           take: 10,
         },
         audit_logs: {
@@ -142,7 +161,9 @@ export class AdminService {
     }
 
     if (user.user_id === adminUser.user_id) {
-      throw new ForbiddenException('Cannot modify your own account through admin panel');
+      throw new ForbiddenException(
+        'Cannot modify your own account through admin panel',
+      );
     }
 
     const updateData: any = {};
@@ -168,7 +189,9 @@ export class AdminService {
         );
       }
     } else if (targetRole !== 'admin' && targetRole !== 'super_admin') {
-      throw new ConflictException(`Role mismatch: '${targetRole}' role requires an organization.`);
+      throw new ConflictException(
+        `Role mismatch: '${targetRole}' role requires an organization.`,
+      );
     }
 
     if (dto.user_role) updateData.user_role = dto.user_role;
@@ -183,7 +206,14 @@ export class AdminService {
       include: { organization: true },
     });
 
-    await this.logAdminAction(adminUser, 'UPDATE_USER', 'user', id, user, updated);
+    await this.logAdminAction(
+      adminUser,
+      'UPDATE_USER',
+      'user',
+      id,
+      user,
+      updated,
+    );
 
     return { success: true, data: updated };
   }
@@ -200,7 +230,14 @@ export class AdminService {
       data: { user_is_active: false },
     });
 
-    await this.logAdminAction(adminUser, 'DEACTIVATE_USER', 'user', id, user, updated);
+    await this.logAdminAction(
+      adminUser,
+      'DEACTIVATE_USER',
+      'user',
+      id,
+      user,
+      updated,
+    );
     return { success: true, message: 'User deactivated successfully' };
   }
 
@@ -213,7 +250,14 @@ export class AdminService {
       data: { user_is_active: true },
     });
 
-    await this.logAdminAction(adminUser, 'ACTIVATE_USER', 'user', id, user, updated);
+    await this.logAdminAction(
+      adminUser,
+      'ACTIVATE_USER',
+      'user',
+      id,
+      user,
+      updated,
+    );
     return { success: true, message: 'User activated successfully' };
   }
 
@@ -224,11 +268,13 @@ export class AdminService {
       throw new ForbiddenException('Cannot delete your own account');
     }
     if (user.user_role === 'admin') {
-      const adminCount = await this.prisma.user.count({ 
-        where: { user_role: 'admin', organization_id: user.organization_id } 
+      const adminCount = await this.prisma.user.count({
+        where: { user_role: 'admin', organization_id: user.organization_id },
       });
       if (adminCount <= 1) {
-        throw new ForbiddenException('Cannot delete the last admin user of this organization');
+        throw new ForbiddenException(
+          'Cannot delete the last admin user of this organization',
+        );
       }
     }
 
@@ -296,11 +342,19 @@ export class AdminService {
       include: {
         users: true,
         shipper_shipments: {
-          select: { shipment_id: true, shipment_reference_number: true, shipment_status: true },
+          select: {
+            shipment_id: true,
+            shipment_reference_number: true,
+            shipment_status: true,
+          },
           take: 10,
         },
         carrier_shipments: {
-          select: { shipment_id: true, shipment_reference_number: true, shipment_status: true },
+          select: {
+            shipment_id: true,
+            shipment_reference_number: true,
+            shipment_status: true,
+          },
           take: 10,
         },
       },
@@ -310,16 +364,27 @@ export class AdminService {
     return { success: true, data: org };
   }
 
-  async updateOrganization(id: string, dto: AdminUpdateOrganizationDto, adminUser: any) {
-    const org = await this.prisma.organization.findUnique({ where: { organization_id: id } });
+  async updateOrganization(
+    id: string,
+    dto: AdminUpdateOrganizationDto,
+    adminUser: any,
+  ) {
+    const org = await this.prisma.organization.findUnique({
+      where: { organization_id: id },
+    });
     if (!org) throw new NotFoundException('Organization not found');
 
     const updateData: any = {};
-    if (dto.organization_name) updateData.organization_name = dto.organization_name;
-    if (dto.organization_type) updateData.organization_type = dto.organization_type;
-    if (dto.organization_phone !== undefined) updateData.organization_phone = dto.organization_phone;
-    if (dto.organization_address !== undefined) updateData.organization_address = dto.organization_address;
-    if (dto.organization_country) updateData.organization_country = dto.organization_country;
+    if (dto.organization_name)
+      updateData.organization_name = dto.organization_name;
+    if (dto.organization_type)
+      updateData.organization_type = dto.organization_type;
+    if (dto.organization_phone !== undefined)
+      updateData.organization_phone = dto.organization_phone;
+    if (dto.organization_address !== undefined)
+      updateData.organization_address = dto.organization_address;
+    if (dto.organization_country)
+      updateData.organization_country = dto.organization_country;
 
     const updated = await this.prisma.organization.update({
       where: { organization_id: id },
@@ -327,12 +392,21 @@ export class AdminService {
       include: { users: true },
     });
 
-    await this.logAdminAction(adminUser, 'UPDATE_ORGANIZATION', 'organization', id, org, updated);
+    await this.logAdminAction(
+      adminUser,
+      'UPDATE_ORGANIZATION',
+      'organization',
+      id,
+      org,
+      updated,
+    );
     return { success: true, data: updated };
   }
 
   async deactivateOrganization(id: string, adminUser: any) {
-    const org = await this.prisma.organization.findUnique({ where: { organization_id: id } });
+    const org = await this.prisma.organization.findUnique({
+      where: { organization_id: id },
+    });
     if (!org) throw new NotFoundException('Organization not found');
 
     const updated = await this.prisma.organization.update({
@@ -345,12 +419,21 @@ export class AdminService {
       data: { user_is_active: false },
     });
 
-    await this.logAdminAction(adminUser, 'DEACTIVATE_ORGANIZATION', 'organization', id, org, updated);
+    await this.logAdminAction(
+      adminUser,
+      'DEACTIVATE_ORGANIZATION',
+      'organization',
+      id,
+      org,
+      updated,
+    );
     return { success: true, message: 'Organization deactivated successfully' };
   }
 
   async activateOrganization(id: string, adminUser: any) {
-    const org = await this.prisma.organization.findUnique({ where: { organization_id: id } });
+    const org = await this.prisma.organization.findUnique({
+      where: { organization_id: id },
+    });
     if (!org) throw new NotFoundException('Organization not found');
 
     const updated = await this.prisma.organization.update({
@@ -358,18 +441,41 @@ export class AdminService {
       data: { organization_is_active: true },
     });
 
-    await this.logAdminAction(adminUser, 'ACTIVATE_ORGANIZATION', 'organization', id, org, updated);
+    await this.logAdminAction(
+      adminUser,
+      'ACTIVATE_ORGANIZATION',
+      'organization',
+      id,
+      org,
+      updated,
+    );
     return { success: true, message: 'Organization activated successfully' };
   }
 
   async listShipments(query: AdminQueryShipmentsDto) {
-    const { page = 1, limit = 20, status, originCity, destinationCity, shipperId, carrierId } = query;
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      originCity,
+      destinationCity,
+      shipperId,
+      carrierId,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};
     if (status) where.shipment_status = status;
-    if (originCity) where.shipment_origin_city = { contains: originCity, mode: 'insensitive' };
-    if (destinationCity) where.shipment_destination_city = { contains: destinationCity, mode: 'insensitive' };
+    if (originCity)
+      where.shipment_origin_city = {
+        contains: originCity,
+        mode: 'insensitive',
+      };
+    if (destinationCity)
+      where.shipment_destination_city = {
+        contains: destinationCity,
+        mode: 'insensitive',
+      };
     if (shipperId) where.shipper_organization_id = shipperId;
     if (carrierId) where.carrier_organization_id = carrierId;
 
@@ -382,9 +488,22 @@ export class AdminService {
         include: {
           shipper_organization: { select: { organization_name: true } },
           carrier_organization: { select: { organization_name: true } },
-          carrier_user: { select: { user_id: true, user_first_name: true, user_last_name: true, user_email: true } },
+          carrier_user: {
+            select: {
+              user_id: true,
+              user_first_name: true,
+              user_last_name: true,
+              user_email: true,
+            },
+          },
           current_checkpoint: true,
-          created_by: { select: { user_email: true, user_first_name: true, user_last_name: true } },
+          created_by: {
+            select: {
+              user_email: true,
+              user_first_name: true,
+              user_last_name: true,
+            },
+          },
           events: {
             select: { event_type: true, event_occurred_at: true },
             take: 1,
@@ -419,7 +538,14 @@ export class AdminService {
       include: {
         shipper_organization: true,
         carrier_organization: true,
-        carrier_user: { select: { user_id: true, user_first_name: true, user_last_name: true, user_email: true } },
+        carrier_user: {
+          select: {
+            user_id: true,
+            user_first_name: true,
+            user_last_name: true,
+            user_email: true,
+          },
+        },
         route: {
           include: {
             route_checkpoints: {
@@ -433,7 +559,13 @@ export class AdminService {
         events: {
           include: {
             checkpoint: true,
-            recorded_by: { select: { user_email: true, user_first_name: true, user_last_name: true } },
+            recorded_by: {
+              select: {
+                user_email: true,
+                user_first_name: true,
+                user_last_name: true,
+              },
+            },
           },
           orderBy: { event_occurred_at: 'desc' },
         },
@@ -449,9 +581,17 @@ export class AdminService {
 
   async updateShipmentStatus(id: string, status: string, adminUser: any) {
     const validStatuses = [
-      'draft', 'confirmed', 'picked_up', 'in_transit',
-      'at_checkpoint', 'customs_hold', 'customs_cleared',
-      'out_for_delivery', 'delivered', 'cancelled', 'delayed'
+      'draft',
+      'confirmed',
+      'picked_up',
+      'in_transit',
+      'at_checkpoint',
+      'customs_hold',
+      'customs_cleared',
+      'out_for_delivery',
+      'delivered',
+      'cancelled',
+      'delayed',
     ];
 
     if (!validStatuses.includes(status)) {
@@ -477,12 +617,22 @@ export class AdminService {
           event_type: 'status_change',
           event_status: status,
           event_description: `Admin manually updated status to ${status}`,
-          event_metadata: { previous_status: shipment.shipment_status, admin_action: true },
+          event_metadata: {
+            previous_status: shipment.shipment_status,
+            admin_action: true,
+          },
         },
       }),
     ]);
 
-    await this.logAdminAction(adminUser, 'UPDATE_SHIPMENT_STATUS', 'shipment', id, shipment, updated);
+    await this.logAdminAction(
+      adminUser,
+      'UPDATE_SHIPMENT_STATUS',
+      'shipment',
+      id,
+      shipment,
+      updated,
+    );
     return { success: true, data: updated };
   }
 
@@ -533,7 +683,14 @@ export class AdminService {
         throw new BadRequestException('Invalid bulk action');
     }
 
-    await this.logAdminAction(adminUser, `BULK_${action.toUpperCase()}`, resourceType, null, null, { ids, result });
+    await this.logAdminAction(
+      adminUser,
+      `BULK_${action.toUpperCase()}`,
+      resourceType,
+      null,
+      null,
+      { ids, result },
+    );
 
     return {
       success: true,
@@ -558,7 +715,12 @@ export class AdminService {
             select: { organization_id: true, organization_name: true },
           },
           created_by: {
-            select: { user_id: true, user_email: true, user_first_name: true, user_last_name: true },
+            select: {
+              user_id: true,
+              user_email: true,
+              user_first_name: true,
+              user_last_name: true,
+            },
           },
         },
       }),
@@ -632,7 +794,7 @@ export class AdminService {
     };
   }
 
-  private async logAdminAction(
+  private logAdminAction(
     adminUser: any,
     action: string,
     resourceType: string,
@@ -640,16 +802,14 @@ export class AdminService {
     oldValue: any | null,
     newValue: any | null,
   ) {
-    await this.prisma.auditLog.create({
-      data: {
-        user_id: adminUser.user_id,
-        audit_action: action,
-        audit_resource_type: resourceType,
-        audit_resource_id: resourceId,
-        audit_old_value: oldValue,
-        audit_new_value: newValue,
-        audit_metadata: { admin_action: true, admin_email: adminUser.user_email },
-      },
+    this.auditService.log({
+      userId: adminUser.user_id,
+      action,
+      resourceType,
+      resourceId,
+      oldValue,
+      newValue,
+      metadata: { admin_action: true, admin_email: adminUser.user_email },
     });
   }
 }

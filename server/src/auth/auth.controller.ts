@@ -7,13 +7,14 @@ import {
   Res,
   Req,
   UnauthorizedException,
+  ForbiddenException,
   Get,
   Query,
   BadRequestException,
   DefaultValuePipe,
   ParseIntPipe,
   Param,
-  Delete
+  Delete,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from '../common/decorators/public.decorator';
@@ -25,11 +26,15 @@ import { LoginDto } from './dto/login.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { AuditService } from '../audit/audit.service';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -38,11 +43,22 @@ export class AuthController {
   @Post('register')
   async register(
     @Body() dto: RegisterDto,
+    @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const result = await this.authService.register(dto);
 
     this.setRefreshCookie(reply, result.refreshToken);
+    this.auditService.log(
+      {
+        userId: result.user.id,
+        action: 'AUTH_REGISTER',
+        resourceType: 'user',
+        resourceId: result.user.id,
+        newValue: { email: result.user.email, role: result.user.role },
+      },
+      request,
+    );
     return {
       user: result.user,
       accessToken: result.accessToken,
@@ -57,11 +73,41 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() dto: LoginDto,
+    @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const result = await this.authService.login(dto.email, dto.password);
+    let result;
+    try {
+      result = await this.authService.login(dto.email, dto.password);
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException
+      ) {
+        this.auditService.log(
+          {
+            userId: null,
+            action: 'AUTH_LOGIN_FAILED',
+            resourceType: 'user',
+            newValue: { email: dto.email },
+          },
+          request,
+        );
+      }
+      throw error;
+    }
 
     this.setRefreshCookie(reply, result.refreshToken);
+    this.auditService.log(
+      {
+        userId: result.user.id,
+        action: 'AUTH_LOGIN',
+        resourceType: 'user',
+        resourceId: result.user.id,
+        newValue: { email: result.user.email, role: result.user.role },
+      },
+      request,
+    );
     return {
       user: result.user,
       accessToken: result.accessToken,
@@ -90,10 +136,21 @@ export class AuthController {
   @ApiOperation({ summary: 'Accept an invitation and create account' })
   async acceptInvitation(
     @Body() dto: AcceptInvitationDto,
+    @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const result = await this.authService.acceptInvitation(dto);
     this.setRefreshCookie(reply, result.refreshToken);
+    this.auditService.log(
+      {
+        userId: result.user.id,
+        action: 'AUTH_ACCEPT_INVITATION',
+        resourceType: 'user',
+        resourceId: result.user.id,
+        newValue: { email: result.user.email, role: result.user.role },
+      },
+      request,
+    );
     return {
       user: result.user,
       accessToken: result.accessToken,
@@ -131,24 +188,31 @@ export class AuthController {
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
+    let logoutUserId: string | null = null;
     let cookie = request.cookies['refresh_token'];
     if (cookie) {
       const result = request.unsignCookie(cookie);
       if (result.valid && result.value) {
-        await this.authService.logout(result.value);
+        logoutUserId = await this.authService.logout(result.value);
       }
     }
     reply.clearCookie('refresh_token', { path: '/api/auth' });
+    this.auditService.log(
+      {
+        userId: logoutUserId,
+        action: 'AUTH_LOGOUT',
+        resourceType: 'user',
+        resourceId: logoutUserId,
+      },
+      request,
+    );
     return;
   }
 
   @Get('sessions')
   @ApiOperation({ summary: 'List all active sessions for current user' })
   @ApiResponse({ status: 200, description: 'List of active sessions returned' })
-  async getSessions(
-    @CurrentUser() user: any,
-    @Query() query: PaginationDto,
-  ) {
+  async getSessions(@CurrentUser() user: any, @Query() query: PaginationDto) {
     return this.authService.getSessions(user.sub, query.page, query.limit);
   }
 
@@ -158,14 +222,31 @@ export class AuthController {
   async revokeSession(
     @CurrentUser() user: any,
     @Param('sessionId') sessionId: string,
+    @Req() request: FastifyRequest,
   ) {
-    return this.authService.revokeSession(user.sub, sessionId);
+    const result = await this.authService.revokeSession(user.sub, sessionId);
+
+    this.auditService.log(
+      {
+        action: 'AUTH_SESSION_REVOKE',
+        resourceType: 'session',
+        resourceId: sessionId,
+        userId: user.sub,
+        newValue: { revoked: true },
+      },
+      request,
+    );
+
+    return result;
   }
 
   @Delete('sessions')
   @ApiOperation({ summary: 'Revoke all sessions except current' })
   @ApiResponse({ status: 200, description: 'All other sessions revoked.' })
-  async revokeAllSessions(@CurrentUser() user: any, @Req() request: FastifyRequest) {
+  async revokeAllSessions(
+    @CurrentUser() user: any,
+    @Req() request: FastifyRequest,
+  ) {
     let cookie = request.cookies['refresh_token'];
     let currentSessionId: string | null = null;
     if (cookie) {
@@ -174,7 +255,23 @@ export class AuthController {
         currentSessionId = result.value.split(':')[0];
       }
     }
-    return this.authService.revokeAllSessions(user.sub, currentSessionId);
+    const result = await this.authService.revokeAllSessions(
+      user.sub,
+      currentSessionId,
+    );
+
+    this.auditService.log(
+      {
+        action: 'AUTH_SESSIONS_REVOKE_ALL',
+        resourceType: 'session',
+        resourceId: user.sub,
+        userId: user.sub,
+        newValue: { revoked: true },
+      },
+      request,
+    );
+
+    return result;
   }
 
   private setRefreshCookie(reply: FastifyReply, token: string) {
@@ -187,5 +284,4 @@ export class AuthController {
       signed: true,
     });
   }
-
 }

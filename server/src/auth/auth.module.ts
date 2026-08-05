@@ -7,12 +7,16 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { UsersModule } from '../users/users.module';
 import { RedisModule } from '../redis/redis.module';
+import { QueueModule } from '../queue/queue.module';
+import { AuditModule } from '../audit/audit.module';
 import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
     UsersModule,
     RedisModule,
+    QueueModule,
+    AuditModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

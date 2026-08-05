@@ -5,9 +5,16 @@ import { UsersModule } from '../users/users.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { ShipmentsModule } from '../shipments/shipments.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [UsersModule, OrganizationsModule, ShipmentsModule, PrismaModule],
+  imports: [
+    UsersModule,
+    OrganizationsModule,
+    ShipmentsModule,
+    PrismaModule,
+    AuditModule,
+  ],
   controllers: [AdminController],
   providers: [AdminService],
 })
