@@ -12,6 +12,13 @@ export type ShipmentStatus =
   | "delayed"
   | "cancelled";
 
+export interface MapPosition {
+  latitude: number | null;
+  longitude: number | null;
+  name: string | null;
+  city: string | null;
+}
+
 export interface Shipment {
   id: string;
   referenceNumber: string;
@@ -24,6 +31,8 @@ export interface Shipment {
   destinationAddress: string;
   originCity: string;
   destinationCity: string;
+  originPosition: MapPosition | null;
+  destinationPosition: MapPosition | null;
   estimatedDepartureAt: string | null;
   estimatedArrivalAt: string | null;
   actualDepartureAt: string | null;
@@ -45,7 +54,12 @@ export interface Shipment {
     lastName: string;
     email: string;
   } | null;
-  route: { route_id: string; route_name: string; route_code: string } | null;
+  route: {
+    route_id: string;
+    route_name: string;
+    route_code: string;
+    estimatedDays: number | null;
+  } | null;
   currentCheckpoint: {
     checkpoint_id: string;
     checkpoint_name: string;

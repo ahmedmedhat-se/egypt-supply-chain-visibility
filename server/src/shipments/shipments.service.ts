@@ -148,7 +148,27 @@ export class ShipmentsService {
             },
           },
           route: {
-            select: { route_id: true, route_name: true, route_code: true },
+            select: {
+              route_id: true,
+              route_name: true,
+              route_code: true,
+              route_estimated_days: true,
+              route_checkpoints: {
+                orderBy: { sequence_order: 'asc' },
+                select: {
+                  sequence_order: true,
+                  checkpoint: {
+                    select: {
+                      checkpoint_id: true,
+                      checkpoint_name: true,
+                      checkpoint_city: true,
+                      checkpoint_latitude: true,
+                      checkpoint_longitude: true,
+                    },
+                  },
+                },
+              },
+            },
           },
           created_by: {
             select: {
@@ -209,7 +229,27 @@ export class ShipmentsService {
             },
           },
           route: {
-            select: { route_id: true, route_name: true, route_code: true },
+            select: {
+              route_id: true,
+              route_name: true,
+              route_code: true,
+              route_estimated_days: true,
+              route_checkpoints: {
+                orderBy: { sequence_order: 'asc' },
+                select: {
+                  sequence_order: true,
+                  checkpoint: {
+                    select: {
+                      checkpoint_id: true,
+                      checkpoint_name: true,
+                      checkpoint_city: true,
+                      checkpoint_latitude: true,
+                      checkpoint_longitude: true,
+                    },
+                  },
+                },
+              },
+            },
           },
           created_by: {
             select: {
@@ -269,7 +309,27 @@ export class ShipmentsService {
           },
         },
         route: {
-          select: { route_id: true, route_name: true, route_code: true },
+          select: {
+            route_id: true,
+            route_name: true,
+            route_code: true,
+            route_estimated_days: true,
+            route_checkpoints: {
+              orderBy: { sequence_order: 'asc' },
+              select: {
+                sequence_order: true,
+                checkpoint: {
+                  select: {
+                    checkpoint_id: true,
+                    checkpoint_name: true,
+                    checkpoint_city: true,
+                    checkpoint_latitude: true,
+                    checkpoint_longitude: true,
+                  },
+                },
+              },
+            },
+          },
         },
         created_by: {
           select: {
@@ -425,7 +485,27 @@ export class ShipmentsService {
           },
         },
         route: {
-          select: { route_id: true, route_name: true, route_code: true },
+          select: {
+            route_id: true,
+            route_name: true,
+            route_code: true,
+            route_estimated_days: true,
+            route_checkpoints: {
+              orderBy: { sequence_order: 'asc' },
+              select: {
+                sequence_order: true,
+                checkpoint: {
+                  select: {
+                    checkpoint_id: true,
+                    checkpoint_name: true,
+                    checkpoint_city: true,
+                    checkpoint_latitude: true,
+                    checkpoint_longitude: true,
+                  },
+                },
+              },
+            },
+          },
         },
         created_by: {
           select: {
@@ -657,6 +737,24 @@ export class ShipmentsService {
       }
     }
 
+    let checkpointPosition: { latitude: number; longitude: number } | null =
+      null;
+    if (dto.checkpointId) {
+      const checkpoint = await this.prisma.checkpoint.findUnique({
+        where: { checkpoint_id: dto.checkpointId },
+        select: {
+          checkpoint_latitude: true,
+          checkpoint_longitude: true,
+        },
+      });
+      if (checkpoint) {
+        checkpointPosition = {
+          latitude: Number(checkpoint.checkpoint_latitude),
+          longitude: Number(checkpoint.checkpoint_longitude),
+        };
+      }
+    }
+
     const [updatedShipment, event] = await this.prisma.$transaction([
       this.prisma.shipment.update({
         where: { shipment_id: id },
@@ -667,6 +765,10 @@ export class ShipmentsService {
           }),
           ...(dto.longitude !== undefined && {
             shipment_current_longitude: dto.longitude,
+          }),
+          ...(checkpointPosition && {
+            shipment_current_latitude: checkpointPosition.latitude,
+            shipment_current_longitude: checkpointPosition.longitude,
           }),
           ...(dto.checkpointId !== undefined && {
             shipment_current_checkpoint_id: dto.checkpointId,
@@ -695,7 +797,27 @@ export class ShipmentsService {
             },
           },
           route: {
-            select: { route_id: true, route_name: true, route_code: true },
+            select: {
+              route_id: true,
+              route_name: true,
+              route_code: true,
+              route_estimated_days: true,
+              route_checkpoints: {
+                orderBy: { sequence_order: 'asc' },
+                select: {
+                  sequence_order: true,
+                  checkpoint: {
+                    select: {
+                      checkpoint_id: true,
+                      checkpoint_name: true,
+                      checkpoint_city: true,
+                      checkpoint_latitude: true,
+                      checkpoint_longitude: true,
+                    },
+                  },
+                },
+              },
+            },
           },
           created_by: {
             select: {
@@ -712,8 +834,9 @@ export class ShipmentsService {
           event_type: 'status_change',
           event_status: dto.status,
           event_description: dto.description ?? null,
-          event_latitude: dto.latitude ?? null,
-          event_longitude: dto.longitude ?? null,
+          event_latitude: checkpointPosition?.latitude ?? dto.latitude ?? null,
+          event_longitude:
+            checkpointPosition?.longitude ?? dto.longitude ?? null,
           checkpoint_id: dto.checkpointId ?? null,
           recorded_by_user_id: user.sub,
           event_occurred_at: dto.occurredAt
@@ -728,10 +851,18 @@ export class ShipmentsService {
       'shipment.status_changed',
       {
         shipment_id: updatedShipment.shipment_id,
+        reference_number: shipment.shipment_reference_number,
         old_status: shipment.shipment_status,
         new_status: dto.status,
+        status: updatedShipment.shipment_status,
         event_id: event.shipment_event_id,
         occurred_at: event.event_occurred_at,
+        latitude: checkpointPosition?.latitude ?? dto.latitude ?? null,
+        longitude: checkpointPosition?.longitude ?? dto.longitude ?? null,
+        estimated_arrival_at: updatedShipment.shipment_estimated_arrival_at,
+        shipperOrganizationId: shipment.shipper_organization_id,
+        carrierOrganizationId: shipment.carrier_organization_id,
+        carrierUserId: shipment.carrier_user_id,
       },
     );
 
@@ -844,7 +975,27 @@ export class ShipmentsService {
             },
           },
           route: {
-            select: { route_id: true, route_name: true, route_code: true },
+            select: {
+              route_id: true,
+              route_name: true,
+              route_code: true,
+              route_estimated_days: true,
+              route_checkpoints: {
+                orderBy: { sequence_order: 'asc' },
+                select: {
+                  sequence_order: true,
+                  checkpoint: {
+                    select: {
+                      checkpoint_id: true,
+                      checkpoint_name: true,
+                      checkpoint_city: true,
+                      checkpoint_latitude: true,
+                      checkpoint_longitude: true,
+                    },
+                  },
+                },
+              },
+            },
           },
           created_by: {
             select: {
@@ -898,7 +1049,27 @@ export class ShipmentsService {
           },
         },
         route: {
-          select: { route_id: true, route_name: true, route_code: true },
+          select: {
+            route_id: true,
+            route_name: true,
+            route_code: true,
+            route_estimated_days: true,
+            route_checkpoints: {
+              orderBy: { sequence_order: 'asc' },
+              select: {
+                sequence_order: true,
+                checkpoint: {
+                  select: {
+                    checkpoint_id: true,
+                    checkpoint_name: true,
+                    checkpoint_city: true,
+                    checkpoint_latitude: true,
+                    checkpoint_longitude: true,
+                  },
+                },
+              },
+            },
+          },
         },
         created_by: {
           select: {
@@ -1107,6 +1278,20 @@ export class ShipmentsService {
   }
 
   private formatShipment(shipment: any) {
+    const routeCheckpoints = shipment.route?.route_checkpoints ?? [];
+    const checkpointPosition = (cp: any) =>
+      cp?.checkpoint
+        ? {
+            latitude: cp.checkpoint.checkpoint_latitude
+              ? Number(cp.checkpoint.checkpoint_latitude)
+              : null,
+            longitude: cp.checkpoint.checkpoint_longitude
+              ? Number(cp.checkpoint.checkpoint_longitude)
+              : null,
+            name: cp.checkpoint.checkpoint_name,
+            city: cp.checkpoint.checkpoint_city,
+          }
+        : null;
     return {
       id: shipment.shipment_id,
       referenceNumber: shipment.shipment_reference_number,
@@ -1123,6 +1308,14 @@ export class ShipmentsService {
       destinationAddress: shipment.shipment_destination_address,
       originCity: shipment.shipment_origin_city,
       destinationCity: shipment.shipment_destination_city,
+      originPosition:
+        routeCheckpoints.length > 0
+          ? checkpointPosition(routeCheckpoints[0])
+          : null,
+      destinationPosition:
+        routeCheckpoints.length > 0
+          ? checkpointPosition(routeCheckpoints[routeCheckpoints.length - 1])
+          : null,
       estimatedDepartureAt: shipment.shipment_estimated_departure_at,
       estimatedArrivalAt: shipment.shipment_estimated_arrival_at,
       actualDepartureAt: shipment.shipment_actual_departure_at,
@@ -1144,7 +1337,14 @@ export class ShipmentsService {
             email: shipment.carrier_user.user_email,
           }
         : null,
-      route: shipment.route,
+      route: shipment.route
+        ? {
+            route_id: shipment.route.route_id,
+            route_name: shipment.route.route_name,
+            route_code: shipment.route.route_code,
+            estimatedDays: shipment.route.route_estimated_days ?? null,
+          }
+        : null,
       currentCheckpoint: shipment.current_checkpoint,
       createdBy: shipment.created_by
         ? {
