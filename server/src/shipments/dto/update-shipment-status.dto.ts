@@ -7,9 +7,13 @@ import {
   IsUUID,
   IsISO8601,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SHIPMENT_STATUSES } from '../shipments.constants';
 import type { ShipmentStatus } from '../shipments.constants';
+
+const emptyToUndefined = ({ value }: { value: unknown }) =>
+  typeof value === 'string' && value.trim() === '' ? undefined : value;
 
 export class UpdateShipmentStatusDto {
   @ApiProperty({
@@ -42,6 +46,7 @@ export class UpdateShipmentStatusDto {
   description?: string;
 
   @ApiPropertyOptional({ example: '2024-12-02T14:30:00Z' })
+  @Transform(emptyToUndefined)
   @IsOptional()
   @IsISO8601()
   occurredAt?: string;

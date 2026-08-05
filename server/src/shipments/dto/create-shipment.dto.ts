@@ -7,10 +7,13 @@ import {
   IsNotEmpty,
   Min,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateShipmentDto {
+const emptyToUndefined = ({ value }: { value: unknown }) =>
+  typeof value === 'string' && value.trim() === '' ? undefined : value;
 
+export class CreateShipmentDto {
   @ApiPropertyOptional({
     example: 'Electronics shipment from Cairo to Alexandria',
   })
@@ -56,11 +59,13 @@ export class CreateShipmentDto {
   destinationCity: string;
 
   @ApiPropertyOptional({ example: '2024-12-01T08:00:00Z' })
+  @Transform(emptyToUndefined)
   @IsDateString()
   @IsOptional()
   estimatedDepartureAt?: string;
 
   @ApiPropertyOptional({ example: '2024-12-03T18:00:00Z' })
+  @Transform(emptyToUndefined)
   @IsDateString()
   @IsOptional()
   estimatedArrivalAt?: string;
