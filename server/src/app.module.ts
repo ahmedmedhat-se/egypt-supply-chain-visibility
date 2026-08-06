@@ -23,6 +23,8 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { RequestContextInterceptor } from './common/context/request-context.interceptor';
+import { AlertsModule } from './alerts/alerts.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -56,6 +58,8 @@ import { RequestContextInterceptor } from './common/context/request-context.inte
     DashboardModule,
     WebsocketModule,
     AuditModule,
+    AlertsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [
