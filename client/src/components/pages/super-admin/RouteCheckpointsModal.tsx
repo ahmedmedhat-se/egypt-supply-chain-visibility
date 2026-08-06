@@ -1,24 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { useCheckpoints } from '../../../hooks/useCheckpoints';
 import { useAddRouteCheckpoint, useRemoveRouteCheckpoint } from '../../../hooks/useRoutes';
-import { FaPlus, FaTrash } from 'react-icons/fa';
-import type { Route } from '../../../types/route.types';
+import { FaPlus, FaTrash, FaSearch } from 'react-icons/fa';
+import type { Route, RouteCheckpoint } from '../../../types/route.types';
 import type { Checkpoint } from '../../../types/checkpoint.types';
-
-// The backend returns flattened checkpoint data on routes, not nested under .checkpoint
-interface FlatRouteCheckpoint {
-  id: string;
-  name: string;
-  code: string;
-  type: string;
-  city: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  sequenceOrder: number;
-}
 
 interface RouteCheckpointsModalProps {
   isOpen: boolean;
@@ -29,37 +17,38 @@ interface RouteCheckpointsModalProps {
 export const RouteCheckpointsModal = ({ isOpen, onClose, route }: RouteCheckpointsModalProps) => {
   const [selectedCheckpointId, setSelectedCheckpointId] = useState('');
   const [newSequence, setNewSequence] = useState('');
+  const [cpSearch, setCpSearch] = useState('');
 
-  const { data: checkpointsData, isLoading: checkpointsLoading } = useCheckpoints();
+  // Search-driven so admins can reach checkpoints beyond the first page
+  const { data: checkpointsData, isLoading: checkpointsLoading } = useCheckpoints({
+    page: 1,
+    limit: 50,
+    search: cpSearch || undefined,
+  });
   const { mutate: addCheckpoint, isPending: isAdding } = useAddRouteCheckpoint();
   const { mutate: removeCheckpoint, isPending: isRemoving } = useRemoveRouteCheckpoint();
 
   const allCheckpoints: Checkpoint[] = checkpointsData?.data || [];
-  const rawRouteCheckpoints: any[] = route?.checkpoints || [];
-  const routeCheckpoints: FlatRouteCheckpoint[] = rawRouteCheckpoints.map((rc) => ({
-    id: rc.id || rc.checkpoint?.id,
-    name: rc.name || rc.checkpoint?.name,
-    code: rc.code || rc.checkpoint?.code,
-    type: rc.type || rc.checkpoint?.type,
-    city: rc.city || rc.checkpoint?.city,
-    sequenceOrder: rc.sequenceOrder,
-  }));
-  const sortedRouteCheckpoints = [...routeCheckpoints].sort((a, b) => a.sequenceOrder - b.sequenceOrder);
+  const routeCheckpoints: RouteCheckpoint[] = route?.checkpoints ?? [];
+  const sortedRouteCheckpoints = [...routeCheckpoints].sort(
+    (a, b) => a.sequenceOrder - b.sequenceOrder,
+  );
 
   // Get checkpoints not already in this route
   const availableCheckpoints = allCheckpoints.filter(
     (cp) => !routeCheckpoints.some((rc) => rc.id === cp.id),
   );
 
-  // Auto-set next sequence number
-  useEffect(() => {
-    if (routeCheckpoints.length > 0) {
-      const maxSeq = Math.max(...routeCheckpoints.map((rc) => rc.sequenceOrder));
-      setNewSequence((maxSeq + 1).toString());
-    } else {
-      setNewSequence('1');
-    }
-  }, [routeCheckpoints, isOpen]);
+  const suggestedSequence =
+    routeCheckpoints.length > 0
+      ? Math.max(...routeCheckpoints.map((rc) => rc.sequenceOrder)) + 1
+      : 1;
+  const currentRouteId = route?.id ?? null;
+  const [prevRouteId, setPrevRouteId] = useState<string | null>(null);
+  if (currentRouteId !== prevRouteId) {
+    setPrevRouteId(currentRouteId);
+    setNewSequence(String(suggestedSequence));
+  }
 
   const handleAdd = () => {
     if (!selectedCheckpointId || !newSequence || !route) return;
@@ -166,6 +155,16 @@ export const RouteCheckpointsModal = ({ isOpen, onClose, route }: RouteCheckpoin
             <div className="flex items-end gap-3">
               <div className="flex-1">
                 <label className="block text-xs font-medium text-[#94A3B8] mb-1">Checkpoint</label>
+                <div className="relative mb-2">
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8]" />
+                  <input
+                    type="text"
+                    value={cpSearch}
+                    onChange={(e) => setCpSearch(e.target.value)}
+                    placeholder="Search by name or code..."
+                    className="w-full rounded-md border border-[#E2E8F0] dark:border-[#1A3D5A] bg-white dark:bg-[#1A3D5A] pl-9 pr-3 py-2 text-sm text-[#1A2A3A] dark:text-white focus:border-[#0A2E4A] dark:focus:border-[#2D9B6E] focus:outline-none focus:ring-1 focus:ring-[#0A2E4A] dark:focus:ring-[#2D9B6E] placeholder:text-[#94A3B8]"
+                  />
+                </div>
                 <select
                   value={selectedCheckpointId}
                   onChange={(e) => setSelectedCheckpointId(e.target.value)}
