@@ -106,10 +106,10 @@ export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
    */
   const getFieldStyles = (field: string) => {
     const state = getFieldState(field);
-    const baseStyles = 'w-full px-4 py-3.5 rounded-xl border-2 bg-white dark:bg-[#0F2A44] text-[#1A2A3A] dark:text-[#E2E8F0] placeholder:text-[#94A3B8] dark:placeholder:text-[#64748B] focus:outline-none transition-all duration-300 ease-in-out';
+    const baseStyles = 'w-full px-4 py-3.5 rounded-xl border-2 bg-white dark:bg-[#111111] text-[#1A2A3A] dark:text-[#E2E8F0] placeholder:text-[#94A3B8] dark:placeholder:text-[#64748B] focus:outline-none transition-all duration-300 ease-in-out';
 
     const stateStyles = {
-      default: 'border-[#E2E8F0] dark:border-[#1A3D5A] hover:border-[#94A3B8] dark:hover:border-[#64748B]',
+      default: 'border-[#E2E8F0] dark:border-[#2A2A2A] hover:border-[#94A3B8] dark:hover:border-[#64748B]',
       focused: 'border-[#2D9B6E] shadow-[0_0_0_4px_rgba(45,155,110,0.15)] dark:shadow-[0_0_0_4px_rgba(45,155,110,0.25)]',
       error: 'border-[#DC2626] shadow-[0_0_0_4px_rgba(220,38,38,0.15)] dark:shadow-[0_0_0_4px_rgba(220,38,38,0.25)] bg-[#FEF2F2] dark:bg-[#2A0F0F]',
       success: 'border-[#2D9B6E] bg-[#F0FDF4] dark:bg-[#0F2A1F]',
@@ -203,7 +203,7 @@ export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-[#1A2A3A] dark:hover:text-[#E2E8F0] transition-all duration-200 hover:bg-[#F1F5F9] dark:hover:bg-[#1A3D5A]"
+              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-[#1A2A3A] dark:hover:text-[#E2E8F0] transition-all duration-200 hover:bg-[#F1F5F9] dark:hover:bg-[#1A1A1A]"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
@@ -224,7 +224,7 @@ export const LoginForm = ({ className, onSuccess }: LoginFormProps) => {
             <input
               type="checkbox"
               {...register('rememberMe')}
-              className="peer w-4 h-4 rounded-md border-2 border-[#D1D9E6] dark:border-[#1A3D5A] text-[#2D9B6E] focus:ring-2 focus:ring-[#2D9B6E] focus:ring-offset-2 dark:focus:ring-offset-[#0A2E4A] transition-all cursor-pointer"
+              className="peer w-4 h-4 rounded-md border-2 border-[#D1D9E6] dark:border-[#2A2A2A] text-[#2D9B6E] focus:ring-2 focus:ring-[#2D9B6E] focus:ring-offset-2 dark:focus:ring-offset-black transition-all cursor-pointer"
             />
             <FaCheck className="absolute inset-0 m-auto w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" />
           </div>

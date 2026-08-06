@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { Card } from '../ui/Card';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { Pagination } from '../ui/Pagination';
 import { useAuthStore } from '../../store/auth.store';
@@ -49,7 +47,7 @@ export const ProfilePage = () => {
       </div>
 
       {/* Profile card */}
-      <Card variant="elevated">
+      <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
         <div className="flex items-center gap-4 mb-6">
           <Avatar size="xl" fallback={user.name.split(' ').map(n => n[0]).join('')} />
           <div>
@@ -58,7 +56,7 @@ export const ProfilePage = () => {
             <Badge variant="primary" size="sm" className="mt-1">{user.role}</Badge>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-[#E2E8F0] dark:border-[#1A3D5A]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-[#E2E8F0] dark:border-[#2A2A2A]">
           <div>
             <p className="text-xs text-[#94A3B8] uppercase tracking-wider">Organization</p>
             <p className="text-sm font-medium text-[#1A2A3A] dark:text-white">{user.organizationName}</p>
@@ -72,13 +70,15 @@ export const ProfilePage = () => {
             <p className="text-sm font-medium text-[#1A2A3A] dark:text-white">{user.email}</p>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Active Sessions */}
-      <Card variant="bordered">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-2">
-            <FaShieldAlt className="w-5 h-5 text-[#2D9B6E]" />
+            <div className="w-10 h-10 rounded-xl bg-[#D1FAE5] dark:bg-[#1F7A52]/30 flex items-center justify-center">
+              <FaShieldAlt className="w-5 h-5 text-[#2D9B6E]" />
+            </div>
             <div>
               <h2 className="text-lg font-semibold text-[#0A2E4A] dark:text-white">
                 Active Sessions
@@ -88,20 +88,18 @@ export const ProfilePage = () => {
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={handleRevokeAll}
             disabled={!hasOtherSessions || isRevokingAll}
-            className="text-[#DC2626] border-[#FECACA] hover:bg-[#FEF2F2] dark:border-[#7F1D1D]/40 dark:hover:bg-[#7F1D1D]/20"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#DC2626] border-2 border-[#FECACA] hover:bg-[#FEF2F2] dark:border-[#7F1D1D]/40 dark:hover:bg-[#7F1D1D]/20 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isRevokingAll ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <FaSignOutAlt className="w-3.5 h-3.5 mr-1.5" />
+              <FaSignOutAlt className="w-3.5 h-3.5" />
             )}
             Sign out other devices
-          </Button>
+          </button>
         </div>
 
         {isLoading ? (
@@ -114,14 +112,14 @@ export const ProfilePage = () => {
             <p className="text-sm text-[#94A3B8]">No active sessions found.</p>
           </div>
         ) : (
-          <div className="divide-y divide-[#E2E8F0] dark:divide-[#1A3D5A]">
+          <div className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2A]">
             {sessions.map((session) => (
               <div key={session.sessionId} className="flex items-center gap-4 py-3">
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                     session.isCurrent
                       ? 'bg-[#D1FAE5] dark:bg-[#1F7A52]/30'
-                      : 'bg-[#E8F0F8] dark:bg-[#1A3D5A]'
+                      : 'bg-[#E8F0F8] dark:bg-[#1A1A1A]'
                   }`}
                 >
                   <FaLaptop
@@ -148,20 +146,18 @@ export const ProfilePage = () => {
                 </div>
 
                 {!session.isCurrent && (
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <button
                     onClick={() => {
                       if (window.confirm('Revoke this session? The device will be signed out.')) {
                         revokeSession(session.sessionId);
                       }
                     }}
                     disabled={isRevoking}
-                    className="flex items-center gap-1.5 text-[#DC2626] border-[#FECACA] hover:bg-[#FEF2F2] dark:border-[#7F1D1D]/40 dark:hover:bg-[#7F1D1D]/20"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#DC2626] border-2 border-[#FECACA] hover:bg-[#FEF2F2] dark:border-[#7F1D1D]/40 dark:hover:bg-[#7F1D1D]/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FaTimes className="w-3 h-3" />
                     Revoke
-                  </Button>
+                  </button>
                 )}
               </div>
             ))}
@@ -169,7 +165,7 @@ export const ProfilePage = () => {
         )}
 
         {meta && !isLoading && (
-          <div className="mt-4 pt-4 border-t border-[#E2E8F0] dark:border-[#1A3D5A]">
+          <div className="mt-4 pt-4 border-t border-[#E2E8F0] dark:border-[#2A2A2A]">
             <Pagination
               page={meta.page}
               totalPages={meta.totalPages}
@@ -180,14 +176,14 @@ export const ProfilePage = () => {
           </div>
         )}
 
-        <div className="mt-4 pt-4 border-t border-[#E2E8F0] dark:border-[#1A3D5A] flex items-start gap-2">
-          <FaExclamationTriangle className="w-4 h-4 text-[#92400E] mt-0.5 flex-shrink-0" />
+        <div className="mt-4 pt-4 border-t border-[#E2E8F0] dark:border-[#2A2A2A] flex items-start gap-2">
+          <FaExclamationTriangle className="w-4 h-4 text-[#92400E] dark:text-[#FBBF24] mt-0.5 flex-shrink-0" />
           <p className="text-xs text-[#94A3B8]">
             Revoking a session signs that device out immediately. You can always sign
             back in with your credentials.
           </p>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

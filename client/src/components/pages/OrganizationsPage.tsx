@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth.store';
 import { organizationApi } from '../../api/organization.api';
 import type { OrgMember } from '../../types/organization.types';
-import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { Pagination } from '../ui/Pagination';
@@ -28,8 +27,6 @@ export const OrganizationsPage = () => {
   const [page, setPage] = useState(1);
   const limit = 20;
 
-  /* ───── Members table (paginated) ───── */
-
   const {
     data: membersData,
     isLoading,
@@ -45,8 +42,6 @@ export const OrganizationsPage = () => {
 
   const members: OrgMember[] = Array.isArray(membersData?.data) ? membersData!.data : [];
   const meta = membersData?.meta;
-
-  /* ───── Exact active count (server-side, independent of page) ───── */
 
   const { data: activeCount = 0 } = useQuery({
     queryKey: ['org-members-active', orgId],
@@ -90,13 +85,13 @@ export const OrganizationsPage = () => {
     return (
       <div className="space-y-6">
         <Header orgName={orgName} memberCount={0} />
-        <Card variant="bordered" className="p-8 text-center">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-8 text-center shadow-sm">
           <FaTimesCircle className="mx-auto w-10 h-10 text-[#DC2626] mb-3" />
           <p className="text-[#DC2626] font-medium">Unable to load team members</p>
           <p className="text-sm text-[#94A3B8] mt-1">
             Make sure the backend is running and you have the right permissions.
           </p>
-        </Card>
+        </div>
       </div>
     );
   }
@@ -105,7 +100,7 @@ export const OrganizationsPage = () => {
     return (
       <div className="space-y-6">
         <Header orgName={orgName} memberCount={0} />
-        <Card variant="bordered" className="p-12 text-center">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-12 text-center shadow-sm">
           <FaUsers className="mx-auto w-12 h-12 text-[#94A3B8] mb-4" />
           <h3 className="text-lg font-semibold text-[#0A2E4A] dark:text-white mb-1">
             No team members yet
@@ -113,7 +108,7 @@ export const OrganizationsPage = () => {
           <p className="text-sm text-[#94A3B8] max-w-sm mx-auto">
             Your organization doesn't have any members yet. Invite colleagues to get started.
           </p>
-        </Card>
+        </div>
       </div>
     );
   }
@@ -123,12 +118,11 @@ export const OrganizationsPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <Header orgName={orgName} memberCount={totalMembers} />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card variant="elevated" className="flex items-center gap-4">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300">
           <div className="w-12 h-12 rounded-xl bg-[#D1FAE5] dark:bg-[#1F7A52]/30 flex items-center justify-center">
             <FaUsers className="w-6 h-6 text-[#065F46]" />
           </div>
@@ -136,9 +130,9 @@ export const OrganizationsPage = () => {
             <p className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{totalMembers}</p>
             <p className="text-sm text-[#94A3B8]">Total members</p>
           </div>
-        </Card>
+        </div>
 
-        <Card variant="elevated" className="flex items-center gap-4">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300">
           <div className="w-12 h-12 rounded-xl bg-[#DBEAFE] dark:bg-[#1E40AF]/30 flex items-center justify-center">
             <FaCheckCircle className="w-6 h-6 text-[#1E40AF]" />
           </div>
@@ -146,9 +140,9 @@ export const OrganizationsPage = () => {
             <p className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{activeCount}</p>
             <p className="text-sm text-[#94A3B8]">Active</p>
           </div>
-        </Card>
+        </div>
 
-        <Card variant="elevated" className="flex items-center gap-4">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow duration-300">
           <div className="w-12 h-12 rounded-xl bg-[#FEE2E2] dark:bg-[#991B1B]/30 flex items-center justify-center">
             <FaBan className="w-6 h-6 text-[#991B1B]" />
           </div>
@@ -156,15 +150,15 @@ export const OrganizationsPage = () => {
             <p className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{inactiveCount}</p>
             <p className="text-sm text-[#94A3B8]">Inactive</p>
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* Members Table */}
-      <Card variant="bordered" padding="none">
+      <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[#E2E8F0] dark:border-[#334155]">
+              <tr className="border-b border-[#E2E8F0] dark:border-[#2A2A2A] bg-[#F8FAFC] dark:bg-[#0A0A0A]">
                 <Th>Name</Th>
                 <Th>Email</Th>
                 <Th>Role</Th>
@@ -178,15 +172,15 @@ export const OrganizationsPage = () => {
                 <tr
                   key={member.user_id}
                   className={`
-                    border-b border-[#E2E8F0] dark:border-[#334155] last:border-b-0
+                    border-b border-[#E2E8F0] dark:border-[#2A2A2A] last:border-b-0
                     transition-colors
-                    ${member.user_is_active ? 'hover:bg-[#F8FAFC] dark:hover:bg-[#1A3D5A]/50' : ''}
+                    ${member.user_is_active ? 'hover:bg-[#F8FAFC] dark:hover:bg-[#1A1A1A]' : ''}
                     ${!member.user_is_active ? 'opacity-60' : ''}
                   `}
                 >
                   <Td>
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${member.user_is_active ? 'bg-[#0A2E4A] text-white' : 'bg-[#D1D9E6] text-[#94A3B8]'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${member.user_is_active ? 'bg-[#0A2E4A] dark:bg-[#2D9B6E] text-white' : 'bg-[#D1D9E6] dark:bg-[#2A2A2A] text-[#94A3B8]'}`}>
                         {member.user_first_name.charAt(0)}{member.user_last_name.charAt(0)}
                       </div>
                       <span className="font-medium text-[#0A2E4A] dark:text-white">
@@ -229,7 +223,7 @@ export const OrganizationsPage = () => {
                         {member.user_is_active ? (
                           <button
                             onClick={() => memberMutate.mutate({ userId: member.user_id, action: 'deactivate' })}
-                            className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                            className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] dark:hover:bg-[#991B1B]/20 transition-colors"
                             title="Deactivate"
                           >
                             <FaBan className="w-3.5 h-3.5" />
@@ -237,7 +231,7 @@ export const OrganizationsPage = () => {
                         ) : (
                           <button
                             onClick={() => memberMutate.mutate({ userId: member.user_id, action: 'activate' })}
-                            className="p-1.5 rounded-lg text-[#2D9B6E] hover:bg-[#D1FAE5] transition-colors"
+                            className="p-1.5 rounded-lg text-[#2D9B6E] hover:bg-[#D1FAE5] dark:hover:bg-[#1F7A52]/30 transition-colors"
                             title="Activate"
                           >
                             <FaCheckCircle className="w-3.5 h-3.5" />
@@ -251,7 +245,7 @@ export const OrganizationsPage = () => {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
       {meta && (
         <Pagination

@@ -21,7 +21,7 @@ export const AppLayout = ({
   const { logout } = useAuth();
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0A2E4A] overflow-hidden">
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-black overflow-hidden">
       <Sidebar 
         isOpen={sidebarOpen} 
         isAuthenticated={isAuthenticated}
@@ -52,19 +52,28 @@ export const AppLayout = ({
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#0A2E4A',
+            background: '#111111',
             color: '#fff',
             borderRadius: '12px',
             padding: '16px',
+            border: '1px solid #2A2A2A',
           },
           success: {
             style: {
               background: '#065F46',
+              border: '1px solid #2D9B6E',
             },
           },
           error: {
             style: {
               background: '#991B1B',
+              border: '1px solid #DC2626',
+            },
+          },
+          loading: {
+            style: {
+              background: '#1A1A1A',
+              border: '1px solid #3A3A3A',
             },
           },
         }}

@@ -1,5 +1,4 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '../ui/Button';
 import { ROUTES } from '../../constants/routes';
 import { FaHome, FaArrowLeft } from 'react-icons/fa';
 import { useEffect } from 'react';
@@ -12,11 +11,11 @@ export const NotFoundPage = () => {
   }, []);
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center bg-[#F8FAFC] dark:bg-[#0A2E4A] p-4">
+    <div className="min-h-[80vh] flex items-center justify-center bg-[#F8FAFC] dark:bg-black p-4">
       <div className="text-center max-w-lg">
         {/* Large 404 Number */}
         <div className="relative mb-8">
-          <div className="text-[120px] md:text-[150px] font-bold text-[#0A2E4A] dark:text-[#1A3D5A] leading-none select-none">
+          <div className="text-[120px] md:text-[150px] font-bold text-[#0A2E4A] dark:text-[#1A1A1A] leading-none select-none">
             404
           </div>
           <div className="absolute inset-0 flex items-center justify-center">
@@ -37,47 +36,43 @@ export const NotFoundPage = () => {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link to={ROUTES.HOME}>
-            <Button
-              size="lg"
-              className="bg-[#2D9B6E] hover:bg-[#1F7A52] text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-[#2D9B6E]/20 hover:shadow-xl hover:shadow-[#2D9B6E]/30 transition-all duration-300"
-            >
-              <FaHome className="mr-2" />
+            <button className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#2D9B6E] hover:bg-[#1F7A52] text-white font-semibold rounded-xl shadow-lg shadow-[#2D9B6E]/20 hover:shadow-xl hover:shadow-[#2D9B6E]/30 transition-all duration-300 hover:-translate-y-0.5">
+              <FaHome className="text-sm" />
               Go Home
-            </Button>
+            </button>
           </Link>
-          <Button
-            variant="outline"
-            size="lg"
+          <button
             onClick={() => navigate(-1)}
-            className="border-[#0A2E4A] dark:border-white text-[#0A2E4A] dark:text-white hover:bg-[#0A2E4A] dark:hover:bg-white hover:text-white dark:hover:text-[#0A2E4A] transition-all duration-300"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 border-2 border-[#0A2E4A] dark:border-white text-[#0A2E4A] dark:text-white font-semibold rounded-xl hover:bg-[#0A2E4A] dark:hover:bg-white hover:text-white dark:hover:text-[#0A2E4A] transition-all duration-300 hover:-translate-y-0.5"
           >
-            <FaArrowLeft className="mr-2" />
+            <FaArrowLeft className="text-sm" />
             Go Back
-          </Button>
+          </button>
         </div>
 
         {/* Helpful Links */}
-        <div className="mt-8 pt-8 border-t border-[#E2E8F0] dark:border-[#1A3D5A]">
+        <div className="mt-8 pt-8 border-t border-[#E2E8F0] dark:border-[#2A2A2A]">
           <p className="text-sm text-[#94A3B8] dark:text-[#94A3B8] mb-3">
             Need help? Try these links:
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link
               to={ROUTES.HOME}
-              className="text-sm text-[#2D9B6E] hover:underline font-medium"
+              className="text-sm text-[#2D9B6E] hover:underline font-medium transition-colors"
             >
               Home
             </Link>
             <span className="text-[#94A3B8] dark:text-[#64748B]">•</span>
             <Link
               to={ROUTES.ABOUT}
-              className="text-sm text-[#2D9B6E] hover:underline font-medium"
+              className="text-sm text-[#2D9B6E] hover:underline font-medium transition-colors"
             >
               About
             </Link>
+            <span className="text-[#94A3B8] dark:text-[#64748B]">•</span>
             <Link
               to={ROUTES.CONTACT}
-              className="text-sm text-[#2D9B6E] hover:underline font-medium"
+              className="text-sm text-[#2D9B6E] hover:underline font-medium transition-colors"
             >
               Contact
             </Link>

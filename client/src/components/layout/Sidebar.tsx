@@ -54,20 +54,17 @@ export const Sidebar = ({
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Initialize collapsed state from localStorage
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
     return saved !== null ? JSON.parse(saved) : false;
   });
 
-  // Toggle sidebar collapse
   const toggleCollapse = () => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
     localStorage.setItem('sidebar-collapsed', JSON.stringify(newState));
   };
 
-  // Scroll to top and navigate
   const handleNavigation = (path: string) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (location.pathname !== path) {
@@ -78,7 +75,6 @@ export const Sidebar = ({
     onClose?.();
   };
 
-  // Public navigation items
   const publicNavigation: NavItem[] = [
     { name: 'Home', to: ROUTES.HOME, icon: FaHome },
     { name: 'About', to: ROUTES.ABOUT, icon: FaInfoCircle },
@@ -89,7 +85,6 @@ export const Sidebar = ({
   const isAdmin = adminOnlyRoles.includes(userRole || '');
   const isSuperAdmin = userRole === 'super_admin';
 
-  // Get role-specific shipment route
   const getShipmentsRoute = () => {
     switch (userRole) {
       case 'admin': return ROUTES.SHIPMENTS_ADMIN;
@@ -101,7 +96,6 @@ export const Sidebar = ({
     }
   };
 
-  // Get role-specific dashboard route
   const getDashboardRoute = () => {
     switch (userRole) {
       case 'admin': return ROUTES.DASHBOARD_ADMIN;
@@ -113,7 +107,6 @@ export const Sidebar = ({
     }
   };
 
-  // Authenticated navigation items
   const authenticatedNavigation: NavItem[] = [
     { name: 'Dashboard', to: getDashboardRoute(), icon: FaTachometerAlt, authRequired: true },
     { name: 'Shipments', to: getShipmentsRoute(), icon: FaShip, authRequired: true },
@@ -143,7 +136,6 @@ export const Sidebar = ({
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
@@ -154,8 +146,8 @@ export const Sidebar = ({
       <aside 
         className={cn(
           'fixed top-0 left-0 h-full z-50 flex flex-col',
-          'bg-white dark:bg-[#0A2E4A]',
-          'border-r border-[#E2E8F0] dark:border-[#1A3D5A]',
+          'bg-white dark:bg-black',
+          'border-r border-[#E2E8F0] dark:border-[#2A2A2A]',
           'transition-all duration-300 ease-in-out',
           'lg:relative lg:z-auto',
           isCollapsed ? 'w-20' : 'w-64',
@@ -164,7 +156,7 @@ export const Sidebar = ({
       >
         {/* Logo section */}
         <div className={cn(
-          'flex items-center px-4 py-5 border-b border-[#E2E8F0] dark:border-[#1A3D5A] flex-shrink-0',
+          'flex items-center px-4 py-5 border-b border-[#E2E8F0] dark:border-[#2A2A2A] flex-shrink-0',
           isCollapsed ? 'justify-center' : 'justify-between'
         )}>
           <Link 
@@ -210,7 +202,7 @@ export const Sidebar = ({
                   const active = isActive || navActive;
                   return cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium relative group',
-                    'hover:bg-[#E8F0F8] dark:hover:bg-[#1A3D5A]',
+                    'hover:bg-[#E8F0F8] dark:hover:bg-[#1A1A1A]',
                     'active:scale-95',
                     active 
                       ? 'bg-[#2D9B6E] text-white shadow-lg shadow-[#2D9B6E]/20 dark:shadow-[#2D9B6E]/30' 
@@ -235,9 +227,8 @@ export const Sidebar = ({
                   </>
                 )}
 
-                {/* Tooltip for collapsed state */}
                 {isCollapsed && (
-                  <div className="absolute left-full ml-2 px-3 py-1.5 bg-[#0A2E4A] dark:bg-[#1A3D5A] text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg pointer-events-none">
+                  <div className="absolute left-full ml-2 px-3 py-1.5 bg-black dark:bg-[#1A1A1A] text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg pointer-events-none border border-[#2A2A2A]">
                     {item.name}
                     {item.badge && (
                       <span className="ml-2 px-1.5 py-0.5 bg-[#DC2626] text-white rounded-full text-[10px]">
@@ -252,7 +243,7 @@ export const Sidebar = ({
         </nav>
 
         {/* Bottom section with profile and auth actions */}
-        <div className="border-t border-[#E2E8F0] dark:border-[#1A3D5A] p-3 flex-shrink-0">
+        <div className="border-t border-[#E2E8F0] dark:border-[#2A2A2A] p-3 flex-shrink-0">
           <div className="space-y-1">
             {bottomNav
               .filter(item => !item.authRequired || isAuthenticated)
@@ -263,10 +254,10 @@ export const Sidebar = ({
                   onClick={() => handleNavigation(item.to)}
                   className={({ isActive }) => cn(
                     'flex items-center gap-3 px-3 py-2.5 w-full rounded-xl transition-all duration-200 text-sm font-medium',
-                    'hover:bg-[#E8F0F8] dark:hover:bg-[#1A3D5A]',
+                    'hover:bg-[#E8F0F8] dark:hover:bg-[#1A1A1A]',
                     'active:scale-95',
                     isActive 
-                      ? 'bg-[#E8F0F8] dark:bg-[#1A3D5A] text-[#0A2E4A] dark:text-white' 
+                      ? 'bg-[#E8F0F8] dark:bg-[#1A1A1A] text-[#0A2E4A] dark:text-white' 
                       : 'text-[#94A3B8] dark:text-[#94A3B8] hover:text-[#0A2E4A] dark:hover:text-white',
                     isCollapsed && 'justify-center px-2'
                   )}
@@ -285,7 +276,7 @@ export const Sidebar = ({
           {/* Auth actions for unauthenticated users */}
           {!isAuthenticated ? (
             <div className={cn(
-              'mt-6 pt-4 border-t border-[#E2E8F0] dark:border-[#1A3D5A]',
+              'mt-6 pt-4 border-t border-[#E2E8F0] dark:border-[#2A2A2A]',
               isCollapsed ? 'flex flex-col items-center gap-3' : 'space-y-3'
             )}>
               <Link to={ROUTES.LOGIN} onClick={() => handleNavigation(ROUTES.LOGIN)} className={cn(
@@ -329,7 +320,7 @@ export const Sidebar = ({
           ) : (
             /* Sign out button for authenticated users */
             <div className={cn(
-              'mt-6 pt-4 border-t border-[#E2E8F0] dark:border-[#1A3D5A]',
+              'mt-6 pt-4 border-t border-[#E2E8F0] dark:border-[#2A2A2A]',
               isCollapsed && 'flex justify-center'
             )}>
               <button
@@ -357,8 +348,8 @@ export const Sidebar = ({
           onClick={toggleCollapse}
           className={cn(
             'absolute -right-3 top-1/2 -translate-y-1/2 hidden lg:flex',
-            'w-6 h-6 rounded-full bg-white dark:bg-[#1A3D5A] border border-[#E2E8F0] dark:border-[#1A3D5A]',
-            'items-center justify-center hover:bg-[#E8F0F8] dark:hover:bg-[#0A2E4A]',
+            'w-6 h-6 rounded-full bg-white dark:bg-[#1A1A1A] border border-[#E2E8F0] dark:border-[#2A2A2A]',
+            'items-center justify-center hover:bg-[#E8F0F8] dark:hover:bg-[#1A1A1A]',
             'transition-all duration-300 shadow-md hover:shadow-lg',
             'z-10'
           )}

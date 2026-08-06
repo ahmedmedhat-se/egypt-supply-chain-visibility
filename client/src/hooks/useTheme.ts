@@ -1,4 +1,3 @@
-// src/hooks/useTheme.ts
 import { useEffect } from 'react';
 import { useThemeStore } from '../store/theme.store';
 
