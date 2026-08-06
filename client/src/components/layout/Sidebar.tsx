@@ -40,6 +40,7 @@ interface SidebarProps {
   isOpen: boolean;
   isAuthenticated?: boolean;
   userRole?: string;
+  unreadCount?: number;
   onClose?: () => void;
   onLogout?: () => void;
 }
@@ -48,6 +49,7 @@ export const Sidebar = ({
   isOpen, 
   isAuthenticated = false,
   userRole,
+  unreadCount = 0,
   onClose, 
   onLogout 
 }: SidebarProps) => {
@@ -111,7 +113,7 @@ export const Sidebar = ({
     { name: 'Dashboard', to: getDashboardRoute(), icon: FaTachometerAlt, authRequired: true },
     { name: 'Shipments', to: getShipmentsRoute(), icon: FaShip, authRequired: true },
     { name: 'Tracking', to: ROUTES.TRACKING, icon: FaMapMarkedAlt, authRequired: true },
-    { name: 'Alerts', to: ROUTES.ALERTS, icon: FaBell, badge: 3, authRequired: true },
+    { name: 'Alerts', to: ROUTES.ALERTS, icon: FaBell, badge: unreadCount, authRequired: true },
     ...(isAdmin && !isSuperAdmin ? [
       { name: 'Users Report', to: ROUTES.USERS_REPORT, icon: FaUsers, authRequired: true } as NavItem,
       { name: 'Invitations', to: ROUTES.INVITATIONS, icon: FaPaperPlane, authRequired: true } as NavItem,
@@ -219,22 +221,22 @@ export const Sidebar = ({
                 {!isCollapsed && (
                   <>
                     <span className="flex-1 truncate">{item.name}</span>
-                    {item.badge && (
+                    {item.badge ? (
                       <span className="px-1.5 py-0.5 text-[10px] bg-[#DC2626] text-white rounded-full font-bold min-w-[20px] text-center">
-                        {item.badge}
+                        {item.badge > 99 ? '99+' : item.badge}
                       </span>
-                    )}
+                    ) : null}
                   </>
                 )}
 
                 {isCollapsed && (
                   <div className="absolute left-full ml-2 px-3 py-1.5 bg-black dark:bg-[#1A1A1A] text-white text-xs font-medium rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg pointer-events-none border border-[#2A2A2A]">
                     {item.name}
-                    {item.badge && (
+                    {item.badge ? (
                       <span className="ml-2 px-1.5 py-0.5 bg-[#DC2626] text-white rounded-full text-[10px]">
-                        {item.badge}
+                        {item.badge > 99 ? '99+' : item.badge}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </NavLink>
