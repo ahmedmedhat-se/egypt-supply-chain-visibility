@@ -1311,9 +1311,10 @@ export class ShipmentsService {
     }
 
     if (query.status || query.excludeStatus) {
-      where.shipment_status = query.excludeStatus
-        ? { not: query.excludeStatus }
-        : query.status;
+      where.shipment_status = {
+        equals: query.status,
+        not: query.excludeStatus,
+      };
     }
 
     if (query.search) {
