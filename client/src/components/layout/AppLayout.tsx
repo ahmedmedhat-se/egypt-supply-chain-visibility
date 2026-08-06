@@ -40,6 +40,7 @@ export const AppLayout = ({
         isOpen={sidebarOpen} 
         isAuthenticated={isAuthenticated}
         userRole={userRole}
+        unreadCount={notificationCount}
         onClose={() => setSidebarOpen(false)}
         onLogout={logout}
       />
