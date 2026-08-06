@@ -7,6 +7,7 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { RoutesService } from './routes.service';
 import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
 import { AddRouteCheckpointDto } from './dto/add-route-checkpoint.dto';
+import { QueryRouteDto } from './dto/query-route.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
@@ -34,10 +36,12 @@ export class RoutesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all active routes' })
-  @ApiResponse({ status: 200, description: 'Returns all routes.' })
-  async findAll() {
-    return this.routesService.findAll();
+  @ApiOperation({
+    summary: 'List routes with pagination, search and active filter',
+  })
+  @ApiResponse({ status: 200, description: 'Returns paginated routes.' })
+  async findAll(@Query() query: QueryRouteDto) {
+    return this.routesService.findAll(query);
   }
 
   @Get(':id')
@@ -92,7 +96,10 @@ export class RoutesController {
   @ApiOperation({ summary: 'Add a checkpoint to a route' })
   @ApiResponse({ status: 201, description: 'Checkpoint added to route.' })
   @ApiResponse({ status: 404, description: 'Route or checkpoint not found.' })
-  @ApiResponse({ status: 409, description: 'Duplicate sequence or checkpoint.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Duplicate sequence or checkpoint.',
+  })
   async addCheckpoint(
     @Param('routeId') routeId: string,
     @Body() dto: AddRouteCheckpointDto,
@@ -105,7 +112,10 @@ export class RoutesController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Remove a checkpoint from a route' })
   @ApiResponse({ status: 200, description: 'Checkpoint removed from route.' })
-  @ApiResponse({ status: 404, description: 'Route or route checkpoint not found.' })
+  @ApiResponse({
+    status: 404,
+    description: 'Route or route checkpoint not found.',
+  })
   async removeCheckpoint(
     @Param('routeId') routeId: string,
     @Param('checkpointId') checkpointId: string,

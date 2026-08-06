@@ -10,6 +10,9 @@ import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
 import { AddRouteCheckpointDto } from './dto/add-route-checkpoint.dto';
 import { AuditService } from '../audit/audit.service';
+import { QueryRouteDto } from './dto/query-route.dto';
+import { buildPaginationMeta } from '../common/pagination/pagination.helper';
+import type { Prisma } from '@prisma/client';
 
 @Injectable()
 export class RoutesService {
@@ -55,21 +58,41 @@ export class RoutesService {
     return this.formatRoute(route);
   }
 
-  async findAll() {
-    const routes = await this.prisma.route.findMany({
-      orderBy: { route_name: 'asc' },
-      include: {
-        route_checkpoints: {
-          include: { checkpoint: true },
-          orderBy: { sequence_order: 'asc' },
+  async findAll(query: QueryRouteDto = {}) {
+    const { page = 1, limit = 10, search, isActive } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.RouteWhereInput = {};
+    if (isActive !== undefined) {
+      where.route_is_active = isActive;
+    }
+    if (search) {
+      where.OR = [
+        { route_name: { contains: search, mode: 'insensitive' } },
+        { route_code: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [routes, totalItems] = await Promise.all([
+      this.prisma.route.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { route_name: 'asc' },
+        include: {
+          route_checkpoints: {
+            include: { checkpoint: true },
+            orderBy: { sequence_order: 'asc' },
+          },
+          _count: { select: { shipments: true } },
         },
-        _count: { select: { shipments: true } },
-      },
-    });
+      }),
+      this.prisma.route.count({ where }),
+    ]);
 
     return {
       data: routes.map((r) => this.formatRoute(r)),
-      meta: { total: routes.length },
+      meta: buildPaginationMeta(page, limit, totalItems),
     };
   }
 
