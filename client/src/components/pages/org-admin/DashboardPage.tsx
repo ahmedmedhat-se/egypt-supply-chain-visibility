@@ -1,8 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Card } from '../../ui/Card';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { Badge } from '../../ui/Badge';
-import { Button } from '../../ui/Button';
 import { useAuthStore } from '../../../store/auth.store';
 import { dashboardApi } from '../../../api/dashboard.api';
 import { organizationApi } from '../../../api/organization.api';
@@ -56,9 +54,9 @@ export const AdminDashboardPage = () => {
     return (
       <div className="space-y-6">
         <Header user={user} />
-        <Card variant="bordered" className="p-8 text-center">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-8 text-center shadow-sm">
           <p className="text-[#DC2626]">Unable to load dashboard data.</p>
-        </Card>
+        </div>
       </div>
     );
   }
@@ -96,22 +94,25 @@ export const AdminDashboardPage = () => {
           value={stats.totalUsers}
           sub={`${stats.activeUsers} active`}
           icon={FaUsers}
-          color="text-[#0A2E4A]"
-          bg="bg-[#E8F0F8] dark:bg-[#1A3D5A]"
+          color="text-[#0A2E4A] dark:text-white"
+          bg="bg-[#E8F0F8] dark:bg-[#1A1A1A]"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Shipments by Status */}
-        <Card variant="bordered">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-[#0A2E4A] dark:text-white">
               Shipments by Status
             </h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate(ROUTES.SHIPMENTS)}>
+            <button
+              onClick={() => navigate(ROUTES.SHIPMENTS)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#2D9B6E] hover:text-[#1F7A52] dark:hover:text-[#2D9B6E] rounded-lg transition-colors"
+            >
               <FaEye className="w-3.5 h-3.5" />
               View all
-            </Button>
+            </button>
           </div>
           {Object.keys(stats.shipmentsByStatus).length > 0 ? (
             <div className="space-y-3">
@@ -139,22 +140,21 @@ export const AdminDashboardPage = () => {
           ) : (
             <p className="text-sm text-[#94A3B8]">No shipments yet.</p>
           )}
-        </Card>
+        </div>
 
         {/* Pending Invitations */}
-        <Card variant="bordered">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-[#0A2E4A] dark:text-white">
               Pending Invitations
             </h2>
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => navigate(ROUTES.INVITATIONS)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#2D9B6E] hover:text-[#1F7A52] dark:hover:text-[#2D9B6E] rounded-lg transition-colors"
             >
               <FaEye className="w-3.5 h-3.5" />
               Manage
-            </Button>
+            </button>
           </div>
           {pendingInvites && pendingInvites.length > 0 ? (
             <div className="space-y-3">
@@ -186,11 +186,11 @@ export const AdminDashboardPage = () => {
           ) : (
             <p className="text-sm text-[#94A3B8]">No pending invitations.</p>
           )}
-        </Card>
+        </div>
       </div>
 
       {/* Alerts Summary */}
-      <Card variant="bordered" className="flex items-center justify-between">
+      <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-6 shadow-sm flex items-center justify-between">
         <div className="flex items-center gap-3">
           <FaExclamationTriangle
             className={`w-5 h-5 ${
@@ -206,7 +206,7 @@ export const AdminDashboardPage = () => {
         <Badge variant={stats.criticalAlerts > 0 ? 'danger' : 'success'} size="sm">
           {stats.totalAlerts} total
         </Badge>
-      </Card>
+      </div>
     </div>
   );
 };
@@ -242,11 +242,11 @@ function StatCard({
   bg: string;
 }) {
   return (
-    <Card variant="elevated" className="group hover:shadow-xl transition-shadow">
+    <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-5 shadow-sm hover:shadow-md transition-shadow duration-300 group">
       <div className="flex items-center gap-4">
         <div
           className={cn(
-            'w-12 h-12 rounded-xl flex items-center justify-center',
+            'w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110',
             bg,
           )}
         >
@@ -260,6 +260,6 @@ function StatCard({
           {sub && <p className="text-xs text-[#2D9B6E]">{sub}</p>}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

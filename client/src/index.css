@@ -8,211 +8,72 @@
   --color-secondary: #2D9B6E;
   --color-secondary-light: #3DB87E;
   --color-secondary-dark: #1F7A52;
-  --color-gray-50: #F8FAFC;
-  --color-gray-100: #F1F5F9;
-  --color-gray-200: #E2E8F0;
-  --color-gray-300: #D1D9E6;
-  --color-gray-400: #94A3B8;
-  --color-gray-500: #64748B;
-  --color-gray-600: #475569;
-  --color-gray-700: #334155;
-  --color-gray-800: #1E293B;
-  --color-gray-900: #0F172A;
 }
 
-/* Base Styles */
-
 body {
-  background: var(--color-gray-50);
-  color: var(--color-gray-900);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #F8FAFC;
+  color: #1A2A3A;
+  font-family: system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .dark body {
-  background: var(--color-primary);
+  background: #0A2E4A;
   color: white;
 }
-
-/* Selection Styles */
-
-::selection {
-  background: var(--color-secondary);
-  color: white;
-}
-
-.dark ::selection {
-  background: var(--color-secondary-light);
-  color: var(--color-primary);
-}
-
-/* Scrollbar Styles */
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-gray-100);
+  background: #E8F0F8;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-primary);
+  background: #0A2E4A;
   border-radius: 9999px;
-  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary-light);
+  background: #1A3D5A;
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: var(--color-primary-light);
+  background: #1A3D5A;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: var(--color-secondary);
+  background: #2D9B6E;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-secondary-light);
+  background: #3DB87E;
 }
-
-/* Focus Styles */
-
-*:focus-visible {
-  outline: 2px solid var(--color-secondary);
-  outline-offset: 2px;
-}
-
-/* Animations */
 
 @keyframes enter {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(-8px);
+    transform: scale(0.9);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale(1);
   }
 }
 
 @keyframes leave {
   from {
     opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.95) translateY(-8px);
-  }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slide-in {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 0.3;
     transform: scale(1);
   }
-  50% {
-    opacity: 0.6;
-    transform: scale(1.05);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px) translateX(0px);
-    opacity: 0.3;
-  }
-  25% {
-    transform: translateY(-20px) translateX(10px);
-    opacity: 0.8;
-  }
-  50% {
-    transform: translateY(-10px) translateX(-10px);
-    opacity: 0.5;
-  }
-  75% {
-    transform: translateY(-30px) translateX(5px);
-    opacity: 0.9;
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% center;
-  }
-  100% {
-    background-position: 200% center;
-  }
-}
-
-@keyframes live-pulse {
-  0% {
-    transform: scale(0.55);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(1.45);
-    opacity: 0;
-  }
-}
-
-@keyframes pulse-ring {
-  0% {
-    transform: scale(0.5);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.8);
-    opacity: 0;
-  }
-}
-
-@keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
   to {
-    transform: rotate(360deg);
+    opacity: 0;
+    transform: scale(0.9);
   }
 }
-
-/* Animation Classes */
 
 .animate-enter {
   animation: enter 200ms ease-out;
@@ -222,86 +83,7 @@ body {
   animation: leave 150ms ease-in;
 }
 
-.animate-fade-in {
-  animation: fade-in 300ms ease-out;
-}
-
-.animate-slide-in {
-  animation: slide-in 300ms ease-out;
-}
-
-.animate-slide-up {
-  animation: slide-up 400ms ease-out;
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 6s ease-in-out infinite;
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-.animate-spin-slow {
-  animation: spin-slow 8s linear infinite;
-}
-
-/* Animation Delays */
-
-.animation-delay-100 {
-  animation-delay: 100ms;
-}
-
-.animation-delay-200 {
-  animation-delay: 200ms;
-}
-
-.animation-delay-300 {
-  animation-delay: 300ms;
-}
-
-.animation-delay-500 {
-  animation-delay: 500ms;
-}
-
-.animation-delay-1000 {
-  animation-delay: 1000ms;
-}
-
-.animation-delay-1500 {
-  animation-delay: 1500ms;
-}
-
-.animation-delay-2000 {
-  animation-delay: 2000ms;
-}
-
-/* Shimmer Effect */
-
-.shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(45, 155, 110, 0.1) 50%,
-    transparent 100%
-  );
-  background-size: 200% auto;
-  animation: shimmer 3s linear infinite;
-}
-
-.shimmer-dark {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(45, 155, 110, 0.2) 50%,
-    transparent 100%
-  );
-  background-size: 200% auto;
-  animation: shimmer 3s linear infinite;
-}
-
-/* Live Map Markers */
-
+/* Live map markers */
 .live-pin {
   background: transparent;
   border: none;
@@ -324,7 +106,16 @@ body {
   animation: live-pulse 1.6s ease-out infinite;
 }
 
-/* Live Popup */
+@keyframes live-pulse {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
 
 .live-popup {
   font-family: system-ui, -apple-system, sans-serif;
@@ -348,7 +139,7 @@ body {
 .live-popup-route {
   margin-top: 3px;
   font-size: 12px;
-  color: var(--color-gray-500);
+  color: #64748b;
 }
 
 .live-popup-row {
@@ -357,14 +148,12 @@ body {
   justify-content: space-between;
   gap: 12px;
   font-size: 12px;
-  color: var(--color-gray-500);
+  color: #64748b;
 }
 
 .live-popup-row strong {
-  color: var(--color-primary);
+  color: #0a2e4a;
 }
-
-/* Leaflet Overrides */
 
 .leaflet-container {
   font: inherit;
@@ -374,22 +163,6 @@ body {
 .leaflet-popup-tip {
   border-radius: 10px;
 }
-
-.leaflet-popup-content-wrapper {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.dark .leaflet-popup-content-wrapper,
-.dark .leaflet-popup-tip {
-  background: var(--color-primary-light);
-  color: white;
-}
-
-.dark .leaflet-popup-content-wrapper a {
-  color: var(--color-secondary-light);
-}
-
-/* Map Marker Clusters */
 
 .marker-cluster-small {
   background-color: rgba(14, 165, 233, 0.25);
@@ -422,15 +195,13 @@ body {
   align-items: center;
   justify-content: center;
 }
-
-/* MapPicker Pulsing Pin */
-
+/* MapPicker pulsing pin */
 .pulsing-marker {
   position: relative;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--color-secondary);
+  background: #2D9B6E;
   border: 3px solid #ffffff;
   box-shadow: 0 2px 6px rgba(10, 46, 74, 0.35);
 }
@@ -444,70 +215,13 @@ body {
   animation: pulse-ring 1.6s ease-out infinite;
 }
 
-/* Status Indicators */
-
-.status-online {
-  background: var(--color-secondary);
-}
-
-.status-offline {
-  background: #DC2626;
-}
-
-.status-warning {
-  background: #F59E0B;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 9999px;
-  display: inline-block;
-}
-
-.status-dot-pulse {
-  animation: live-pulse 1.6s ease-out infinite;
-}
-
-/* Glassmorphism Utilities */
-
-.glass {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.glass-dark {
-  background: rgba(10, 46, 74, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* Transition Utilities */
-
-.transition-all-smooth {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.transition-transform-smooth {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.transition-opacity-smooth {
-  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Card Hover Effects */
-
-.card-hover {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(10, 46, 74, 0.1);
-}
-
-.dark .card-hover:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
 }

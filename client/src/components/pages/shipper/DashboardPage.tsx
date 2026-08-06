@@ -1,4 +1,3 @@
-import { Card } from '../../ui/Card';
 import { useAuthStore } from '../../../store/auth.store';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/routes';
@@ -26,10 +25,12 @@ export const ShipperDashboardPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <button
           onClick={() => navigate(ROUTES.SHIPMENT_CREATE)}
-          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#2D9B6E] to-[#1F7A52] p-6 text-white text-left hover:shadow-xl transition-all duration-300"
+          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#2D9B6E] to-[#1F7A52] dark:from-[#1A5A3E] dark:to-[#0F3A28] p-6 text-white text-left hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
         >
           <div className="relative z-10">
-            <FaPlus className="w-8 h-8 mb-3 opacity-80" />
+            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+              <FaPlus className="w-6 h-6 opacity-80" />
+            </div>
             <h3 className="text-lg font-semibold mb-1">Create Shipment</h3>
             <p className="text-sm text-white/70">Send cargo to a destination</p>
           </div>
@@ -38,10 +39,12 @@ export const ShipperDashboardPage = () => {
 
         <button
           onClick={() => navigate(ROUTES.TRACKING)}
-          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1E40AF] to-[#1A3D8F] p-6 text-white text-left hover:shadow-xl transition-all duration-300"
+          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1E40AF] to-[#1A3D8F] dark:from-[#0A1A4A] dark:to-[#050D2A] p-6 text-white text-left hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
         >
           <div className="relative z-10">
-            <FaSearch className="w-8 h-8 mb-3 opacity-80" />
+            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+              <FaSearch className="w-6 h-6 opacity-80" />
+            </div>
             <h3 className="text-lg font-semibold mb-1">Track Shipment</h3>
             <p className="text-sm text-white/70">Follow your cargo in real-time</p>
           </div>
@@ -50,10 +53,12 @@ export const ShipperDashboardPage = () => {
 
         <button
           onClick={() => navigate(ROUTES.SHIPMENTS)}
-          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#0A2E4A] to-[#122A44] p-6 text-white text-left hover:shadow-xl transition-all duration-300"
+          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#0A2E4A] to-[#122A44] dark:from-black dark:to-[#0A0A0A] p-6 text-white text-left hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5"
         >
           <div className="relative z-10">
-            <FaShip className="w-8 h-8 mb-3 opacity-80" />
+            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+              <FaShip className="w-6 h-6 opacity-80" />
+            </div>
             <h3 className="text-lg font-semibold mb-1">My Shipments</h3>
             <p className="text-sm text-white/70">View all your shipments</p>
           </div>
@@ -63,38 +68,40 @@ export const ShipperDashboardPage = () => {
 
       {/* Info cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card variant="bordered" className="p-6">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
           <h2 className="text-lg font-semibold text-[#0A2E4A] dark:text-white mb-3">
             Getting Started
           </h2>
           <ul className="space-y-3">
             {[
-              { icon: FaPlus, text: 'Create a new shipment to send cargo', done: false },
-              { icon: FaSearch, text: 'Track your active shipments in real-time', done: false },
-              { icon: FaCheckCircle, text: 'Get notified when cargo reaches checkpoints', done: false },
+              { icon: FaPlus, text: 'Create a new shipment to send cargo' },
+              { icon: FaSearch, text: 'Track your active shipments in real-time' },
+              { icon: FaCheckCircle, text: 'Get notified when cargo reaches checkpoints' },
             ].map((item, i) => (
               <li key={i} className="flex items-center gap-3 text-sm text-[#64748B] dark:text-[#94A3B8]">
-                <div className="w-8 h-8 rounded-full bg-[#E8F0F8] dark:bg-[#1A3D5A] flex items-center justify-center flex-shrink-0">
-                  <item.icon className="w-4 h-4 text-[#0A2E4A]" />
+                <div className="w-8 h-8 rounded-full bg-[#E8F0F8] dark:bg-[#1A1A1A] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                  <item.icon className="w-4 h-4 text-[#0A2E4A] dark:text-white" />
                 </div>
                 <span>{item.text}</span>
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
 
-        <Card variant="bordered" className="p-6">
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
           <h2 className="text-lg font-semibold text-[#0A2E4A] dark:text-white mb-3">
             Recent Activity
           </h2>
-          <p className="text-sm text-[#94A3B8]">
+          <p className="text-sm text-[#94A3B8] dark:text-[#94A3B8]">
             Your recent shipments and updates will appear here once you start shipping cargo.
           </p>
-          <div className="mt-4 flex items-center gap-2 text-sm text-[#94A3B8]">
-            <FaClock className="w-4 h-4" />
+          <div className="mt-4 flex items-center gap-2 text-sm text-[#94A3B8] dark:text-[#94A3B8]">
+            <div className="w-6 h-6 rounded-lg bg-[#E8F0F8] dark:bg-[#1A1A1A] flex items-center justify-center">
+              <FaClock className="w-3 h-3" />
+            </div>
             <span>No recent activity</span>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );
