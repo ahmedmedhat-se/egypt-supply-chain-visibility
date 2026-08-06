@@ -1120,6 +1120,11 @@ export class ShipmentsService {
       shipment.carrier_organization_id === dbUser.organization_id &&
       shipment.carrier_user_id
     ) {
+      if (shipment.carrier_user_id !== user.sub) {
+        throw new ConflictException(
+          'This shipment is already claimed by another driver in your organization',
+        );
+      }
       return this.formatShipment(shipment);
     }
 
