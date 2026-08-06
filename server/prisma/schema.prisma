@@ -158,6 +158,7 @@ model Shipment {
   @@index([shipment_current_checkpoint_id])
   @@index([shipment_created_at(sort: Desc)])
   @@index([shipment_status, shipper_organization_id])
+  @@index([shipment_status, shipment_estimated_arrival_at])
   @@map("shipment")
 }
 
