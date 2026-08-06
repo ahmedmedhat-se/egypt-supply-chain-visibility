@@ -52,6 +52,7 @@ export class AuthController {
     this.auditService.log(
       {
         userId: result.user.id,
+        organizationId: result.user.organizationId,
         action: 'AUTH_REGISTER',
         resourceType: 'user',
         resourceId: result.user.id,
@@ -101,6 +102,7 @@ export class AuthController {
     this.auditService.log(
       {
         userId: result.user.id,
+        organizationId: result.user.organizationId,
         action: 'AUTH_LOGIN',
         resourceType: 'user',
         resourceId: result.user.id,
@@ -144,6 +146,7 @@ export class AuthController {
     this.auditService.log(
       {
         userId: result.user.id,
+        organizationId: result.user.organizationId,
         action: 'AUTH_ACCEPT_INVITATION',
         resourceType: 'user',
         resourceId: result.user.id,
@@ -212,8 +215,19 @@ export class AuthController {
   @Get('sessions')
   @ApiOperation({ summary: 'List all active sessions for current user' })
   @ApiResponse({ status: 200, description: 'List of active sessions returned' })
-  async getSessions(@CurrentUser() user: any, @Query() query: PaginationDto) {
-    return this.authService.getSessions(user.sub, query.page, query.limit);
+  async getSessions(
+    @CurrentUser() user: any,
+    @Query() query: PaginationDto,
+    @Req() request: FastifyRequest,
+  ) {
+    const currentSessionId = this.resolveCurrentSessionId(user, request);
+
+    return this.authService.getSessions(
+      user.sub,
+      query.page,
+      query.limit,
+      currentSessionId,
+    );
   }
 
   @Delete('sessions/:sessionId')
@@ -247,14 +261,7 @@ export class AuthController {
     @CurrentUser() user: any,
     @Req() request: FastifyRequest,
   ) {
-    let cookie = request.cookies['refresh_token'];
-    let currentSessionId: string | null = null;
-    if (cookie) {
-      const result = request.unsignCookie(cookie);
-      if (result.valid && result.value) {
-        currentSessionId = result.value.split(':')[0];
-      }
-    }
+    const currentSessionId = this.resolveCurrentSessionId(user, request);
     const result = await this.authService.revokeAllSessions(
       user.sub,
       currentSessionId,
@@ -272,6 +279,27 @@ export class AuthController {
     );
 
     return result;
+  }
+
+  /**
+   * Resolves the id of the session making the request.
+   */
+  private resolveCurrentSessionId(
+    user: any,
+    request: FastifyRequest,
+  ): string | null {
+    if (typeof user?.sessionId === 'string') {
+      return user.sessionId;
+    }
+
+    const cookie = request.cookies['refresh_token'];
+    if (cookie) {
+      const result = request.unsignCookie(cookie);
+      if (result.valid && result.value) {
+        return result.value.split(':')[0];
+      }
+    }
+    return null;
   }
 
   private setRefreshCookie(reply: FastifyReply, token: string) {

@@ -16,6 +16,20 @@ import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { buildPaginationMeta } from '../common/pagination/pagination.helper';
+
+interface SessionFamilyData {
+  userId: string;
+  latestToken: string;
+  createdAt?: string;
+}
+
+export interface SessionRecord {
+  sessionId: string;
+  userId: string;
+  createdAt: string | null;
+  isCurrent: boolean;
+}
 
 @Injectable()
 export class AuthService {
@@ -279,7 +293,12 @@ export class AuthService {
     };
   }
 
-  async getSessions(userId: string, page: number = 1, limit: number = 10) {
+  async getSessions(
+    userId: string,
+    page: number = 1,
+    limit: number = 10,
+    currentSessionId: string | null = null,
+  ) {
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -289,43 +308,39 @@ export class AuthService {
       `user_sessions:${userId}`,
     );
 
-    const sessions: any[] = [];
+    const sessions: SessionRecord[] = [];
     for (const familyId of familyIds) {
-      const data = await this.redisService.getJson<{
-        userId: string;
-        latestToken: string;
-      }>(`rt_family:${familyId}`);
+      const data = await this.redisService.getJson<SessionFamilyData>(
+        `rt_family:${familyId}`,
+      );
 
       if (data && data.userId === userId) {
         sessions.push({
           sessionId: familyId,
           userId: data.userId,
-          createdAt: new Date(),
-          isCurrent: false,
+          createdAt: data.createdAt ?? null,
+          isCurrent: currentSessionId === familyId,
         });
       } else {
+        // Stale family — drop it so the index stays clean
         await this.redisService.srem(`user_sessions:${userId}`, familyId);
       }
     }
+
+    // Newest first; sessions created before this change (no createdAt) sink to the bottom
+    sessions.sort((a, b) => {
+      if (!a.createdAt) return 1;
+      if (!b.createdAt) return -1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
 
     const totalItems = sessions.length;
     const skip = (page - 1) * limit;
     const paginatedSessions = sessions.slice(skip, skip + limit);
 
-    const totalPages = Math.ceil(totalItems / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
-
     return {
       data: paginatedSessions,
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, totalItems),
     };
   }
 
@@ -402,7 +417,11 @@ export class AuthService {
 
     await this.redisService.setJson(
       `rt_family:${familyId}`,
-      { userId, latestToken: refreshToken },
+      {
+        userId,
+        latestToken: refreshToken,
+        createdAt: new Date().toISOString(),
+      },
       ttlSeconds,
     );
     await this.redisService.sadd(`user_sessions:${userId}`, familyId);
@@ -445,9 +464,17 @@ export class AuthService {
       ttlSeconds,
     );
 
+    // Preserve the original session createdAt across token rotations
+    const existingFamily = await this.redisService.getJson<SessionFamilyData>(
+      `rt_family:${familyId}`,
+    );
     await this.redisService.setJson(
       `rt_family:${familyId}`,
-      { userId, latestToken: newRefreshToken },
+      {
+        userId,
+        latestToken: newRefreshToken,
+        createdAt: existingFamily?.createdAt ?? new Date().toISOString(),
+      },
       ttlSeconds,
     );
 
