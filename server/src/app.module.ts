@@ -20,11 +20,13 @@ import { WebsocketModule } from './websocket/websocket.module';
 import { AuditModule } from './audit/audit.module';
 
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { RequestContextInterceptor } from './common/context/request-context.interceptor';
 import { AlertsModule } from './alerts/alerts.module';
 import { ReportsModule } from './reports/reports.module';
+import { MapModule } from './map/map.module';
 
 @Module({
   imports: [
@@ -60,6 +62,9 @@ import { ReportsModule } from './reports/reports.module';
     AuditModule,
     AlertsModule,
     ReportsModule,
+    MapModule,
+    // The scheduler must be registered exactly once, at the root.
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
