@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
+import { Pagination } from '../../ui/Pagination';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
@@ -6,16 +7,14 @@ import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { EmptyState } from '../../ui/EmptyState';
 import { ShipmentStatusBadge } from '../../shipments/ShipmentStatusBadge';
 import { MapPicker } from '../../ui/MapPicker';
-import { Modal } from '../../ui/Modal';
 import { useAuthStore } from '../../../store/auth.store';
 import {
   useShipments,
   useAcceptShipment,
   useUpdateShipmentStatus,
-  useAssignRoute,
 } from '../../../hooks/useShipments';
 import { shipmentsApi } from '../../../api/shipments.api';
-import { routesApi } from '../../../api/routes.api';
+import { RoutePickerModal } from '../../shipments/RoutePickerModal';
 import { cn } from '../../../lib/utils';
 import { STATUS_TRANSITIONS } from '../../../constants/shipments';
 import toast from 'react-hot-toast';
@@ -34,8 +33,7 @@ import {
   FaUser,
   FaIdBadge,
 } from 'react-icons/fa';
-import type { Shipment, ShipmentStatus } from '../../../types/shipment.types';
-import type { Route } from '../../../types/route.types';
+import type { Shipment, ShipmentEvent, ShipmentStatus } from '../../../types/shipment.types';
 
 type ActiveTab = 'my' | 'available';
 
@@ -47,25 +45,30 @@ export const CarrierShipmentsPage = () => {
   const [statusOpenId, setStatusOpenId] = useState<string | null>(null);
   const [statusDropdownDir, setStatusDropdownDir] = useState<'down' | 'up'>('down');
 
-  // Data fetching — server-side scope filtering (T9)
-  const { data: assignedData, isLoading: assignedLoading } = useShipments({ scope: 'assigned' });
-  const { data: availableData, isLoading: availableLoading } = useShipments({ scope: 'available' });
+  // Pagination state — one page per tab so switching tabs keeps each list's place
+  const [myPage, setMyPage] = useState(1);
+  const [availablePage, setAvailablePage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  // Data fetching — server-side scope filtering + pagination
+  const { data: assignedData, isLoading: assignedLoading } = useShipments({
+    scope: 'assigned',
+    page: myPage,
+    limit: PAGE_SIZE,
+  });
+  const { data: availableData, isLoading: availableLoading } = useShipments({
+    scope: 'available',
+    page: availablePage,
+    limit: PAGE_SIZE,
+  });
   const { mutate: acceptShipment, isPending: isAccepting } = useAcceptShipment();
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateShipmentStatus();
-
-  const { data: routesData } = useQuery({
-    queryKey: ['routes'],
-    queryFn: async () => {
-      const res = await routesApi.getAll();
-      return res.data.data;
-    },
-  });
-
-  const routes: Route[] = routesData || [];
 
   // Separate shipments into My Shipments and Available (server-scoped)
   const myShipments: Shipment[] = assignedData?.data || [];
   const availableShipments: Shipment[] = availableData?.data || [];
+  const assignedMeta = assignedData?.meta;
+  const availableMeta = availableData?.meta;
   const shipmentsLoading = assignedLoading || availableLoading;
   const allShipments = [...myShipments, ...availableShipments];
 
@@ -93,8 +96,11 @@ export const CarrierShipmentsPage = () => {
     if (window.confirm(`Accept shipment "${shipment.referenceNumber}"?`)) {
       acceptShipment(shipment.id, {
         onSuccess: () => {
-          // Jump straight into route assignment for the freshly claimed shipment
+          // Jump straight into route assignment for the freshly claimed shipment.
+          // Reset to page 1 so the newly claimed shipment (most recent first)
+          // is visible on the "My Shipments" tab.
           setActiveTab('my');
+          setMyPage(1);
           setSelectedShipment(shipment.id);
           setRouteModalId(shipment.id);
         },
@@ -131,10 +137,9 @@ export const CarrierShipmentsPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Route Assignment Modal */}
-      <RouteAssignModal
+      {/* Route Assignment Modal (searchable + paginated) */}
+      <RoutePickerModal
         shipment={routeModalShipment ?? null}
-        routes={routes}
         isOpen={!!routeModalShipment}
         onClose={() => setRouteModalId(null)}
       />
@@ -156,7 +161,7 @@ export const CarrierShipmentsPage = () => {
           }}
           icon={FaTruck}
           label="My Shipments"
-          count={myShipments.length}
+          count={assignedMeta?.totalItems ?? myShipments.length}
         />
         <TabButton
           active={activeTab === 'available'}
@@ -166,7 +171,7 @@ export const CarrierShipmentsPage = () => {
           }}
           icon={FaHandPaper}
           label="Available"
-          count={availableShipments.length}
+          count={availableMeta?.totalItems ?? availableShipments.length}
         />
       </div>
 
@@ -182,9 +187,13 @@ export const CarrierShipmentsPage = () => {
           onStatusChange={handleStatusChange}
           getValidTransitions={getValidTransitions}
           isUpdatingStatus={isUpdatingStatus}
-          routes={routes}
           statusDropdownDir={statusDropdownDir}
           onOpenRouteModal={(id) => setRouteModalId(id)}
+          page={myPage}
+          totalItems={assignedMeta?.totalItems ?? 0}
+          totalPages={assignedMeta?.totalPages ?? 1}
+          onPageChange={setMyPage}
+          pageSize={PAGE_SIZE}
         />
       ) : (
         <AvailableShipmentsTab
@@ -193,6 +202,11 @@ export const CarrierShipmentsPage = () => {
           onAccept={handleAccept}
           isAccepting={isAccepting}
           hasActiveShipment={hasActiveShipment}
+          page={availablePage}
+          totalItems={availableMeta?.totalItems ?? 0}
+          totalPages={availableMeta?.totalPages ?? 1}
+          onPageChange={setAvailablePage}
+          pageSize={PAGE_SIZE}
         />
       )}
     </div>
@@ -255,9 +269,13 @@ function MyShipmentsTab({
   onStatusChange,
   getValidTransitions,
   isUpdatingStatus,
-  routes,
   statusDropdownDir,
   onOpenRouteModal,
+  page,
+  totalItems,
+  totalPages,
+  onPageChange,
+  pageSize,
 }: {
   shipments: Shipment[];
   isLoading: boolean;
@@ -269,9 +287,13 @@ function MyShipmentsTab({
   onStatusChange: (s: Shipment, status: ShipmentStatus) => void;
   getValidTransitions: (status: string) => ShipmentStatus[];
   isUpdatingStatus: boolean;
-  routes: Route[];
   statusDropdownDir: 'down' | 'up';
   onOpenRouteModal: (id: string) => void;
+  page: number;
+  totalItems: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  pageSize: number;
 }) {
   if (isLoading) {
     return (
@@ -348,19 +370,30 @@ function MyShipmentsTab({
             </button>
           );
         })}
+        {totalItems > 0 && (
+          <div className="pt-2">
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              limit={pageSize}
+              onPageChange={onPageChange}
+            />
+          </div>
+        )}
       </div>
 
       {/* Detail panel - right side */}
       <div className="xl:col-span-2">
         {selectedShipmentData ? (
           <ShipmentDetailPanel
+            key={selectedShipmentData.id}
             shipment={selectedShipmentData}
             statusOpenId={statusOpenId}
             onStatusToggle={onStatusToggle}
             onStatusChange={onStatusChange}
             getValidTransitions={getValidTransitions}
             isUpdatingStatus={isUpdatingStatus}
-            routes={routes}
             statusDropdownDir={statusDropdownDir}
             onOpenRouteModal={onOpenRouteModal}
           />
@@ -390,7 +423,6 @@ function ShipmentDetailPanel({
   onStatusChange,
   getValidTransitions,
   isUpdatingStatus,
-  routes,
   statusDropdownDir,
   onOpenRouteModal,
 }: {
@@ -400,7 +432,6 @@ function ShipmentDetailPanel({
   onStatusChange: (s: Shipment, status: ShipmentStatus) => void;
   getValidTransitions: (status: string) => ShipmentStatus[];
   isUpdatingStatus: boolean;
-  routes: Route[];
   statusDropdownDir: 'down' | 'up';
   onOpenRouteModal: (id: string) => void;
 }) {
@@ -410,23 +441,17 @@ function ShipmentDetailPanel({
     value != null ? value.toFixed(6) : '';
 
   // Pre-fill from the shipment's last reported position so the map opens there
+  // Keyed remount (key={shipment.id}) re-initializes these per shipment,
+  // so no effect-sync is needed.
   const [latitude, setLatitude] = useState(() => toFixed6(shipment.currentLatitude));
   const [longitude, setLongitude] = useState(() => toFixed6(shipment.currentLongitude));
-  const [localRouteId, setLocalRouteId] = useState(shipment.route?.route_id || '');
 
-  // Sync when the selected shipment changes
-  useEffect(() => {
-    setLatitude(toFixed6(shipment.currentLatitude));
-    setLongitude(toFixed6(shipment.currentLongitude));
-    setLocalRouteId(shipment.route?.route_id || '');
-  }, [shipment.id]);
-
-  // Find the route and its checkpoints
-  const currentRoute = routes.find(
-    (r) => r.id === (shipment.route?.route_id || localRouteId),
+  // Checkpoints come enriched on the shipment payload (server-side),
+  // so we never need to load the full routes list.
+  const checkpoints = shipment.route?.checkpoints || [];
+  const sortedCheckpoints = [...checkpoints].sort(
+    (a, b) => a.sequenceOrder - b.sequenceOrder,
   );
-  const checkpoints = currentRoute?.checkpoints || [];
-  const sortedCheckpoints = [...checkpoints].sort((a, b) => a.sequenceOrder - b.sequenceOrder);
 
   // Handle location update
   const handleLocationUpdate = () => {
@@ -467,14 +492,14 @@ function ShipmentDetailPanel({
     enabled: true,
   });
 
-  const events = (shipmentDetail as any)?.events || [];
+  const events: ShipmentEvent[] = shipmentDetail?.events ?? [];
 
   // Determine which checkpoint is current by looking at events
   const currentCheckpointSeq = (() => {
     const checkpointEvents = events
-      .filter((e: any) => e.type === 'status_change' && e.checkpointId)
+      .filter((e) => e.type === 'status_change' && e.checkpointId)
       .sort(
-        (a: any, b: any) =>
+        (a, b) =>
           new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
       );
 
@@ -765,7 +790,7 @@ function ShipmentDetailPanel({
         </h3>
         {events.length > 0 ? (
           <div className="space-y-3">
-            {events.slice(0, 10).map((event: any) => (
+            {events.slice(0, 10).map((event) => (
               <div
                 key={event.id}
                 className="flex items-start gap-3 p-3 rounded-lg bg-[#F8FAFC] dark:bg-[#1A3D5A]/50"
@@ -776,7 +801,7 @@ function ShipmentDetailPanel({
                     <span className="text-sm font-medium text-[#0A2E4A] dark:text-white capitalize">
                       {event.type.replace(/_/g, ' ')}
                     </span>
-                    <ShipmentStatusBadge status={event.status} />
+                    <ShipmentStatusBadge status={event.status as ShipmentStatus} />
                   </div>
                   <p className="text-xs text-[#94A3B8] mt-0.5">
                     {event.description || ''}
@@ -807,12 +832,22 @@ function AvailableShipmentsTab({
   onAccept,
   isAccepting,
   hasActiveShipment,
+  page,
+  totalItems,
+  totalPages,
+  onPageChange,
+  pageSize,
 }: {
   shipments: Shipment[];
   isLoading: boolean;
   onAccept: (s: Shipment) => void;
   isAccepting: boolean;
   hasActiveShipment: boolean;
+  page: number;
+  totalItems: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  pageSize: number;
 }) {
   if (isLoading) {
     return (
@@ -911,102 +946,19 @@ function AvailableShipmentsTab({
           </Card>
         ))}
       </div>
+
+      {totalItems > 0 && (
+        <div className="pt-2">
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            limit={pageSize}
+            onPageChange={onPageChange}
+          />
+        </div>
+      )}
     </div>
-  );
-}
-
-/* ── Route Assignment Modal ──────────────────────────────── */
-
-function RouteAssignModal({
-  shipment,
-  routes,
-  isOpen,
-  onClose,
-}: {
-  shipment: Shipment | null;
-  routes: Route[];
-  isOpen: boolean;
-  onClose: () => void;
-}) {
-  const { mutate: assignRoute, isPending: isAssigning } = useAssignRoute();
-  const [selectedRouteId, setSelectedRouteId] = useState('');
-
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedRouteId(shipment?.route?.route_id || '');
-    }
-  }, [isOpen, shipment?.id, shipment?.route?.route_id]);
-
-  if (!shipment) return null;
-
-  const handleConfirm = () => {
-    if (!selectedRouteId) return;
-    assignRoute(
-      { id: shipment.id, routeId: selectedRouteId },
-      { onSuccess: () => onClose() },
-    );
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`Assign Route — ${shipment.referenceNumber}`}
-      size="md"
-    >
-      <p className="text-sm text-[#94A3B8] mb-4">
-        Choose the route this shipment will follow. Checkpoints and estimated duration come
-        from the selected route.
-      </p>
-      <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-        {routes.length === 0 && (
-          <p className="text-sm text-[#94A3B8] py-6 text-center">
-            No routes available yet.
-          </p>
-        )}
-        {routes.map((route) => {
-          const selected = selectedRouteId === route.id;
-          return (
-            <button
-              key={route.id}
-              type="button"
-              onClick={() => setSelectedRouteId(route.id)}
-              className={cn(
-                'w-full text-left p-3 rounded-xl border transition-all duration-200',
-                selected
-                  ? 'border-[#2D9B6E] bg-[#D1FAE5]/30 dark:bg-[#1F7A52]/20'
-                  : 'border-[#E2E8F0] dark:border-[#1A3D5A] hover:border-[#94A3B8]',
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-[#0A2E4A] dark:text-white">
-                  {route.name} <span className="text-[#94A3B8]">({route.code})</span>
-                </span>
-                {selected && <FaCheckCircle className="w-4 h-4 text-[#2D9B6E]" />}
-              </div>
-              <p className="text-xs text-[#94A3B8] mt-1">
-                {route.originCity} → {route.destinationCity}
-                {route.estimatedDays != null && ` · ~${route.estimatedDays} days`}
-              </p>
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex items-center justify-end gap-2 mt-5">
-        <Button size="sm" variant="outline" onClick={onClose} disabled={isAssigning}>
-          Cancel
-        </Button>
-        <Button
-          size="sm"
-          onClick={handleConfirm}
-          disabled={!selectedRouteId || isAssigning}
-          isLoading={isAssigning}
-        >
-          <FaRoute className="w-3 h-3 mr-1.5" />
-          {shipment.route ? 'Change Route' : 'Assign Route'}
-        </Button>
-      </div>
-    </Modal>
   );
 }
 

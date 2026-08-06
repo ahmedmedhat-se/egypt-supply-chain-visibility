@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../ui/Table';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { EmptyState } from '../ui/EmptyState';
+import { Pagination } from '../ui/Pagination';
 import { FaShip, FaPlus, FaEdit, FaHandPaper, FaCheckCircle, FaTruck, FaEye, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { useAuthStore } from '../../store/auth.store';
 import { useShipments, useAcceptShipment, useUpdateShipmentStatus } from '../../hooks/useShipments';
@@ -22,8 +23,10 @@ export const ShipmentsPage = () => {
   const [statusOpenId, setStatusOpenId] = useState<string | null>(null);
   const [statusDropdownPos, setStatusDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [page, setPage] = useState(1);
+  const limit = 20;
 
-  const { data, isLoading } = useShipments();
+  const { data, isLoading } = useShipments({ page, limit });
   const { mutate: acceptShipment, isPending: isAccepting } = useAcceptShipment();
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateShipmentStatus();
 
@@ -285,6 +288,17 @@ export const ShipmentsPage = () => {
           </Table>
         )}
       </Card>
+
+      {data && !isLoading && (
+        <Pagination
+          page={page}
+          totalPages={data.meta.totalPages}
+          totalItems={data.meta.totalItems}
+          limit={limit}
+          onPageChange={setPage}
+          className="px-1"
+        />
+      )}
 
       <CreateShipmentModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
       <EditShipmentModal

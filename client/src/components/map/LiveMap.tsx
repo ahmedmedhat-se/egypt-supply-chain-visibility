@@ -15,6 +15,7 @@ import {
 } from 'react-leaflet';
 import { useShipments } from '../../hooks/useShipments';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { Pagination } from '../ui/Pagination';
 import { ShipmentStatusBadge } from '../shipments/ShipmentStatusBadge';
 import { formatDate } from '../../lib/utils';
 import type { Shipment, ShipmentStatus } from '../../types/shipment.types';
@@ -355,27 +356,15 @@ export const LiveMap = ({
               </ul>
             )}
           </div>
-          {meta && meta.totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-[#E2E8F0] px-4 py-3 dark:border-[#1E3A5F]">
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-md border border-[#E2E8F0] px-3 py-1 text-xs font-medium text-[#0A2E4A] disabled:cursor-not-allowed disabled:opacity-40 dark:border-[#1E3A5F] dark:text-white"
-              >
-                Prev
-              </button>
-              <span className="text-xs text-[#64748B] dark:text-[#94A3B8]">
-                Page {meta.page} of {meta.totalPages} · {meta.totalItems}
-              </span>
-              <button
-                type="button"
-                disabled={!meta.hasNextPage}
-                onClick={() => setPage((p) => p + 1)}
-                className="rounded-md border border-[#E2E8F0] px-3 py-1 text-xs font-medium text-[#0A2E4A] disabled:cursor-not-allowed disabled:opacity-40 dark:border-[#1E3A5F] dark:text-white"
-              >
-                Next
-              </button>
+          {meta && meta.totalItems > 0 && (
+            <div className="border-t border-[#E2E8F0] px-4 py-3 dark:border-[#1E3A5F]">
+              <Pagination
+                page={page}
+                totalPages={meta.totalPages}
+                totalItems={meta.totalItems}
+                limit={pageLimit}
+                onPageChange={setPage}
+              />
             </div>
           )}
         </div>
