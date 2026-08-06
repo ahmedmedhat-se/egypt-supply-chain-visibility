@@ -9,7 +9,8 @@ import {
   FaLock,
   FaRegCopyright,
   FaArrowUp,
-  FaYoutube
+  FaYoutube,
+  FaWifi
 } from 'react-icons/fa';
 import { ROUTES } from '../../constants/routes';
 import { cn } from '../../lib/utils';
@@ -34,6 +35,7 @@ interface FooterLink {
 export const Footer = ({ className }: FooterProps) => {
   const currentYear = new Date().getFullYear();
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -44,6 +46,20 @@ export const Footer = ({ className }: FooterProps) => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Online/offline detection
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, []);
 
   // Scroll to top function
@@ -100,22 +116,21 @@ export const Footer = ({ className }: FooterProps) => {
       'bg-white dark:bg-[#0A2E4A] border-t border-[#E2E8F0] dark:border-[#1A3D5A] mt-auto',
       className
     )}>
-      {/* Main footer content */}
-      <div className="px-4 py-8 md:px-6 lg:px-8 lg:py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
+      <div className="px-4 py-8 md:px-6 lg:px-8 lg:py-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-6">
           
           {/* Brand column */}
-          <div className="lg:col-span-1">
+          <div className="col-span-2 md:col-span-1">
             <Link 
               to={ROUTES.HOME} 
               onClick={(e) => handleNavigation(e, ROUTES.HOME)}
               className="inline-flex items-center gap-3 group mb-3"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2D9B6E] to-[#1F7A52] flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-[#2D9B6E]/20 group-hover:shadow-[#2D9B6E]/40 transition-all duration-300 group-hover:scale-105">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2D9B6E] to-[#1F7A52] flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-[#2D9B6E]/20 group-hover:shadow-[#2D9B6E]/40 transition-all duration-300 group-hover:scale-105">
                 E
               </div>
               <div>
-                <h1 className="text-lg font-bold tracking-tight text-[#0A2E4A] dark:text-white">
+                <h1 className="text-xl font-bold tracking-tight text-[#0A2E4A] dark:text-white leading-tight">
                   ESCV
                 </h1>
                 <p className="text-[10px] text-[#94A3B8] dark:text-[#94A3B8] font-medium tracking-wider uppercase">
@@ -140,7 +155,7 @@ export const Footer = ({ className }: FooterProps) => {
 
           {/* Company links */}
           <div>
-            <h3 className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-4">
+            <h3 className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-3.5">
               Company
             </h3>
             <ul className="space-y-2">
@@ -158,12 +173,12 @@ export const Footer = ({ className }: FooterProps) => {
             </ul>
           </div>
 
-          {/* Legal and contact */}
+          {/* Legal links */}
           <div>
-            <h3 className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-4">
+            <h3 className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-3.5">
               Legal
             </h3>
-            <ul className="space-y-2 mb-6">
+            <ul className="space-y-2">
               {legalLinks.map((link) => (
                 <li key={link.path}>
                   <Link
@@ -176,8 +191,11 @@ export const Footer = ({ className }: FooterProps) => {
                 </li>
               ))}
             </ul>
+          </div>
 
-            <h3 className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-4">
+          {/* Contact and social */}
+          <div>
+            <h3 className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider mb-3.5">
               Connect
             </h3>
             <ul className="space-y-2">
@@ -199,30 +217,25 @@ export const Footer = ({ className }: FooterProps) => {
               </li>
             </ul>
             
-            <div className="mt-4">
-              <p className="text-sm font-medium text-[#0A2E4A] dark:text-[#94A3B8] mb-2">
-                Follow us
-              </p>
-              <div className="flex gap-2">
-                {socialLinks.map((social) => {
-                  const Icon = social.icon;
-                  return (
-                    <a
-                      key={social.label}
-                      href={social.href}
-                      className={cn(
-                        'w-9 h-9 rounded-xl bg-[#E8F0F8] dark:bg-[#1A3D5A] flex items-center justify-center text-[#0A2E4A] dark:text-white transition-all duration-300 hover:scale-110 hover:text-white',
-                        social.color
-                      )}
-                      aria-label={social.label}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Icon className="w-4 h-4" />
-                    </a>
-                  );
-                })}
-              </div>
+            <div className="flex gap-2 mt-4">
+              {socialLinks.map((social) => {
+                const Icon = social.icon;
+                return (
+                  <a
+                    key={social.label}
+                    href={social.href}
+                    className={cn(
+                      'w-9 h-9 rounded-xl bg-[#E8F0F8] dark:bg-[#1A3D5A] flex items-center justify-center text-[#0A2E4A] dark:text-white transition-all duration-300 hover:scale-110 hover:text-white',
+                      social.color
+                    )}
+                    aria-label={social.label}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Icon className="w-4.5 h-4.5" />
+                  </a>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -231,8 +244,8 @@ export const Footer = ({ className }: FooterProps) => {
       {/* Bottom bar */}
       <div className="border-t border-[#E2E8F0] dark:border-[#1A3D5A] bg-[#F8FAFC] dark:bg-[#061F33]">
         <div className="px-4 py-3 md:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs text-[#64748B] dark:text-[#94A3B8]">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 text-xs text-[#64748B] dark:text-[#94A3B8]">
               <FaRegCopyright className="w-3 h-3" />
               <span>{currentYear} ESCV. All rights reserved.</span>
               <span className="hidden sm:inline text-[#94A3B8]/30">|</span>
@@ -254,9 +267,18 @@ export const Footer = ({ className }: FooterProps) => {
             </div>
             
             <div className="flex items-center gap-3 text-xs text-[#64748B] dark:text-[#94A3B8]">
+              {/* Online/Offline status */}
               <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#2D9B6E] animate-pulse"></span>
-                <span className="font-medium">All systems operational</span>
+                <FaWifi className={cn(
+                  'w-3 h-3',
+                  isOnline ? 'text-[#2D9B6E]' : 'text-[#DC2626] opacity-50'
+                )} />
+                <span className={cn(
+                  'font-medium',
+                  isOnline ? 'text-[#2D9B6E]' : 'text-[#DC2626]'
+                )}>
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
               </span>
               <span className="hidden sm:inline text-[#94A3B8]/30">|</span>
               <span className="hidden sm:inline font-mono text-[#94A3B8]/70">v1.0.0</span>

@@ -5,7 +5,6 @@ import { Topbar } from './Topbar';
 import { Footer } from './Footer';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
-import { LiveIndicator } from '../live/LiveIndicator';
 
 interface AppLayoutProps {
   isAuthenticated?: boolean;
@@ -70,7 +69,6 @@ export const AppLayout = ({
           },
         }}
       />
-      <LiveIndicator />
     </div>
   );
 };

@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from './components/layout/AppLayout';
 import { ROUTES } from './constants/routes';
@@ -9,8 +9,9 @@ import type { User } from './store/auth.store';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { LiveSocketBridge } from './components/live/LiveSocketBridge';
+import { Toaster } from 'react-hot-toast';
 
-// Lazy-loaded pages — each becomes its own chunk
+// Lazy-loaded pages
 const HomePage = lazy(() =>
   import('./components/pages/HomePage').then((m) => ({ default: m.HomePage })),
 );
@@ -124,23 +125,45 @@ const PrivacyPage = lazy(() =>
   import('./components/pages/PrivacyPage').then((m) => ({ default: m.PrivacyPage })),
 );
 
+// Configure QueryClient with professional settings
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
       retry: 1,
+      retryDelay: 1000,
+    },
+    mutations: {
+      retry: 0,
     },
   },
 });
 
-/** Shared Suspense wrapper — shows a spinner while lazy chunk loads */
+// Scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [pathname]);
+
+  return null;
+}
+
+// Suspense wrapper with enhanced loading
 function PageLoader({ children }: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-[400px]">
-          <LoadingSpinner size="lg" />
+        <div className="flex items-center justify-center min-h-[400px] animate-fade-in">
+          <div className="flex flex-col items-center gap-4">
+            <LoadingSpinner size="lg" />
+            <p className="text-sm text-[#94A3B8] dark:text-[#94A3B8] animate-pulse">Loading...</p>
+          </div>
         </div>
       }
     >
@@ -149,7 +172,7 @@ function PageLoader({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Redirects /dashboard to the role-specific dashboard route */
+// Dashboard redirect based on user role
 function DashboardRedirect({ user }: { user: User | null }) {
   if (!user) return <Navigate to={ROUTES.LOGIN} replace />;
 
@@ -165,7 +188,7 @@ function DashboardRedirect({ user }: { user: User | null }) {
   return <Navigate to={target} replace />;
 }
 
-/** Redirects /shipments to the role-specific shipment route */
+// Shipments redirect based on user role
 function ShipmentsRedirect({ user }: { user: User | null }) {
   if (!user) return <Navigate to={ROUTES.LOGIN} replace />;
 
@@ -190,9 +213,10 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LiveSocketBridge />
       <ErrorBoundary>
         <BrowserRouter>
+          <LiveSocketBridge />
+          <ScrollToTop />
           <Routes>
             <Route
               element={
@@ -210,15 +234,12 @@ function App() {
               <Route path={ROUTES.TERMS} element={<PageLoader><TermsPage /></PageLoader>} />
               <Route path={ROUTES.PRIVACY} element={<PageLoader><PrivacyPage /></PageLoader>} />
 
-              {/* Auth pages - now with Topbar and Footer */}
+              {/* Auth pages */}
               <Route path={ROUTES.LOGIN} element={<PageLoader><LoginPage /></PageLoader>} />
               <Route path={ROUTES.REGISTER} element={<PageLoader><RegisterPage /></PageLoader>} />
               <Route path={ROUTES.FORGOT_PASSWORD} element={<PageLoader><ForgotPasswordPage /></PageLoader>} />
 
-              {/* ═══════════════════════════════════════════════
-                 PROTECTED PAGES — require valid JWT
-               ═══════════════════════════════════════════════ */}
-              {/* Role-based dashboard redirect */}
+              {/* Protected pages */}
               <Route
                 path={ROUTES.DASHBOARD}
                 element={
@@ -267,7 +288,8 @@ function App() {
                   </RoleRoute>
                 }
               />
-              {/* ── Per-role Shipment Routes ── */}
+
+              {/* Shipment routes */}
               <Route
                 path={ROUTES.SHIPMENTS}
                 element={
@@ -340,7 +362,8 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* ── Org Admin Routes ── */}
+
+              {/* Admin routes */}
               <Route
                 path={ROUTES.USERS_REPORT}
                 element={
@@ -361,12 +384,18 @@ function App() {
                 path={ROUTES.AUDIT_LOGS}
                 element={
                   <RoleRoute roles={['admin']}>
-                    <PageLoader><AuditLogsPage orgId={user?.organizationId} title="Audit Logs" subtitle="Activity inside your organization — who did what, when, and from where." /></PageLoader>
+                    <PageLoader>
+                      <AuditLogsPage 
+                        orgId={user?.organizationId} 
+                        title="Audit Logs" 
+                        subtitle="Activity inside your organization — who did what, when, and from where." 
+                      />
+                    </PageLoader>
                   </RoleRoute>
                 }
               />
 
-              {/* ── Super Admin Routes ── */}
+              {/* Super admin routes */}
               <Route
                 path={ROUTES.SUPER_ADMIN_USERS_REPORT}
                 element={
@@ -411,7 +440,12 @@ function App() {
                 path={ROUTES.SUPER_ADMIN_AUDIT_LOGS}
                 element={
                   <RoleRoute roles={['super_admin']}>
-                    <PageLoader><AuditLogsPage title="Audit Logs" subtitle="System-wide activity — every action, actor, and change across the platform." /></PageLoader>
+                    <PageLoader>
+                      <AuditLogsPage 
+                        title="Audit Logs" 
+                        subtitle="System-wide activity — every action, actor, and change across the platform." 
+                      />
+                    </PageLoader>
                   </RoleRoute>
                 }
               />
@@ -432,21 +466,41 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* ═══════════════════════════════════════════════
-                 FALLBACKS
-               ═══════════════════════════════════════════════ */}
+
+              {/* Fallback routes */}
               <Route path="/" element={<Navigate to={ROUTES.HOME} replace />} />
               <Route path="*" element={<PageLoader><NotFoundPage /></PageLoader>} />
             </Route>
 
-            {/* ═══════════════════════════════════════════════
-               FULL-SCREEN PUBLIC PAGES — outside AppLayout
-             ═══════════════════════════════════════════════ */}
+            {/* Full-screen public pages */}
             <Route
               path={ROUTES.ACCEPT_INVITATION}
               element={<PageLoader><AcceptInvitationPage /></PageLoader>}
             />
           </Routes>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#0A2E4A',
+                color: '#fff',
+                borderRadius: '12px',
+                padding: '16px',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+              },
+              success: {
+                style: {
+                  background: '#065F46',
+                },
+              },
+              error: {
+                style: {
+                  background: '#991B1B',
+                },
+              },
+            }}
+          />
         </BrowserRouter>
       </ErrorBoundary>
     </QueryClientProvider>
