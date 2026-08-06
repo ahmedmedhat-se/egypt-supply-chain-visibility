@@ -272,7 +272,8 @@ export const LiveMap = ({
     excludeStatus: 'draft',
   });
 
-  const shipments: Shipment[] = data?.data ?? [];
+  // Stable reference so downstream useMemo/useEffect deps don't churn every render
+  const shipments: Shipment[] = useMemo(() => data?.data ?? [], [data]);
   const meta = data?.meta;
 
   const positionedCount = shipments.filter((s) => primaryPosition(s)).length;
