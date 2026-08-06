@@ -16,6 +16,12 @@ import {
   AdminQueryShipmentsDto,
   AdminBulkActionDto,
 } from './dto/admin.dto';
+import { buildPaginationMeta } from '../common/pagination/pagination.helper';
+import {
+  buildAuditLogWhere,
+  AUDIT_LOG_INCLUDE,
+} from '../common/audit/audit-log-filters.helper';
+import { QueryAuditLogsDto } from '../common/dto/query-audit-logs.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -108,21 +114,10 @@ export class AdminService {
       this.prisma.user.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
-
     return {
       success: true,
       data: users,
-      meta: {
-        page,
-        limit,
-        totalItems: total,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, total),
     };
   }
 
@@ -318,21 +313,10 @@ export class AdminService {
       this.prisma.organization.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
-
     return {
       success: true,
       data: orgs,
-      meta: {
-        page,
-        limit,
-        totalItems: total,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, total),
     };
   }
 
@@ -514,21 +498,10 @@ export class AdminService {
       this.prisma.shipment.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
-
     return {
       success: true,
       data: shipments,
-      meta: {
-        page,
-        limit,
-        totalItems: total,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, total),
     };
   }
 
@@ -727,34 +700,17 @@ export class AdminService {
       this.prisma.invitation.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
-
     return {
       success: true,
       data: invitations,
-      meta: {
-        page,
-        limit,
-        totalItems: total,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, total),
     };
   }
 
-  async getAuditLogs(
-    resourceType?: string,
-    resourceId?: string,
-    page: number = 1,
-    limit: number = 50,
-  ) {
+  async getAuditLogs(query: QueryAuditLogsDto) {
+    const { page = 1, limit = 50 } = query;
     const skip = (page - 1) * limit;
-    const where: any = {};
-    if (resourceType) where.audit_resource_type = resourceType;
-    if (resourceId) where.audit_resource_id = resourceId;
+    const where = buildAuditLogWhere(query);
 
     const [logs, total] = await Promise.all([
       this.prisma.auditLog.findMany({
@@ -762,36 +718,38 @@ export class AdminService {
         skip,
         take: Math.min(limit, 100),
         orderBy: { audit_performed_at: 'desc' },
-        include: {
-          user: {
-            select: {
-              user_id: true,
-              user_email: true,
-              user_first_name: true,
-              user_last_name: true,
-            },
-          },
-        },
+        include: AUDIT_LOG_INCLUDE,
       }),
       this.prisma.auditLog.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(total / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
-
     return {
       success: true,
       data: logs,
-      meta: {
-        page,
-        limit,
-        totalItems: total,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, total),
     };
+  }
+
+  /**
+   * Audit-safe snapshot — strips secrets (password hashes) so they never end
+   * up in the persisted audit_log JSON columns.
+   */
+  private redactAuditValue(value: any): any {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.redactAuditValue(item));
+    }
+    if (value && typeof value === 'object') {
+      const clean: Record<string, any> = {};
+      for (const [key, val] of Object.entries(value)) {
+        if (/password|token|secret|hash/i.test(key)) {
+          clean[key] = '[REDACTED]';
+        } else {
+          clean[key] = this.redactAuditValue(val);
+        }
+      }
+      return clean;
+    }
+    return value;
   }
 
   private logAdminAction(
@@ -807,8 +765,8 @@ export class AdminService {
       action,
       resourceType,
       resourceId,
-      oldValue,
-      newValue,
+      oldValue: this.redactAuditValue(oldValue),
+      newValue: this.redactAuditValue(newValue),
       metadata: { admin_action: true, admin_email: adminUser.user_email },
     });
   }
