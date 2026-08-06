@@ -180,20 +180,30 @@ export class WebsocketGateway
   ): boolean {
     if (!user) return false;
     if (user.role === 'super_admin' || user.role === 'regulator') return true;
-    if (payload.carrierUserId && user.sub === payload.carrierUserId)
-      return true;
-    if (
-      payload.carrierOrganizationId &&
-      user.organizationId === payload.carrierOrganizationId
-    ) {
-      return true;
+
+    if (user.role === 'shipper') {
+      return payload.shipperOrganizationId === user.organizationId;
     }
-    if (
-      payload.shipperOrganizationId &&
-      user.organizationId === payload.shipperOrganizationId
-    ) {
-      return true;
+
+    if (user.role === 'admin' || user.role === 'org_admin') {
+      return (
+        payload.shipperOrganizationId === user.organizationId ||
+        payload.carrierOrganizationId === user.organizationId
+      );
     }
+
+    if (user.role === 'carrier') {
+      if (payload.carrierUserId === user.sub) return true;
+      if (
+        payload.carrierOrganizationId === user.organizationId &&
+        !payload.carrierUserId
+      ) {
+        return true;
+      }
+      if (!payload.carrierOrganizationId) return true;
+      return false;
+    }
+
     return false;
   }
 
