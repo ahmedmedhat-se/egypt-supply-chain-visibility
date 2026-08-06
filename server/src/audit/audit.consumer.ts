@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   RabbitSubscribe,
   MessageHandlerErrorBehavior,
+  Nack,
 } from '@golevelup/nestjs-rabbitmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { AUDIT_EXCHANGE, AUDIT_ROUTING_KEY } from './audit.service';
@@ -50,10 +51,12 @@ export class AuditConsumer {
         },
       });
     } catch (error) {
-      // Never take the consumer down on a single bad row.
+      // Dead-letter the message so we don't lose the audit log.
+      // This does not take the consumer down.
       this.logger.error(
         `Failed to persist audit row for ${event.action}: ${(error as Error).message}`,
       );
+      return new Nack(false);
     }
   }
 }
