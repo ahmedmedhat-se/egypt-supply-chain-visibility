@@ -67,6 +67,8 @@ export interface Shipment {
       latitude: number | null;
       longitude: number | null;
       sequenceOrder: number;
+      /** When the shipment actually reached this checkpoint (ISO string). */
+      reachedAt?: string | null;
     }>;
   } | null;
   currentCheckpoint: {
