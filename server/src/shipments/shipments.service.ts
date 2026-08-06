@@ -783,6 +783,12 @@ export class ShipmentsService {
       );
     }
 
+    if (user.role === 'carrier' && !isAssignedCarrier) {
+      throw new ForbiddenException(
+        'You can only update the status of your assigned shipments',
+      );
+    }
+
     const validTransition =
       shipment.shipment_status === dto.status ||
       this.isValidTransition(shipment.shipment_status, dto.status);
