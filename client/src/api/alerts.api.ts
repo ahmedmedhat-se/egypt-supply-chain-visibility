@@ -1,4 +1,5 @@
-import api from './client';
+import api from "./client";
+import type { PaginatedResponse } from "../types/pagination.types";
 
 export interface Alert {
   alert_id: string;
@@ -22,20 +23,28 @@ export interface UserAlert {
   alert: Alert;
 }
 
+export interface AlertsQueryParams {
+  page?: number;
+  limit?: number;
+  isRead?: string;
+  severity?: string;
+  search?: string;
+}
+
 export const alertsApi = {
-  getAlerts: async (params?: { page?: number; limit?: number; isRead?: boolean; severity?: string }) => {
-    return api.get<{ data: UserAlert[]; meta: any }>('/alerts', { params });
+  getAlerts: async (params?: AlertsQueryParams) => {
+    return api.get<PaginatedResponse<UserAlert>>("/api/alerts", { params });
   },
 
   getUnreadCount: async () => {
-    return api.get<{ count: number }>('/alerts/unread-count');
+    return api.get<{ count: number }>("/api/alerts/unread-count");
   },
 
   markAsRead: async (id: string) => {
-    return api.patch(`/alerts/${id}/read`);
+    return api.patch(`/api/alerts/${id}/read`);
   },
 
   markAllAsRead: async () => {
-    return api.patch<{ count: number }>('/alerts/read-all');
+    return api.patch<{ count: number }>("/api/alerts/read-all");
   },
 };
