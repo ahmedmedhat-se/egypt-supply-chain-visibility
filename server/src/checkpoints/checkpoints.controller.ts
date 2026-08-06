@@ -16,7 +16,7 @@ import {
 import { CheckpointsService } from './checkpoints.service';
 import { CreateCheckpointDto } from './dto/create-checkpoint.dto';
 import { UpdateCheckpointDto } from './dto/update-checkpoint.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { QueryCheckpointsDto } from './dto/query-checkpoints.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
@@ -37,8 +37,12 @@ export class CheckpointsController {
   @Get()
   @ApiOperation({ summary: 'List all checkpoints with pagination' })
   @ApiResponse({ status: 200, description: 'Returns paginated checkpoints.' })
-  async findAll(@Query() query: PaginationDto) {
-    return this.checkpointsService.findAll(query.page, query.limit);
+  async findAll(@Query() query: QueryCheckpointsDto) {
+    return this.checkpointsService.findAll(
+      query.page,
+      query.limit,
+      query.search,
+    );
   }
 
   @Get(':id')

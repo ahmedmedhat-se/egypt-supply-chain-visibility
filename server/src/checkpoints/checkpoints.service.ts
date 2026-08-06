@@ -8,6 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateCheckpointDto } from './dto/create-checkpoint.dto';
 import { UpdateCheckpointDto } from './dto/update-checkpoint.dto';
 import { AuditService } from '../audit/audit.service';
+import { buildPaginationMeta } from '../common/pagination/pagination.helper';
+import type { Prisma } from '@prisma/client';
 
 @Injectable()
 export class CheckpointsService {
@@ -53,33 +55,30 @@ export class CheckpointsService {
     return this.formatCheckpoint(checkpoint);
   }
 
-  async findAll(page: number = 1, limit: number = 10) {
+  async findAll(page: number = 1, limit: number = 10, search?: string) {
     const skip = (page - 1) * limit;
-    const take = limit;
+    const where: Prisma.CheckpointWhereInput = {};
+
+    if (search) {
+      where.OR = [
+        { checkpoint_name: { contains: search, mode: 'insensitive' } },
+        { checkpoint_code: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
     const [checkpoints, totalItems] = await Promise.all([
       this.prisma.checkpoint.findMany({
+        where,
         skip,
-        take,
+        take: limit,
         orderBy: { checkpoint_name: 'asc' },
       }),
-      this.prisma.checkpoint.count(),
+      this.prisma.checkpoint.count({ where }),
     ]);
-
-    const totalPages = Math.ceil(totalItems / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
 
     return {
       data: checkpoints.map((c) => this.formatCheckpoint(c)),
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, totalItems),
     };
   }
 
