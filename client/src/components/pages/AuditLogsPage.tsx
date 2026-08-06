@@ -135,6 +135,7 @@ export const AuditLogsPage = ({
   const [myActionsOnly, setMyActionsOnly] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [activePreset, setActivePreset] = useState<string>('all');
 
   const { user: currentUser } = useAuthStore();
 
@@ -191,6 +192,7 @@ export const AuditLogsPage = ({
     setTo('');
     setIpAddress('');
     setMyActionsOnly(false);
+    setActivePreset('all');
     setPage(1);
   };
 
@@ -215,6 +217,7 @@ export const AuditLogsPage = ({
       const collected: AuditLogEntry[] = [];
       let exportPage = 1;
       let totalPages = 1;
+      const EXPORT_ROW_CAP = 10_000;
       do {
         const response = orgId
           ? await organizationApi.getAuditLogs(orgId, {
@@ -231,7 +234,13 @@ export const AuditLogsPage = ({
         collected.push(...(payload.data ?? []));
         totalPages = payload.meta?.totalPages ?? 1;
         exportPage += 1;
-      } while (exportPage <= totalPages);
+      } while (exportPage <= totalPages && collected.length < EXPORT_ROW_CAP);
+
+      if (collected.length >= EXPORT_ROW_CAP) {
+        showToast.warning(
+          `Export capped at ${EXPORT_ROW_CAP.toLocaleString()} rows — narrow the filters for a complete file.`,
+        );
+      }
 
       if (collected.length === 0) {
         showToast.info('No audit logs match the current filters.');
@@ -382,6 +391,7 @@ export const AuditLogsPage = ({
               value={from}
               onChange={(e) => {
                 setFrom(e.target.value);
+                setActivePreset('');
                 setPage(1);
               }}
             />
@@ -396,6 +406,7 @@ export const AuditLogsPage = ({
               value={to}
               onChange={(e) => {
                 setTo(e.target.value);
+                setActivePreset('');
                 setPage(1);
               }}
             />
@@ -495,15 +506,14 @@ export const AuditLogsPage = ({
               Date:
             </span>
             {DATE_PRESETS.map((preset) => {
-              const isActive =
-                (preset.key === 'all' && !from && !to) ||
-                (preset.key !== 'all' && !!from);
+              const isActive = activePreset === preset.key;
               return (
                 <button
                   key={preset.key}
                   type="button"
                   onClick={() => {
                     applyPreset(preset.key, setFrom, setTo);
+                    setActivePreset(preset.key);
                     setPage(1);
                   }}
                   className={cn(
