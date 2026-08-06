@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { Footer } from './Footer';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { alertsApi } from '../../api/alerts.api';
 
 interface AppLayoutProps {
   isAuthenticated?: boolean;
@@ -19,6 +21,18 @@ export const AppLayout = ({
 }: AppLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { logout } = useAuth();
+
+  const { data: unreadData } = useQuery({
+    queryKey: ['unread-alerts-count'],
+    queryFn: async () => {
+      const res = await alertsApi.getUnreadCount();
+      return res.data;
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 15000, // Poll every 15s
+  });
+
+  const notificationCount = unreadData?.count || 0;
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] dark:bg-black overflow-hidden">
@@ -36,6 +50,7 @@ export const AppLayout = ({
           isAuthenticated={isAuthenticated}
           userName={userName}
           userRole={userRole}
+          notificationCount={notificationCount}
           onLogout={logout}
         />
         

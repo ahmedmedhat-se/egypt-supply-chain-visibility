@@ -103,14 +103,14 @@ export const Topbar = ({
 
           {/* Notifications - only for authenticated users */}
           {isAuthenticated && (
-            <button className="relative p-2 rounded-lg hover:bg-[#E8F0F8] dark:hover:bg-[#1A1A1A] transition-colors" aria-label="Notifications">
+            <Link to={ROUTES.ALERTS} className="relative p-2 rounded-lg hover:bg-[#E8F0F8] dark:hover:bg-[#1A1A1A] transition-colors" aria-label="Notifications">
               <FaBell className="w-5 h-5 text-[#0A2E4A] dark:text-white" />
               {notificationCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 bg-[#DC2626] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center ring-2 ring-white dark:ring-black">
                   {notificationCount}
                 </span>
               )}
-            </button>
+            </Link>
           )}
 
           {/* Auth buttons for guest */}
