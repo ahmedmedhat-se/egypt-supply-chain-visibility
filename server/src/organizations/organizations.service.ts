@@ -12,6 +12,12 @@ import { randomUUID } from 'crypto';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { ConfigService } from '@nestjs/config';
 import { AuditService } from '../audit/audit.service';
+import { buildPaginationMeta } from '../common/pagination/pagination.helper';
+import {
+  buildAuditLogWhere,
+  AUDIT_LOG_INCLUDE,
+} from '../common/audit/audit-log-filters.helper';
+import { QueryAuditLogsDto } from '../common/dto/query-audit-logs.dto';
 
 @Injectable()
 export class OrganizationsService {
@@ -136,20 +142,9 @@ export class OrganizationsService {
       this.prisma.invitation.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(totalItems / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
-
     return {
       data: invitations,
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, totalItems),
     };
   }
 
@@ -237,14 +232,16 @@ export class OrganizationsService {
     orgId: string,
     page: number = 1,
     limit: number = 10,
-    userId: string,
+    isActive?: boolean,
+    userId?: string,
   ) {
-    await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
+    if (userId) await this.ensureOrgAdminOrSuperAdmin(userId, orgId);
 
     const skip = (page - 1) * limit;
     const take = limit;
 
-    const where = { organization_id: orgId };
+    const where: any = { organization_id: orgId };
+    if (isActive !== undefined) where.user_is_active = isActive;
 
     const [members, totalItems] = await Promise.all([
       this.prisma.user.findMany({
@@ -265,20 +262,37 @@ export class OrganizationsService {
       this.prisma.user.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(totalItems / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
-
     return {
       data: members,
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, totalItems),
+    };
+  }
+
+  async getAuditLogs(
+    orgId: string,
+    query: QueryAuditLogsDto,
+    requestingUserId: string,
+  ) {
+    await this.ensureOrgAdminOrSuperAdmin(requestingUserId, orgId);
+
+    const { page = 1, limit = 50 } = query;
+    const skip = (page - 1) * limit;
+    const where = buildAuditLogWhere(query, orgId);
+
+    const [logs, totalItems] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        skip,
+        take: Math.min(limit, 100),
+        orderBy: { audit_performed_at: 'desc' },
+        include: AUDIT_LOG_INCLUDE,
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    return {
+      data: logs,
+      meta: buildPaginationMeta(page, limit, totalItems),
     };
   }
 

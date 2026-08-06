@@ -1,8 +1,18 @@
-import { Controller, Post, Body, Param, Get, Delete, Patch, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  Get,
+  Delete,
+  Patch,
+  Query,
+} from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { QueryOrgInvitationsDto } from './dto/query-invitations.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { QueryOrgMembersDto } from './dto/query-members.dto';
+import { QueryAuditLogsDto } from '../common/dto/query-audit-logs.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -32,7 +42,13 @@ export class OrganizationsController {
     @Query() query: QueryOrgInvitationsDto,
     @CurrentUser() user: any,
   ) {
-    return this.organizationsService.getInvitations(orgId, query.status, query.page, query.limit, user.sub);
+    return this.organizationsService.getInvitations(
+      orgId,
+      query.status,
+      query.page,
+      query.limit,
+      user.sub,
+    );
   }
 
   @Post(':orgId/invitations/:invitationId/resend')
@@ -71,10 +87,30 @@ export class OrganizationsController {
   @ApiResponse({ status: 200, description: 'List of members.' })
   async getMembers(
     @Param('orgId') orgId: string,
-    @Query() query: PaginationDto,
+    @Query() query: QueryOrgMembersDto,
     @CurrentUser() user: any,
   ) {
-    return this.organizationsService.getMembers(orgId, query.page, query.limit, user.sub);
+    return this.organizationsService.getMembers(
+      orgId,
+      query.page,
+      query.limit,
+      query.isActive,
+      user.sub,
+    );
+  }
+
+  @Get(':orgId/audit-logs')
+  @Roles('admin')
+  @ApiOperation({
+    summary: 'Get audit logs scoped to the organization (org admin)',
+  })
+  @ApiResponse({ status: 200, description: 'List of org-scoped audit logs.' })
+  async getAuditLogs(
+    @Param('orgId') orgId: string,
+    @Query() query: QueryAuditLogsDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.organizationsService.getAuditLogs(orgId, query, user.sub);
   }
 
   @Patch(':orgId/members/:userId/deactivate')
