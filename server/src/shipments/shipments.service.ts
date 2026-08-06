@@ -17,6 +17,7 @@ import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { AuditService } from '../audit/audit.service';
 import type { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { buildPaginationMeta } from '../common/pagination/pagination.helper';
 
 /** Shape of the user payload attached by JwtAuthGuard */
 interface RequestUser {
@@ -166,6 +167,7 @@ export class ShipmentsService {
                       checkpoint_city: true,
                       checkpoint_latitude: true,
                       checkpoint_longitude: true,
+                      checkpoint_type: true,
                     },
                   },
                 },
@@ -276,6 +278,7 @@ export class ShipmentsService {
                       checkpoint_city: true,
                       checkpoint_latitude: true,
                       checkpoint_longitude: true,
+                      checkpoint_type: true,
                     },
                   },
                 },
@@ -302,20 +305,9 @@ export class ShipmentsService {
       this.prisma.shipment.count({ where }),
     ]);
 
-    const totalPages = Math.ceil(totalItems / limit);
-    const hasNextPage = page < totalPages;
-    const hasPreviousPage = page > 1;
-
     return {
       data: shipments.map((s) => this.formatShipment(s)),
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage,
-      },
+      meta: buildPaginationMeta(page, limit, totalItems),
     };
   }
 
@@ -862,6 +854,7 @@ export class ShipmentsService {
                       checkpoint_city: true,
                       checkpoint_latitude: true,
                       checkpoint_longitude: true,
+                      checkpoint_type: true,
                     },
                   },
                 },
@@ -1067,6 +1060,7 @@ export class ShipmentsService {
                       checkpoint_city: true,
                       checkpoint_latitude: true,
                       checkpoint_longitude: true,
+                      checkpoint_type: true,
                     },
                   },
                 },
@@ -1521,6 +1515,21 @@ export class ShipmentsService {
             route_name: shipment.route.route_name,
             route_code: shipment.route.route_code,
             estimatedDays: shipment.route.route_estimated_days ?? null,
+            checkpoints: (shipment.route.route_checkpoints ?? []).map(
+              (rc: any) => ({
+                id: rc.checkpoint.checkpoint_id,
+                name: rc.checkpoint.checkpoint_name,
+                city: rc.checkpoint.checkpoint_city,
+                type: rc.checkpoint.checkpoint_type ?? null,
+                latitude: rc.checkpoint.checkpoint_latitude
+                  ? Number(rc.checkpoint.checkpoint_latitude)
+                  : null,
+                longitude: rc.checkpoint.checkpoint_longitude
+                  ? Number(rc.checkpoint.checkpoint_longitude)
+                  : null,
+                sequenceOrder: rc.sequence_order,
+              }),
+            ),
           }
         : null,
       currentCheckpoint: shipment.current_checkpoint,
