@@ -22,6 +22,7 @@ model Organization {
   invitations Invitation[]
   shipper_shipments  Shipment[] @relation("ShipperOrganization")
   carrier_shipments  Shipment[] @relation("CarrierOrganization")
+  audit_logs         AuditLog[]
 
   @@index([organization_type])
   @@index([organization_is_active])
@@ -230,6 +231,7 @@ model UserAlert {
 model AuditLog {
   audit_log_id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id             String?  @db.Uuid
+  organization_id     String?  @db.Uuid
   audit_action        String   @db.VarChar(100)
   audit_resource_type String   @db.VarChar(100)
   audit_resource_id   String?  @db.Uuid
@@ -240,9 +242,11 @@ model AuditLog {
   audit_performed_at  DateTime @default(now()) @db.Timestamptz()
   audit_metadata      Json?
 
-  user User? @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
+  user         User?         @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
+  organization Organization? @relation(fields: [organization_id], references: [organization_id], onDelete: SetNull)
 
   @@index([user_id])
+  @@index([organization_id])
   @@index([audit_resource_type, audit_resource_id])
   @@index([audit_performed_at(sort: Desc)])
   @@map("audit_log")

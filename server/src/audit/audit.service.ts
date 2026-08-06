@@ -8,6 +8,7 @@ export const AUDIT_ROUTING_KEY = 'audit.recorded';
 
 export interface AuditEntry {
   userId?: string | null;
+  organizationId?: string | null;
   action: string;
   resourceType: string;
   resourceId?: string | null;
@@ -40,12 +41,14 @@ export class AuditService {
   log(entry: AuditEntry, request?: FastifyRequest): void {
     const contextRequest = request ?? RequestContext.getRequest();
     const actorUser = (contextRequest?.user ?? null) as
-      | { sub?: string }
+      | { sub?: string; organizationId?: string }
       | null
       | undefined;
     this.amqp
       .publish(AUDIT_EXCHANGE, AUDIT_ROUTING_KEY, {
         userId: entry.userId ?? actorUser?.sub ?? null,
+        organizationId:
+          entry.organizationId ?? actorUser?.organizationId ?? null,
         action: entry.action,
         resourceType: entry.resourceType,
         resourceId: entry.resourceId ?? null,

@@ -8,6 +8,7 @@ import { AUDIT_EXCHANGE, AUDIT_ROUTING_KEY } from './audit.service';
 
 interface AuditRecordedEvent {
   userId: string | null;
+  organizationId: string | null;
   action: string;
   resourceType: string;
   resourceId: string | null;
@@ -36,6 +37,7 @@ export class AuditConsumer {
       await this.prisma.auditLog.create({
         data: {
           user_id: event.userId,
+          organization_id: event.organizationId,
           audit_action: event.action,
           audit_resource_type: event.resourceType,
           audit_resource_id: event.resourceId,
