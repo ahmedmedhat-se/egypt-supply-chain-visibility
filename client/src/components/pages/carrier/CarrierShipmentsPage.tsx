@@ -32,10 +32,11 @@ import {
   FaBoxes,
   FaUser,
   FaIdBadge,
+  FaWarehouse,
 } from 'react-icons/fa';
 import type { Shipment, ShipmentEvent, ShipmentStatus } from '../../../types/shipment.types';
 
-type ActiveTab = 'my' | 'available';
+type ActiveTab = 'my' | 'org' | 'available';
 
 export const CarrierShipmentsPage = () => {
   const user = useAuthStore((state) => state.user);
@@ -47,34 +48,55 @@ export const CarrierShipmentsPage = () => {
 
   // Pagination state — one page per tab so switching tabs keeps each list's place
   const [myPage, setMyPage] = useState(1);
+  const [orgPage, setOrgPage] = useState(1);
   const [availablePage, setAvailablePage] = useState(1);
   const PAGE_SIZE = 10;
 
-  // Data fetching — server-side scope filtering + pagination
-  const { data: assignedData, isLoading: assignedLoading } = useShipments({
-    scope: 'assigned',
+  // Data fetching — server-side scope filtering + pagination.
+  //  - "mine":      shipments where the caller is the assigned carrier driver
+  //  - "assigned":  every shipment claimed by the caller's organization
+  //  - "available": shipments no carrier org has claimed yet (marketplace)
+  // Always enabled — powers both the tab and the per-user active check.
+  const { data: myData, isLoading: myLoading } = useShipments({
+    scope: 'mine',
     page: myPage,
     limit: PAGE_SIZE,
+  });
+  // Lazy — inactive tabs only fetch when first viewed.
+  const { data: orgData, isLoading: orgLoading } = useShipments({
+    scope: 'assigned',
+    page: orgPage,
+    limit: PAGE_SIZE,
+    enabled: activeTab === 'org',
   });
   const { data: availableData, isLoading: availableLoading } = useShipments({
     scope: 'available',
     page: availablePage,
     limit: PAGE_SIZE,
+    enabled: activeTab === 'available',
   });
   const { mutate: acceptShipment, isPending: isAccepting } = useAcceptShipment();
   const { mutate: updateStatus, isPending: isUpdatingStatus } = useUpdateShipmentStatus();
 
-  // Separate shipments into My Shipments and Available (server-scoped)
-  const myShipments: Shipment[] = assignedData?.data || [];
+  // Separate shipments per tab (server-scoped)
+  const myShipments: Shipment[] = myData?.data || [];
+  const orgShipments: Shipment[] = orgData?.data || [];
   const availableShipments: Shipment[] = availableData?.data || [];
-  const assignedMeta = assignedData?.meta;
+  const myMeta = myData?.meta;
+  const orgMeta = orgData?.meta;
   const availableMeta = availableData?.meta;
-  const shipmentsLoading = assignedLoading || availableLoading;
-  const allShipments = [...myShipments, ...availableShipments];
+  const shipmentsLoading = myLoading || orgLoading || availableLoading;
+  const allShipments = [...myShipments, ...orgShipments, ...availableShipments];
 
-  // Check if carrier has an active shipment (one carrier = one shipment at a time)
+  // Check if THIS carrier has an active shipment (one carrier = one shipment at
+  // a time). Scoped to the current user — org-mates' shipments must not block a
+  // driver who has no active work.
+  const currentUserId = user?.id;
   const hasActiveShipment = myShipments.some(
-    (s) => s.status !== 'delivered' && s.status !== 'cancelled',
+    (s) =>
+      s.carrierUser?.id === currentUserId &&
+      s.status !== 'delivered' &&
+      s.status !== 'cancelled',
   );
 
     const getValidTransitions = (status: string): ShipmentStatus[] => {
@@ -161,7 +183,17 @@ export const CarrierShipmentsPage = () => {
           }}
           icon={FaTruck}
           label="My Shipments"
-          count={assignedMeta?.totalItems ?? myShipments.length}
+          count={myMeta?.totalItems ?? myShipments.length}
+        />
+        <TabButton
+          active={activeTab === 'org'}
+          onClick={() => {
+            setActiveTab('org');
+            setSelectedShipment(null);
+          }}
+          icon={FaWarehouse}
+          label="Org Shipments"
+          count={orgMeta?.totalItems ?? orgShipments.length}
         />
         <TabButton
           active={activeTab === 'available'}
@@ -176,7 +208,7 @@ export const CarrierShipmentsPage = () => {
       </div>
 
       {activeTab === 'my' ? (
-        <MyShipmentsTab
+        <ShipmentsListTab
           shipments={myShipments}
           isLoading={shipmentsLoading}
           selectedShipment={selectedShipment}
@@ -189,11 +221,40 @@ export const CarrierShipmentsPage = () => {
           isUpdatingStatus={isUpdatingStatus}
           statusDropdownDir={statusDropdownDir}
           onOpenRouteModal={(id) => setRouteModalId(id)}
+          onClaim={handleAccept}
+          isAccepting={isAccepting}
+          hasActiveShipment={hasActiveShipment}
           page={myPage}
-          totalItems={assignedMeta?.totalItems ?? 0}
-          totalPages={assignedMeta?.totalPages ?? 1}
+          totalItems={myMeta?.totalItems ?? 0}
+          totalPages={myMeta?.totalPages ?? 1}
           onPageChange={setMyPage}
           pageSize={PAGE_SIZE}
+        />
+      ) : activeTab === 'org' ? (
+        <ShipmentsListTab
+          shipments={orgShipments}
+          isLoading={shipmentsLoading}
+          selectedShipment={selectedShipment}
+          onSelectShipment={setSelectedShipment}
+          selectedShipmentData={selectedShipmentData}
+          statusOpenId={statusOpenId}
+          onStatusToggle={handleStatusToggle}
+          onStatusChange={handleStatusChange}
+          getValidTransitions={getValidTransitions}
+          isUpdatingStatus={isUpdatingStatus}
+          statusDropdownDir={statusDropdownDir}
+          onOpenRouteModal={(id) => setRouteModalId(id)}
+          onClaim={handleAccept}
+          isAccepting={isAccepting}
+          hasActiveShipment={hasActiveShipment}
+          page={orgPage}
+          totalItems={orgMeta?.totalItems ?? 0}
+          totalPages={orgMeta?.totalPages ?? 1}
+          onPageChange={setOrgPage}
+          pageSize={PAGE_SIZE}
+          listTitle="Organization Shipments"
+          emptyTitle="No Unclaimed Org Shipments"
+          emptyDescription="There are no unclaimed shipments waiting in your organization right now. Check the Available tab to claim new work."
         />
       ) : (
         <AvailableShipmentsTab
@@ -256,9 +317,9 @@ function TabButton({
   );
 }
 
-/* ── My Shipments Tab ────────────────────────────────────── */
+/* ── Shipments List Tab (shared by "My Shipments" and "Org Shipments") ── */
 
-function MyShipmentsTab({
+function ShipmentsListTab({
   shipments,
   isLoading,
   selectedShipment,
@@ -271,11 +332,17 @@ function MyShipmentsTab({
   isUpdatingStatus,
   statusDropdownDir,
   onOpenRouteModal,
+  onClaim,
+  isAccepting,
+  hasActiveShipment,
   page,
   totalItems,
   totalPages,
   onPageChange,
   pageSize,
+  listTitle = 'Your Shipments',
+  emptyTitle = 'No Assigned Shipments',
+  emptyDescription = "You haven't accepted any shipments yet. Check the Available tab to find shipments you can claim.",
 }: {
   shipments: Shipment[];
   isLoading: boolean;
@@ -289,11 +356,17 @@ function MyShipmentsTab({
   isUpdatingStatus: boolean;
   statusDropdownDir: 'down' | 'up';
   onOpenRouteModal: (id: string) => void;
+  onClaim: (s: Shipment) => void;
+  isAccepting: boolean;
+  hasActiveShipment: boolean;
   page: number;
   totalItems: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   pageSize: number;
+  listTitle?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
 }) {
   if (isLoading) {
     return (
@@ -307,8 +380,8 @@ function MyShipmentsTab({
     return (
       <EmptyState
         icon={FaTruck}
-        title="No Assigned Shipments"
-        description="You haven't accepted any shipments yet. Check the Available tab to find shipments you can claim."
+        title={emptyTitle}
+        description={emptyDescription}
       />
     );
   }
@@ -318,7 +391,7 @@ function MyShipmentsTab({
       {/* Shipment list - left sidebar */}
       <div className="xl:col-span-1 space-y-3">
         <h2 className="text-sm font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider px-1">
-          Your Shipments
+          {listTitle}
         </h2>
         {shipments.map((shipment) => {
           const isCurrentUser = shipment.carrierUser?.id === useAuthStore.getState().user?.id;
@@ -350,7 +423,7 @@ function MyShipmentsTab({
                   {shipment.originCity} → {shipment.destinationCity}
                 </span>
               </div>
-              {shipment.carrierUser && (
+              {shipment.carrierUser ? (
                 <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1A3D5A]/60">
                   <div className={cn(
                     'w-5 h-5 rounded-full flex items-center justify-center',
@@ -365,6 +438,29 @@ function MyShipmentsTab({
                     {shipment.carrierUser.firstName} {shipment.carrierUser.lastName}
                     {isCurrentUser && ' (You)'}
                   </span>
+                </div>
+              ) : (
+                // Org-claimed shipment with no driver assigned yet — it now
+                // lives in "My Shipments" (not "Available"), so the driver
+                // self-assigns from here.
+                <div className="mt-2 pt-2 border-t border-[#E2E8F0] dark:border-[#1A3D5A]/60">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onClaim(shipment)}
+                    disabled={isAccepting || hasActiveShipment}
+                    className={cn(
+                      'w-full flex items-center justify-center gap-1.5 text-xs',
+                      hasActiveShipment && 'opacity-50 cursor-not-allowed',
+                    )}
+                  >
+                    <FaHandPaper className="w-3 h-3" />
+                    {isAccepting
+                      ? 'Claiming...'
+                      : hasActiveShipment
+                        ? 'Complete Active Shipment First'
+                        : 'Claim for Yourself'}
+                  </Button>
                 </div>
               )}
             </button>

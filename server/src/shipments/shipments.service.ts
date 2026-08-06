@@ -618,6 +618,16 @@ export class ShipmentsService {
       );
     }
 
+    // Carriers may only route shipments assigned to them or org-claimed
+    // shipments with no driver yet — never an org-mate's load.
+    if (user.role === 'carrier') {
+      if (!this.canCarrierManage(shipment, dbUser.organization_id, user.sub)) {
+        throw new ForbiddenException(
+          'You can only assign routes to shipments assigned to you or not yet claimed by a driver',
+        );
+      }
+    }
+
     const route = await this.prisma.route.findUnique({
       where: { route_id: dto.routeId },
     });
@@ -747,12 +757,27 @@ export class ShipmentsService {
       shipment.carrier_organization_id === dbUser.organization_id;
     const isAssignedCarrier = shipment.carrier_user_id === dbUser.user_id;
 
-    if (
-      user.role !== 'super_admin' &&
-      !isShipperOrg &&
-      !isCarrierOrg &&
-      !isAssignedCarrier
-    ) {
+    const canManage =
+      user.role === 'super_admin' ||
+      isShipperOrg ||
+      isCarrierOrg ||
+      isAssignedCarrier;
+
+    if (user.role === 'carrier') {
+      // A carrier driver only manages their own shipments or org-claimed
+      // shipments that no driver has claimed yet — never an org-mate's load.
+      if (
+        !this.canCarrierManage(
+          shipment,
+          dbUser.organization_id,
+          dbUser.user_id,
+        )
+      ) {
+        throw new ForbiddenException(
+          'You can only update shipments assigned to you or not yet claimed by a driver',
+        );
+      }
+    } else if (!canManage) {
       throw new ForbiddenException(
         'You do not have permission to update this shipment status',
       );
@@ -1429,42 +1454,41 @@ export class ShipmentsService {
 
     if (query.scope) {
       if (query.scope === 'assigned') {
+        // Everything claimed by the caller's organization. Carrier drivers only
+        // see the org-claimed shipments with no driver yet (the ones they can
+        // self-assign) — org-mates' shipments are not inspectable.
         if (orgId) {
-          if (user.role === 'carrier') {
-            andClauses.push({ carrier_user_id: user.sub });
-          } else {
-            andClauses.push({ carrier_organization_id: orgId });
-          }
+          andClauses.push(
+            user.role === 'carrier'
+              ? {
+                  AND: [
+                    { carrier_organization_id: orgId },
+                    { carrier_user_id: null },
+                  ],
+                }
+              : { carrier_organization_id: orgId },
+          );
+        } else {
+          andClauses.push({ OR: [] });
+        }
+      } else if (query.scope === 'mine') {
+        // Only shipments where the caller is the assigned carrier driver.
+        // "mine" is a driver concept — other roles get no rows for it.
+        if (user.role === 'carrier') {
+          andClauses.push({ carrier_user_id: user.sub });
         } else {
           andClauses.push({ OR: [] });
         }
       } else if (query.scope === 'available') {
-        if (orgId && user.role === 'carrier') {
-          andClauses.push({
-            OR: [
-              {
-                AND: [
-                  { carrier_organization_id: null },
-                  { shipment_status: { not: 'cancelled' } },
-                ],
-              },
-              {
-                AND: [
-                  { carrier_organization_id: orgId },
-                  { carrier_user_id: null },
-                  { shipment_status: { not: 'cancelled' } },
-                ],
-              },
-            ],
-          });
-        } else {
-          andClauses.push({
-            AND: [
-              { carrier_organization_id: null },
-              { shipment_status: { not: 'cancelled' } },
-            ],
-          });
-        }
+        // Only shipments no carrier org has claimed are truly available.
+        // Shipments already claimed by the caller's org belong in the
+        // "Org Shipments" tab, where drivers can self-assign them.
+        andClauses.push({
+          AND: [
+            { carrier_organization_id: null },
+            { shipment_status: { not: 'cancelled' } },
+          ],
+        });
       }
     }
 
@@ -1492,6 +1516,19 @@ export class ShipmentsService {
     const isCarrierOrg =
       shipment.carrier_organization_id === dbUser.organization_id;
     const isAssignedCarrier = shipment.carrier_user_id === user.sub;
+
+    if (user.role === 'carrier') {
+      // A carrier driver may only inspect shipments assigned to them, or
+      // org-claimed shipments no driver has claimed yet (so they can decide
+      // to self-assign). Shipments driven by an org-mate are off-limits.
+      if (
+        !isShipperOrg &&
+        !this.canCarrierManage(shipment, dbUser.organization_id, user.sub)
+      ) {
+        throw new ForbiddenException('You do not have access to this shipment');
+      }
+      return;
+    }
 
     if (!isShipperOrg && !isCarrierOrg && !isAssignedCarrier) {
       throw new ForbiddenException('You do not have access to this shipment');
@@ -1521,6 +1558,27 @@ export class ShipmentsService {
   private isValidTransition(current: string, next: string): boolean {
     const allowed = STATUS_TRANSITIONS[current];
     return allowed ? allowed.includes(next) : false;
+  }
+
+  /**
+   * Whether a carrier driver may work on a shipment: either it is assigned to
+   * them, or it is claimed by their organization with no driver yet. Shipments
+   * driven by an org-mate are never manageable by another driver.
+   */
+  private canCarrierManage(
+    shipment: {
+      carrier_organization_id: string | null;
+      carrier_user_id: string | null;
+    },
+    organizationId: string | null,
+    userId: string,
+  ): boolean {
+    if (shipment.carrier_user_id === userId) return true;
+    return (
+      !!organizationId &&
+      shipment.carrier_organization_id === organizationId &&
+      !shipment.carrier_user_id
+    );
   }
 
   /** Whitelisted snapshot for audit rows — never includes content, notes, or identity data. */

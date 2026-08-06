@@ -42,14 +42,14 @@ export class QueryShipmentDto {
   carrierOrganizationId?: string;
 
   @ApiPropertyOptional({
-    enum: ['available', 'assigned'],
+    enum: ['available', 'assigned', 'mine'],
     description:
-      'Scope filter: "available" lists shipments still unclaimed by any carrier, "assigned" lists shipments claimed by the caller organization.',
+      'Scope filter: "available" lists shipments still unclaimed by any carrier, "assigned" lists shipments claimed by the caller organization (carrier users see only the driverless ones they can self-assign), "mine" lists shipments assigned to the caller as the carrier driver.',
   })
   @IsString()
   @IsOptional()
-  @IsIn(['available', 'assigned'])
-  scope?: 'available' | 'assigned';
+  @IsIn(['available', 'assigned', 'mine'])
+  scope?: 'available' | 'assigned' | 'mine';
 
   @ApiPropertyOptional({
     description: 'Filter shipments created after this date (ISO 8601)',

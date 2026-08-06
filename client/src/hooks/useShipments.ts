@@ -10,12 +10,16 @@ import type {
 import toast from "react-hot-toast";
 
 export const useShipments = (params?: ShipmentQueryParams) => {
+  // `enabled` controls fetching (e.g. lazy tabs) but is intentionally kept out
+  // of the query key so toggling it doesn't re-key cached data.
+  const { enabled, ...query } = params ?? {};
   return useQuery({
-    queryKey: ["shipments", params],
+    queryKey: ["shipments", query],
     queryFn: async () => {
-      const response = await shipmentsApi.getAll(params);
+      const response = await shipmentsApi.getAll(query);
       return response.data; // response is axios Response, so response.data contains { data, meta }
     },
+    ...(enabled !== undefined && { enabled }),
   });
 };
 

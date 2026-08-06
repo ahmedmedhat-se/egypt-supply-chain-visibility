@@ -142,5 +142,7 @@ export interface ShipmentQueryParams {
   limit?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
-  scope?: "available" | "assigned";
+  scope?: "available" | "assigned" | "mine";
+  /** Whether the query is allowed to fetch (e.g. lazy tabs). */
+  enabled?: boolean;
 }
