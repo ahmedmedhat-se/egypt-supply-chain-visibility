@@ -1,57 +1,107 @@
-import apiClient from './client';
+import apiClient from "./client";
 import type {
   AdminDashboardData,
   AdminUser,
   AdminOrganization,
   AdminInvitation,
   AuditLogEntry,
+  AuditLogFilters,
   PaginatedResponse,
   BulkActionData,
-} from '../types/admin.types';
+} from "../types/admin.types";
 
 export const adminApi = {
   getDashboard: () =>
-    apiClient.get<{ success: boolean; data: AdminDashboardData }>('/api/admin/dashboard'),
+    apiClient.get<{ success: boolean; data: AdminDashboardData }>(
+      "/api/admin/dashboard",
+    ),
 
-  getUsers: (params?: { page?: number; limit?: number; search?: string; role?: string; isActive?: boolean }) =>
-    apiClient.get<PaginatedResponse<AdminUser>>('/api/admin/users', { params }),
+  getUsers: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+    isActive?: boolean;
+  }) =>
+    apiClient.get<PaginatedResponse<AdminUser>>("/api/admin/users", { params }),
 
   getUser: (id: string) =>
-    apiClient.get<{ success: boolean; data: AdminUser }>(`/api/admin/users/${id}`),
+    apiClient.get<{ success: boolean; data: AdminUser }>(
+      `/api/admin/users/${id}`,
+    ),
 
   updateUser: (id: string, data: Record<string, unknown>) =>
-    apiClient.patch<{ success: boolean; data: AdminUser }>(`/api/admin/users/${id}`, data),
+    apiClient.patch<{ success: boolean; data: AdminUser }>(
+      `/api/admin/users/${id}`,
+      data,
+    ),
 
   deactivateUser: (id: string) =>
-    apiClient.patch<{ success: boolean; message: string }>(`/api/admin/users/${id}/deactivate`),
+    apiClient.patch<{ success: boolean; message: string }>(
+      `/api/admin/users/${id}/deactivate`,
+    ),
 
   activateUser: (id: string) =>
-    apiClient.patch<{ success: boolean; message: string }>(`/api/admin/users/${id}/activate`),
+    apiClient.patch<{ success: boolean; message: string }>(
+      `/api/admin/users/${id}/activate`,
+    ),
 
   deleteUser: (id: string) =>
-    apiClient.delete<{ success: boolean; message: string }>(`/api/admin/users/${id}`),
+    apiClient.delete<{ success: boolean; message: string }>(
+      `/api/admin/users/${id}`,
+    ),
 
-  getOrganizations: (params?: { page?: number; limit?: number; search?: string; type?: string; isActive?: boolean }) =>
-    apiClient.get<PaginatedResponse<AdminOrganization>>('/api/admin/organizations', { params }),
+  getOrganizations: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: string;
+    isActive?: boolean;
+  }) =>
+    apiClient.get<PaginatedResponse<AdminOrganization>>(
+      "/api/admin/organizations",
+      { params },
+    ),
 
   getOrganization: (id: string) =>
-    apiClient.get<{ success: boolean; data: AdminOrganization }>(`/api/admin/organizations/${id}`),
+    apiClient.get<{ success: boolean; data: AdminOrganization }>(
+      `/api/admin/organizations/${id}`,
+    ),
 
   updateOrganization: (id: string, data: Record<string, unknown>) =>
-    apiClient.patch<{ success: boolean; data: AdminOrganization }>(`/api/admin/organizations/${id}`, data),
+    apiClient.patch<{ success: boolean; data: AdminOrganization }>(
+      `/api/admin/organizations/${id}`,
+      data,
+    ),
 
   deactivateOrganization: (id: string) =>
-    apiClient.patch<{ success: boolean; message: string }>(`/api/admin/organizations/${id}/deactivate`),
+    apiClient.patch<{ success: boolean; message: string }>(
+      `/api/admin/organizations/${id}/deactivate`,
+    ),
 
   activateOrganization: (id: string) =>
-    apiClient.patch<{ success: boolean; message: string }>(`/api/admin/organizations/${id}/activate`),
+    apiClient.patch<{ success: boolean; message: string }>(
+      `/api/admin/organizations/${id}/activate`,
+    ),
 
-  getInvitations: (params?: { page?: number; limit?: number; status?: string }) =>
-    apiClient.get<PaginatedResponse<AdminInvitation>>('/api/admin/invitations', { params }),
+  getInvitations: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+  }) =>
+    apiClient.get<PaginatedResponse<AdminInvitation>>(
+      "/api/admin/invitations",
+      { params },
+    ),
 
-  getAuditLogs: (params?: { resourceType?: string; resourceId?: string; limit?: number }) =>
-    apiClient.get<{ success: boolean; data: AuditLogEntry[] }>('/api/admin/audit-logs', { params }),
+  getAuditLogs: (params?: AuditLogFilters) =>
+    apiClient.get<PaginatedResponse<AuditLogEntry>>("/api/admin/audit-logs", {
+      params,
+    }),
 
   bulkAction: (data: BulkActionData) =>
-    apiClient.post<{ success: boolean; message: string }>('/api/admin/bulk-action', data),
+    apiClient.post<{ success: boolean; message: string }>(
+      "/api/admin/bulk-action",
+      data,
+    ),
 };

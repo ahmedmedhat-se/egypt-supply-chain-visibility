@@ -98,6 +98,9 @@ const SuperAdminRoutesPage = lazy(() =>
 const SuperAdminCheckpointsPage = lazy(() =>
   import('./components/pages/super-admin/CheckpointsPage').then((m) => ({ default: m.CheckpointsPage })),
 );
+const AuditLogsPage = lazy(() =>
+  import('./components/pages/AuditLogsPage').then((m) => ({ default: m.AuditLogsPage })),
+);
 const AcceptInvitationPage = lazy(() =>
   import('./components/pages/AcceptInvitationPage').then((m) => ({
     default: m.AcceptInvitationPage,
@@ -354,6 +357,14 @@ function App() {
                   </RoleRoute>
                 }
               />
+              <Route
+                path={ROUTES.AUDIT_LOGS}
+                element={
+                  <RoleRoute roles={['admin']}>
+                    <PageLoader><AuditLogsPage orgId={user?.organizationId} title="Audit Logs" subtitle="Activity inside your organization — who did what, when, and from where." /></PageLoader>
+                  </RoleRoute>
+                }
+              />
 
               {/* ── Super Admin Routes ── */}
               <Route
@@ -393,6 +404,14 @@ function App() {
                 element={
                   <RoleRoute roles={['super_admin']}>
                     <PageLoader><SuperAdminCheckpointsPage /></PageLoader>
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path={ROUTES.SUPER_ADMIN_AUDIT_LOGS}
+                element={
+                  <RoleRoute roles={['super_admin']}>
+                    <PageLoader><AuditLogsPage title="Audit Logs" subtitle="System-wide activity — every action, actor, and change across the platform." /></PageLoader>
                   </RoleRoute>
                 }
               />

@@ -19,6 +19,8 @@ import {
   FaMapMarkerAlt,
   FaChevronLeft,
   FaChevronRight,
+  FaHistory,
+  FaShieldAlt,
 } from 'react-icons/fa';
 import { ROUTES } from '../../constants/routes';
 import { cn } from '../../lib/utils';
@@ -120,6 +122,7 @@ export const Sidebar = ({
     ...(isAdmin && !isSuperAdmin ? [
       { name: 'Users Report', to: ROUTES.USERS_REPORT, icon: FaUsers, authRequired: true } as NavItem,
       { name: 'Invitations', to: ROUTES.INVITATIONS, icon: FaPaperPlane, authRequired: true } as NavItem,
+      { name: 'Audit Logs', to: ROUTES.AUDIT_LOGS, icon: FaHistory, authRequired: true } as NavItem,
     ] : []),
     ...(isSuperAdmin ? [
       { name: 'Users Report', to: ROUTES.SUPER_ADMIN_USERS_REPORT, icon: FaUsers, authRequired: true } as NavItem,
@@ -127,6 +130,7 @@ export const Sidebar = ({
       { name: 'Organizations', to: ROUTES.SUPER_ADMIN_ORGANIZATIONS, icon: FaGlobe, authRequired: true } as NavItem,
       { name: 'Routes', to: ROUTES.SUPER_ADMIN_ROUTES, icon: FaRoute, authRequired: true } as NavItem,
       { name: 'Checkpoints', to: ROUTES.SUPER_ADMIN_CHECKPOINTS, icon: FaMapMarkerAlt, authRequired: true } as NavItem,
+      { name: 'Audit Logs', to: ROUTES.SUPER_ADMIN_AUDIT_LOGS, icon: FaShieldAlt, authRequired: true } as NavItem,
     ] : []),
     { name: 'Reports', to: ROUTES.REPORTS, icon: FaFileAlt, authRequired: true },
   ];

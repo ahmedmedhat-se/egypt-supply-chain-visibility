@@ -1,7 +1,10 @@
 export interface AdminDashboardData {
   users: { total: number; active: number };
   organizations: { total: number; active: number };
-  shipments: { total: number; byStatus: Array<{ shipment_status: string; _count: number }> };
+  shipments: {
+    total: number;
+    byStatus: Array<{ shipment_status: string; _count: number }>;
+  };
   alerts: { total: number; critical: number };
 }
 
@@ -52,7 +55,11 @@ export interface AdminShipment {
   shipper_organization: { organization_name: string };
   carrier_organization: { organization_name: string };
   current_checkpoint: unknown;
-  created_by: { user_email: string; user_first_name: string; user_last_name: string };
+  created_by: {
+    user_email: string;
+    user_first_name: string;
+    user_last_name: string;
+  };
 }
 
 export interface AuditLogEntry {
@@ -63,20 +70,37 @@ export interface AuditLogEntry {
   audit_old_value: unknown;
   audit_new_value: unknown;
   audit_metadata: unknown;
+  audit_ip_address: string | null;
+  audit_user_agent: string | null;
   audit_performed_at: string;
   user: {
     user_id: string;
     user_email: string;
     user_first_name: string;
     user_last_name: string;
-  };
+  } | null;
+  organization: {
+    organization_id: string;
+    organization_name: string;
+    organization_type: string;
+  } | null;
 }
 
-export interface PaginatedResponse<T> {
-  success: boolean;
-  data: T[];
-  meta: { page: number; limit: number; total: number; pages: number };
+export interface AuditLogFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+  action?: string;
+  category?: string;
+  resourceType?: string;
+  resourceId?: string;
+  userId?: string;
+  from?: string;
+  to?: string;
+  ipAddress?: string;
 }
+
+export type { PaginatedResponse } from "./pagination.types";
 
 export interface AdminInvitation {
   invitation_id: string;
@@ -85,7 +109,12 @@ export interface AdminInvitation {
   invited_email: string;
   invited_role: string;
   status: string;
-  created_by: { user_id: string; user_email: string; user_first_name: string; user_last_name: string };
+  created_by: {
+    user_id: string;
+    user_email: string;
+    user_first_name: string;
+    user_last_name: string;
+  };
   expires_at: string;
   created_at: string;
 }

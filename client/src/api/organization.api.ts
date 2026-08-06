@@ -1,21 +1,31 @@
-import apiClient from './client';
-import type { OrgMember } from '../types/organization.types';
+import apiClient from "./client";
+import type { OrgMember, OrgInvitation } from "../types/organization.types";
+import type { PaginatedResponse } from "../types/pagination.types";
+import type { AuditLogEntry, AuditLogFilters } from "../types/admin.types";
 
 export const organizationApi = {
-  /** Get all active members in the organization */
-  getMembers: (orgId: string) =>
-    apiClient.get<OrgMember[]>(`/api/organizations/${orgId}/members`),
+  /** Get members of the organization (paginated, optional active filter) */
+  getMembers: (
+    orgId: string,
+    params?: { page?: number; limit?: number; isActive?: boolean },
+  ) =>
+    apiClient.get<PaginatedResponse<OrgMember>>(
+      `/api/organizations/${orgId}/members`,
+      { params },
+    ),
 
-  /** Get invitations for the organization (optional status filter) */
-  getInvitations: (orgId: string, status?: string) =>
-    apiClient.get<Array<{
-      invitation_id: string;
-      invited_email: string;
-      invited_role: string;
-      status: string;
-      expires_at: string;
-      created_at: string;
-    }>>(`/api/organizations/${orgId}/invitations`, { params: { status } }),
+  /** Get invitations for the organization (optional status filter, paginated) */
+  getInvitations: (
+    orgId: string,
+    status?: string,
+    params?: { page?: number; limit?: number },
+  ) =>
+    apiClient.get<PaginatedResponse<OrgInvitation>>(
+      `/api/organizations/${orgId}/invitations`,
+      {
+        params: { status, ...params },
+      },
+    ),
 
   /** Invite a new user to the organization */
   invite: (orgId: string, data: { email: string; role: string }) =>
@@ -23,7 +33,9 @@ export const organizationApi = {
 
   /** Resend a pending invitation */
   resendInvitation: (orgId: string, invitationId: string) =>
-    apiClient.post(`/api/organizations/${orgId}/invitations/${invitationId}/resend`),
+    apiClient.post(
+      `/api/organizations/${orgId}/invitations/${invitationId}/resend`,
+    ),
 
   /** Cancel a pending invitation */
   cancelInvitation: (orgId: string, invitationId: string) =>
@@ -36,4 +48,11 @@ export const organizationApi = {
   /** Activate a member */
   activateMember: (orgId: string, userId: string) =>
     apiClient.patch(`/api/organizations/${orgId}/members/${userId}/activate`),
+
+  /** Get audit logs scoped to this organization (org admin + super admin) */
+  getAuditLogs: (orgId: string, params?: AuditLogFilters) =>
+    apiClient.get<PaginatedResponse<AuditLogEntry>>(
+      `/api/organizations/${orgId}/audit-logs`,
+      { params },
+    ),
 };
