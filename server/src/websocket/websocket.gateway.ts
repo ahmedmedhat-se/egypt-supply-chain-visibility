@@ -149,6 +149,20 @@ export class WebsocketGateway
     this.logger.debug(`shipment:updated broadcast to ${sent} socket(s)`);
   }
 
+  /** Push a new alert to every online session of the given users */
+  emitAlerts(userIds: string[], payload: unknown) {
+    const targets = new Set(userIds);
+    let sent = 0;
+    for (const socket of this.server.sockets.sockets.values()) {
+      const user = socket.data.user as SocketUser | undefined;
+      if (user && targets.has(user.sub)) {
+        socket.emit('alert:new', payload);
+        sent++;
+      }
+    }
+    this.logger.debug(`alert:new pushed to ${sent} socket(s)`);
+  }
+
   /** Force-disconnect sockets for a revoked session (or all sessions of a user) */
   emitForceLogout(userId: string, sessionId?: string) {
     const sockets = this.server.sockets.sockets;

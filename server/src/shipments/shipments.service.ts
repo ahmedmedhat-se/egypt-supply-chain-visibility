@@ -18,6 +18,11 @@ import { AuditService } from '../audit/audit.service';
 import type { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { buildPaginationMeta } from '../common/pagination/pagination.helper';
+import { publishAlertEvent } from '../alerts/alert-events.helper';
+import {
+  computeEffectiveEta,
+  isPastDelayGrace,
+} from '../alerts/delay-evaluator';
 
 /** Shape of the user payload attached by JwtAuthGuard */
 interface RequestUser {
@@ -299,6 +304,12 @@ export class ShipmentsService {
               checkpoint_code: true,
               checkpoint_city: true,
             },
+          },
+          // Minimal event data so each route checkpoint can expose when the
+          // shipment actually reached it (used by the live map).
+          events: {
+            orderBy: { event_occurred_at: 'asc' },
+            select: { checkpoint_id: true, event_occurred_at: true },
           },
         },
       }),
@@ -908,6 +919,38 @@ export class ShipmentsService {
       },
     );
 
+    // Realtime alert evaluation on material status changes.
+    // The alerts consumer turns these into alerts delivered live over WS.
+    if (dto.status === 'in_transit') {
+      this.maybePublishDelay(updatedShipment).catch((err) =>
+        this.logger.error(
+          `Realtime delay evaluation failed: ${(err as Error).message}`,
+        ),
+      );
+    } else if (dto.status === 'delivered') {
+      await publishAlertEvent(this.amqpConnection, 'shipment.delivered', {
+        shipmentId: updatedShipment.shipment_id,
+        referenceNumber: shipment.shipment_reference_number,
+        shipmentStatus: dto.status,
+        shipperOrganizationId: shipment.shipper_organization_id,
+        carrierOrganizationId: shipment.carrier_organization_id,
+        carrierUserId: shipment.carrier_user_id,
+        eventId: event.shipment_event_id,
+        occurredAt: event.event_occurred_at.toISOString(),
+      });
+    } else if (dto.status === 'customs_hold') {
+      await publishAlertEvent(this.amqpConnection, 'shipment.exception', {
+        shipmentId: updatedShipment.shipment_id,
+        referenceNumber: shipment.shipment_reference_number,
+        shipmentStatus: dto.status,
+        shipperOrganizationId: shipment.shipper_organization_id,
+        carrierOrganizationId: shipment.carrier_organization_id,
+        carrierUserId: shipment.carrier_user_id,
+        eventId: event.shipment_event_id,
+        occurredAt: event.event_occurred_at.toISOString(),
+      });
+    }
+
     this.logger.log(
       `Shipment ${updatedShipment.shipment_reference_number} status updated to "${dto.status}"`,
     );
@@ -940,6 +983,34 @@ export class ShipmentsService {
     });
 
     return this.formatShipment(updatedShipment);
+  }
+
+  /**
+   * When a shipment transitions to in_transit and its effective ETA has
+   * already passed the grace window, flag it as delayed immediately instead
+   * of waiting for the 00:00 scan. Idempotent via the open-alert guard.
+   */
+  private async maybePublishDelay(shipment: {
+    shipment_id: string;
+    shipment_reference_number: string;
+    shipment_status: string;
+    shipment_estimated_arrival_at: Date | null;
+    shipment_actual_departure_at: Date | null;
+    shipper_organization_id: string;
+    carrier_organization_id: string | null;
+    carrier_user_id: string | null;
+    route?: { route_estimated_days: number | null } | null;
+  }) {
+    if (!isPastDelayGrace(computeEffectiveEta(shipment))) return;
+    await publishAlertEvent(this.amqpConnection, 'shipment.delayed', {
+      shipmentId: shipment.shipment_id,
+      referenceNumber: shipment.shipment_reference_number,
+      shipmentStatus: shipment.shipment_status,
+      shipperOrganizationId: shipment.shipper_organization_id,
+      carrierOrganizationId: shipment.carrier_organization_id,
+      carrierUserId: shipment.carrier_user_id,
+      occurredAt: new Date().toISOString(),
+    });
   }
 
   // ---------- Accept (Carrier claims a shipment) ----------
@@ -1476,6 +1547,21 @@ export class ShipmentsService {
 
   private formatShipment(shipment: any) {
     const routeCheckpoints = shipment.route?.route_checkpoints ?? [];
+
+    // Earliest event per checkpoint = the moment the shipment reached it.
+    const checkpointReachedAt = new Map<string, string>();
+    for (const event of shipment.events ?? []) {
+      if (
+        event.checkpoint_id &&
+        !checkpointReachedAt.has(event.checkpoint_id)
+      ) {
+        checkpointReachedAt.set(
+          event.checkpoint_id,
+          new Date(event.event_occurred_at).toISOString(),
+        );
+      }
+    }
+
     const checkpointPosition = (cp: any) =>
       cp?.checkpoint
         ? {
@@ -1553,6 +1639,8 @@ export class ShipmentsService {
                   ? Number(rc.checkpoint.checkpoint_longitude)
                   : null,
                 sequenceOrder: rc.sequence_order,
+                reachedAt:
+                  checkpointReachedAt.get(rc.checkpoint.checkpoint_id) ?? null,
               }),
             ),
           }
@@ -1565,19 +1653,23 @@ export class ShipmentsService {
             lastName: shipment.created_by.user_last_name,
           }
         : null,
-      events: shipment.events
-        ? shipment.events.map((e: any) => ({
-            id: e.shipment_event_id,
-            type: e.event_type,
-            status: e.event_status,
-            description: e.event_description,
-            latitude: e.event_latitude ? Number(e.event_latitude) : null,
-            longitude: e.event_longitude ? Number(e.event_longitude) : null,
-            checkpointId: e.checkpoint_id,
-            recordedByUserId: e.recorded_by_user_id,
-            occurredAt: e.event_occurred_at,
-          }))
-        : undefined,
+      // Only map full events when the query actually included the complete
+      // event fields (list queries include just checkpoint_id + occurred_at
+      // for reachedAt computation and must not leak partial event objects).
+      events:
+        shipment.events?.length && shipment.events[0]?.shipment_event_id
+          ? shipment.events.map((e: any) => ({
+              id: e.shipment_event_id,
+              type: e.event_type,
+              status: e.event_status,
+              description: e.event_description,
+              latitude: e.event_latitude ? Number(e.event_latitude) : null,
+              longitude: e.event_longitude ? Number(e.event_longitude) : null,
+              checkpointId: e.checkpoint_id,
+              recordedByUserId: e.recorded_by_user_id,
+              occurredAt: e.event_occurred_at,
+            }))
+          : undefined,
       createdAt: shipment.shipment_created_at,
       updatedAt: shipment.shipment_updated_at,
     };

@@ -43,4 +43,23 @@ export class WebsocketConsumer {
     );
     this.gateway.emitForceLogout(event.userId, event.sessionId);
   }
+
+  @RabbitSubscribe({
+    exchange: 'escv.events',
+    routingKey: 'alert.created',
+    queue: 'ws.alert-created',
+  })
+  async handleAlertCreated(msg: {
+    type?: string;
+    data?: { userIds?: string[]; alert?: unknown };
+  }) {
+    const { userIds = [], alert } = msg?.data ?? {};
+    if (!Array.isArray(userIds) || userIds.length === 0 || !alert) {
+      this.logger.warn(
+        'Ignoring alert.created event without recipients or payload',
+      );
+      return;
+    }
+    this.gateway.emitAlerts(userIds, alert);
+  }
 }

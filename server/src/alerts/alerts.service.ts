@@ -1,13 +1,21 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueryAlertsDto } from './dto/alerts.dto';
 import { buildPaginationMeta } from '../common/pagination/pagination.helper';
+import { ALERTS_EXCHANGE } from './alert-events.helper';
+
+const ADMIN_ROLES = ['admin', 'org_admin'];
+const OPEN_ALERT_TYPES = ['shipment.delayed', 'shipment.exception'];
 
 @Injectable()
 export class AlertsService {
   private readonly logger = new Logger(AlertsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly amqp: AmqpConnection,
+  ) {}
 
   async getUserAlerts(userId: string, query: QueryAlertsDto) {
     const page = Number(query.page) || 1;
@@ -22,6 +30,28 @@ export class AlertsService {
 
     if (query.severity) {
       where.alert = { alert_severity: query.severity };
+    }
+
+    if (query.search) {
+      const search = query.search.trim();
+      if (search) {
+        // Combine with any existing alert filter (e.g. severity) as an AND.
+        where.alert = {
+          ...(where.alert ?? {}),
+          OR: [
+            { alert_title: { contains: search, mode: 'insensitive' } },
+            { alert_message: { contains: search, mode: 'insensitive' } },
+            {
+              shipment: {
+                shipment_reference_number: {
+                  contains: search,
+                  mode: 'insensitive',
+                },
+              },
+            },
+          ],
+        };
+      }
     }
 
     const [userAlerts, total] = await this.prisma.$transaction([
@@ -94,63 +124,118 @@ export class AlertsService {
     message: string;
     shipmentId?: string;
     eventId?: string;
-    targetRole?: string;
+    targetSide?: 'shipper' | 'carrier' | 'both';
     targetUserIds?: string[];
     metadata?: any;
   }) {
-    const { targetUserIds = [], targetRole } = params;
-    
-    // Determine who needs to receive this alert
-    let userIdsToNotify = [...targetUserIds];
+    const {
+      targetUserIds = [],
+      targetSide = 'both',
+      type,
+      severity,
+      title,
+      message,
+      shipmentId,
+      eventId,
+      metadata,
+    } = params;
 
-    if (targetRole && params.shipmentId) {
-      // Find users related to this shipment by role
+    // Idempotency guard: never create a second open alert for the same
+    // shipment + condition (the 00:00 scanner and realtime checks may both
+    // evaluate the same shipment).
+    if (shipmentId && OPEN_ALERT_TYPES.includes(type)) {
+      const existing = await this.prisma.alert.findFirst({
+        where: {
+          shipment_id: shipmentId,
+          alert_type: type,
+          alert_is_resolved: false,
+        },
+        select: { alert_id: true },
+      });
+      if (existing) {
+        this.logger.debug(
+          `Skipping duplicate alert ${type} for shipment ${shipmentId} (open alert ${existing.alert_id} exists)`,
+        );
+        return null;
+      }
+    }
+
+    // Recipients = org admins of the involved organization(s) + the user
+    // directly involved with the shipment (shipper creator / carrier driver).
+    const userIdsToNotify = new Set<string>(targetUserIds);
+
+    let referenceNumber: string | null = null;
+
+    if (shipmentId) {
       const shipment = await this.prisma.shipment.findUnique({
-        where: { shipment_id: params.shipmentId },
-        include: {
-          shipper_organization: { include: { users: true } },
-          carrier_organization: { include: { users: true } },
+        where: { shipment_id: shipmentId },
+        select: {
+          shipment_reference_number: true,
+          created_by_user_id: true,
+          carrier_user_id: true,
+          shipper_organization: {
+            select: {
+              users: {
+                select: {
+                  user_id: true,
+                  user_role: true,
+                  user_is_active: true,
+                },
+              },
+            },
+          },
+          carrier_organization: {
+            select: {
+              users: {
+                select: {
+                  user_id: true,
+                  user_role: true,
+                  user_is_active: true,
+                },
+              },
+            },
+          },
         },
       });
 
       if (shipment) {
-        if (targetRole === 'shipper' || targetRole === 'admin') {
-          userIdsToNotify.push(
-            ...shipment.shipper_organization.users.map((u) => u.user_id),
+        referenceNumber = shipment.shipment_reference_number;
+
+        if (targetSide === 'shipper' || targetSide === 'both') {
+          this.collectRecipients(
+            userIdsToNotify,
+            shipment.shipper_organization.users,
+            [shipment.created_by_user_id].filter(Boolean),
           );
         }
-        if (
-          (targetRole === 'carrier' || targetRole === 'driver') &&
-          shipment.carrier_organization
-        ) {
-          userIdsToNotify.push(
-            ...shipment.carrier_organization.users.map((u) => u.user_id),
+        if (targetSide === 'carrier' || targetSide === 'both') {
+          this.collectRecipients(
+            userIdsToNotify,
+            shipment.carrier_organization?.users ?? [],
+            [shipment.carrier_user_id].filter(Boolean),
           );
         }
       }
     }
 
-    // Deduplicate user IDs
-    userIdsToNotify = [...new Set(userIdsToNotify)];
-
-    if (userIdsToNotify.length === 0) {
-      this.logger.warn(`No target users found for alert: ${params.title}`);
+    if (userIdsToNotify.size === 0) {
+      this.logger.warn(`No target users found for alert: ${title}`);
       return null;
     }
 
     // Create the central Alert record
     const alert = await this.prisma.alert.create({
       data: {
-        alert_type: params.type,
-        alert_severity: params.severity,
-        alert_title: params.title,
-        alert_message: params.message,
-        shipment_id: params.shipmentId,
-        triggered_by_event_id: params.eventId,
-        alert_target_role: params.targetRole,
-        alert_metadata: params.metadata,
+        alert_type: type,
+        alert_severity: severity,
+        alert_title: title,
+        alert_message: message,
+        shipment_id: shipmentId,
+        triggered_by_event_id: eventId,
+        alert_target_role: targetSide === 'both' ? 'admin' : targetSide,
+        alert_metadata: metadata,
         user_alerts: {
-          create: userIdsToNotify.map((userId) => ({
+          create: [...userIdsToNotify].map((userId) => ({
             user_id: userId,
           })),
         },
@@ -158,8 +243,40 @@ export class AlertsService {
       include: { user_alerts: true },
     });
 
-    // TODO: We could publish a WebSocket event here for real-time notification push!
+    // Live push: the websocket consumer turns this into `alert:new` events
+    // on each recipient's `user:<id>` room.
+    await this.amqp.publish(ALERTS_EXCHANGE, 'alert.created', {
+      type: 'alert.created',
+      data: {
+        userIds: [...userIdsToNotify],
+        alert: {
+          alertId: alert.alert_id,
+          alertType: alert.alert_type,
+          alertSeverity: alert.alert_severity,
+          alertTitle: alert.alert_title,
+          alertMessage: alert.alert_message,
+          shipmentRef: referenceNumber,
+          notifiedAt: new Date().toISOString(),
+        },
+      },
+    });
 
     return alert;
+  }
+
+  private collectRecipients(
+    target: Set<string>,
+    orgUsers: { user_id: string; user_role: string; user_is_active: boolean }[],
+    involvedUserIds: (string | null | undefined)[],
+  ) {
+    for (const user of orgUsers) {
+      if (!user.user_is_active) continue;
+      if (ADMIN_ROLES.includes(user.user_role)) {
+        target.add(user.user_id);
+      }
+    }
+    for (const id of involvedUserIds) {
+      if (id) target.add(id);
+    }
   }
 }
