@@ -126,7 +126,9 @@ export function MapPicker({
   return (
     <div className="space-y-3">
       {/* Map */}
-      <div className="rounded-lg overflow-hidden border border-[#E2E8F0] dark:border-[#1A3D5A]">
+      {/* z-0 + isolate keep Leaflet's internal panes inside this container so
+          modal dropdowns/popovers render above the map, not underneath it. */}
+      <div className="relative z-0 isolate rounded-lg overflow-hidden border border-[#E2E8F0] dark:border-[#1A3D5A]">
         <MapContainer
           center={[centerLat, centerLng]}
           zoom={initialZoom}
