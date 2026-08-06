@@ -19,4 +19,10 @@ export default () => ({
   cookie: {
     secret: process.env.COOKIE_SECRET || 'secret-key',
   },
+  osrm: {
+    url:
+      process.env.OSRM_URL ||
+      'https://router.project-osrm.org/route/v1/driving',
+    timeoutMs: parseInt(process.env.OSRM_TIMEOUT_MS || '', 10) || 8000,
+  },
 });
