@@ -1283,21 +1283,23 @@ export class ShipmentsService {
     query: QueryShipmentDto,
   ): Promise<Prisma.ShipmentWhereInput> {
     const where: Prisma.ShipmentWhereInput = {};
+    const andClauses: Prisma.ShipmentWhereInput[] = [];
+
+    const dbUser = await this.prisma.user.findUnique({
+      where: { user_id: user.sub },
+      select: { organization_id: true },
+    });
+    const orgId = dbUser?.organization_id ?? null;
 
     if (user.role !== 'regulator' && user.role !== 'super_admin') {
-      const dbUser = await this.prisma.user.findUnique({
-        where: { user_id: user.sub },
-        select: { organization_id: true },
-      });
-
-      if (dbUser) {
-        where.OR = [
-          { shipper_organization_id: dbUser.organization_id },
-          { carrier_organization_id: dbUser.organization_id },
+      if (orgId) {
+        const roleBounds: Prisma.ShipmentWhereInput[] = [
+          { shipper_organization_id: orgId },
+          { carrier_organization_id: orgId },
         ];
 
         if (user.role === 'carrier') {
-          where.OR.push(
+          roleBounds.push(
             {
               AND: [
                 { carrier_organization_id: null },
@@ -1307,6 +1309,10 @@ export class ShipmentsService {
             { carrier_user_id: user.sub },
           );
         }
+
+        andClauses.push({ OR: roleBounds });
+      } else {
+        andClauses.push({ OR: [] });
       }
     }
 
@@ -1318,24 +1324,22 @@ export class ShipmentsService {
     }
 
     if (query.search) {
-      where.AND = [
-        {
-          OR: [
-            {
-              shipment_reference_number: {
-                contains: query.search,
-                mode: 'insensitive',
-              },
+      andClauses.push({
+        OR: [
+          {
+            shipment_reference_number: {
+              contains: query.search,
+              mode: 'insensitive',
             },
-            {
-              shipment_description: {
-                contains: query.search,
-                mode: 'insensitive',
-              },
+          },
+          {
+            shipment_description: {
+              contains: query.search,
+              mode: 'insensitive',
             },
-          ],
-        },
-      ];
+          },
+        ],
+      });
     }
 
     if (query.carrierOrganizationId && user.role === 'regulator') {
@@ -1353,30 +1357,48 @@ export class ShipmentsService {
     }
 
     if (query.scope) {
-      const scopeUser = await this.prisma.user.findUnique({
-        where: { user_id: user.sub },
-        select: { organization_id: true },
-      });
-      const orgId = scopeUser?.organization_id ?? null;
       if (query.scope === 'assigned') {
-        where.OR = orgId
-          ? [
-              { carrier_organization_id: orgId },
-              ...(user.role === 'carrier'
-                ? [{ carrier_user_id: user.sub }]
-                : []),
-            ]
-          : [];
+        if (orgId) {
+          if (user.role === 'carrier') {
+            andClauses.push({ carrier_user_id: user.sub });
+          } else {
+            andClauses.push({ carrier_organization_id: orgId });
+          }
+        } else {
+          andClauses.push({ OR: [] });
+        }
       } else if (query.scope === 'available') {
-        where.OR = [
-          {
+        if (orgId && user.role === 'carrier') {
+          andClauses.push({
+            OR: [
+              {
+                AND: [
+                  { carrier_organization_id: null },
+                  { shipment_status: { not: 'cancelled' } },
+                ],
+              },
+              {
+                AND: [
+                  { carrier_organization_id: orgId },
+                  { carrier_user_id: null },
+                  { shipment_status: { not: 'cancelled' } },
+                ],
+              },
+            ],
+          });
+        } else {
+          andClauses.push({
             AND: [
               { carrier_organization_id: null },
               { shipment_status: { not: 'cancelled' } },
             ],
-          },
-        ];
+          });
+        }
       }
+    }
+
+    if (andClauses.length > 0) {
+      where.AND = andClauses;
     }
 
     return where;
