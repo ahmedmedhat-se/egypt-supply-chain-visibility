@@ -22,8 +22,8 @@ import {
   AdminQueryShipmentsDto,
   AdminBulkActionDto,
   AdminQueryInvitationsDto,
-  AdminQueryAuditLogsDto,
 } from './dto/admin.dto';
+import { QueryAuditLogsDto } from '../common/dto/query-audit-logs.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
@@ -178,13 +178,17 @@ export class AdminController {
   @ApiOperation({ summary: 'List all invitations across platform' })
   @ApiResponse({ status: 200, description: 'Invitations list returned' })
   async listInvitations(@Query() query: AdminQueryInvitationsDto) {
-    return this.adminService.listInvitations(query.page, query.limit, query.status);
+    return this.adminService.listInvitations(
+      query.page,
+      query.limit,
+      query.status,
+    );
   }
 
   @Get('audit-logs')
-  @ApiOperation({ summary: 'View audit logs' })
+  @ApiOperation({ summary: 'View system-wide audit logs' })
   @ApiResponse({ status: 200, description: 'Audit logs returned' })
-  async getAuditLogs(@Query() query: AdminQueryAuditLogsDto) {
-    return this.adminService.getAuditLogs(query.resourceType, query.resourceId, query.page, query.limit);
+  async getAuditLogs(@Query() query: QueryAuditLogsDto) {
+    return this.adminService.getAuditLogs(query);
   }
 }

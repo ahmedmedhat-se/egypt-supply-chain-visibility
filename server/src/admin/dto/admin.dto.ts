@@ -37,7 +37,10 @@ export class AdminUpdateUserDto {
   @Matches(/^\+?[0-9]{10,15}$/, { message: 'Invalid phone number format' })
   user_phone?: string;
 
-  @ApiPropertyOptional({ example: 'shipper', enum: ['admin', 'shipper', 'carrier', 'regulator'] })
+  @ApiPropertyOptional({
+    example: 'shipper',
+    enum: ['admin', 'shipper', 'carrier', 'regulator'],
+  })
   @IsOptional()
   @IsIn(['admin', 'shipper', 'carrier', 'regulator'])
   user_role?: string;
@@ -52,7 +55,8 @@ export class AdminUpdateUserDto {
   @IsString()
   @Length(8, 50)
   @Matches(/(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*])/, {
-    message: 'Password must contain uppercase, lowercase, number, and special character',
+    message:
+      'Password must contain uppercase, lowercase, number, and special character',
   })
   user_password?: string;
 }
@@ -64,7 +68,10 @@ export class AdminUpdateOrganizationDto {
   @Length(1, 255)
   organization_name?: string;
 
-  @ApiPropertyOptional({ example: 'shipper', enum: ['shipper', 'carrier', 'regulator', 'government', 'admin'] })
+  @ApiPropertyOptional({
+    example: 'shipper',
+    enum: ['shipper', 'carrier', 'regulator', 'government', 'admin'],
+  })
   @IsOptional()
   @IsIn(['shipper', 'carrier', 'regulator', 'government', 'admin'])
   organization_type?: string;
@@ -108,7 +115,10 @@ export class AdminQueryUsersDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ example: 'shipper', enum: ['admin', 'shipper', 'carrier', 'regulator'] })
+  @ApiPropertyOptional({
+    example: 'shipper',
+    enum: ['admin', 'shipper', 'carrier', 'regulator'],
+  })
   @IsOptional()
   @IsIn(['admin', 'shipper', 'carrier', 'regulator'])
   role?: string;
@@ -146,7 +156,10 @@ export class AdminQueryOrganizationsDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ example: 'shipper', enum: ['shipper', 'carrier', 'regulator', 'government', 'admin'] })
+  @ApiPropertyOptional({
+    example: 'shipper',
+    enum: ['shipper', 'carrier', 'regulator', 'government', 'admin'],
+  })
   @IsOptional()
   @IsIn(['shipper', 'carrier', 'regulator', 'government', 'admin'])
   type?: string;
@@ -174,11 +187,35 @@ export class AdminQueryShipmentsDto {
   @Max(100)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ 
-    enum: ['draft', 'confirmed', 'picked_up', 'in_transit', 'at_checkpoint', 'customs_hold', 'customs_cleared', 'out_for_delivery', 'delivered', 'cancelled', 'delayed'] 
+  @ApiPropertyOptional({
+    enum: [
+      'draft',
+      'confirmed',
+      'picked_up',
+      'in_transit',
+      'at_checkpoint',
+      'customs_hold',
+      'customs_cleared',
+      'out_for_delivery',
+      'delivered',
+      'cancelled',
+      'delayed',
+    ],
   })
   @IsOptional()
-  @IsIn(['draft', 'confirmed', 'picked_up', 'in_transit', 'at_checkpoint', 'customs_hold', 'customs_cleared', 'out_for_delivery', 'delivered', 'cancelled', 'delayed'])
+  @IsIn([
+    'draft',
+    'confirmed',
+    'picked_up',
+    'in_transit',
+    'at_checkpoint',
+    'customs_hold',
+    'customs_cleared',
+    'out_for_delivery',
+    'delivered',
+    'cancelled',
+    'delayed',
+  ])
   status?: string;
 
   @ApiPropertyOptional({ example: 'Alexandria' })
@@ -227,16 +264,4 @@ export class AdminQueryInvitationsDto extends PaginationDto {
   @IsOptional()
   @IsString()
   status?: string;
-}
-
-export class AdminQueryAuditLogsDto extends PaginationDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  resourceType?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  resourceId?: string;
 }
