@@ -610,7 +610,8 @@ export class ShipmentsService {
     const isCarrierSide =
       shipment.carrier_organization_id === dbUser.organization_id &&
       dbUser.organization?.organization_type === 'carrier' &&
-      (user.role === 'carrier' || user.role === 'admin');
+      (user.role === 'admin' ||
+        (user.role === 'carrier' && shipment.carrier_user_id === user.sub));
 
     if (user.role !== 'super_admin' && !isShipperSide && !isCarrierSide) {
       throw new ForbiddenException(
