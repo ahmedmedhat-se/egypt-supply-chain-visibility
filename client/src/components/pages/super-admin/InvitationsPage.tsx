@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../ui/Card';
-import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
+import { Pagination } from '../../ui/Pagination';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { showToast } from '../../ui/Toast';
 import { extractErrorMessage } from '../../../api/client';
@@ -75,7 +75,7 @@ export const SuperAdminInvitationsPage = () => {
       <div>
         <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Platform Invitations</h1>
         <p className="text-[#94A3B8] dark:text-[#94A3B8] mt-1">
-          {meta ? `${meta.total} total invitation${meta.total !== 1 ? 's' : ''}` : ''}
+          {meta ? `${meta.totalItems} total invitation${meta.totalItems !== 1 ? 's' : ''}` : ''}
         </p>
       </div>
 
@@ -204,20 +204,14 @@ export const SuperAdminInvitationsPage = () => {
         </Card>
       )}
 
-      {meta && meta.pages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-[#94A3B8]">
-            Showing {(meta.page - 1) * meta.limit + 1}–{Math.min(meta.page * meta.limit, meta.total)} of {meta.total}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled={page >= meta.pages} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
-          </div>
-        </div>
+      {meta && (
+        <Pagination
+          page={meta.page}
+          totalPages={meta.totalPages}
+          totalItems={meta.totalItems}
+          limit={meta.limit}
+          onPageChange={setPage}
+        />
       )}
     </div>
   );

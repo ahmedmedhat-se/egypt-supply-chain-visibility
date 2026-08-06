@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../ui/Card';
-import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
+import { Pagination } from '../../ui/Pagination';
 import { Badge } from '../../ui/Badge';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import {
@@ -48,8 +48,17 @@ export const SuperAdminOrganizationsPage = () => {
   const orgs = data?.data ?? [];
   const meta = data?.meta;
 
-  const totalOrgs = meta?.total ?? 0;
-  const activeOrgs = orgs.filter((o) => o.organization_is_active).length;
+  // Exact active count via a tiny scoped query (isActive filter), not the current page
+  const { data: activeData } = useQuery({
+    queryKey: ['admin-organizations-active'],
+    queryFn: async () => {
+      const res = await adminApi.getOrganizations({ page: 1, limit: 1, isActive: true });
+      return res.data;
+    },
+  });
+
+  const totalOrgs = meta?.totalItems ?? 0;
+  const activeOrgs = activeData?.meta.totalItems ?? 0;
 
   return (
     <div className="space-y-6">
@@ -219,20 +228,14 @@ export const SuperAdminOrganizationsPage = () => {
         </Card>
       )}
 
-      {meta && meta.pages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-[#94A3B8]">
-            Showing {(meta.page - 1) * meta.limit + 1}–{Math.min(meta.page * meta.limit, meta.total)} of {meta.total}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" disabled={page >= meta.pages} onClick={() => setPage((p) => p + 1)}>
-              Next
-            </Button>
-          </div>
-        </div>
+      {meta && (
+        <Pagination
+          page={meta.page}
+          totalPages={meta.totalPages}
+          totalItems={meta.totalItems}
+          limit={meta.limit}
+          onPageChange={setPage}
+        />
       )}
     </div>
   );
