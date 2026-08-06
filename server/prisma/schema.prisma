@@ -120,7 +120,7 @@ model Shipment {
   carrier_organization_id          String?   @db.Uuid
   carrier_user_id                  String?   @db.Uuid
   route_id                         String?   @db.Uuid
-  created_by_user_id               String    @db.Uuid
+  created_by_user_id               String?   @db.Uuid
   shipment_reference_number        String    @unique @db.VarChar(100)
   shipment_status                  String    @default("draft") @db.VarChar(50)
   shipment_description             String?
@@ -146,7 +146,7 @@ model Shipment {
   carrier_organization   Organization?  @relation("CarrierOrganization", fields: [carrier_organization_id], references: [organization_id])
   carrier_user           User?          @relation("CarrierUser", fields: [carrier_user_id], references: [user_id])
   route                  Route?         @relation(fields: [route_id], references: [route_id])
-  created_by             User           @relation("CreatedByUser", fields: [created_by_user_id], references: [user_id])
+  created_by             User?          @relation("CreatedByUser", fields: [created_by_user_id], references: [user_id], onDelete: SetNull)
   current_checkpoint     Checkpoint?    @relation(fields: [shipment_current_checkpoint_id], references: [checkpoint_id])
   events                 ShipmentEvent[]
   alerts                 Alert[]
@@ -176,7 +176,7 @@ model ShipmentEvent {
 
   shipment     Shipment    @relation(fields: [shipment_id], references: [shipment_id])
   checkpoint   Checkpoint? @relation(fields: [checkpoint_id], references: [checkpoint_id])
-  recorded_by  User?       @relation(fields: [recorded_by_user_id], references: [user_id])
+  recorded_by  User?       @relation(fields: [recorded_by_user_id], references: [user_id], onDelete: SetNull)
   alerts       Alert[]
 
   @@index([shipment_id])
@@ -284,7 +284,7 @@ model Invitation {
   updated_at         DateTime @updatedAt @db.Timestamptz()
 
   organization Organization @relation(fields: [organization_id], references: [organization_id])
-  created_by   User         @relation(fields: [created_by_user_id], references: [user_id])
+  created_by   User         @relation(fields: [created_by_user_id], references: [user_id], onDelete: Cascade)
 
   @@index([organization_id])
   @@index([token])
