@@ -1,4 +1,12 @@
-import { IsOptional, IsInt, Min, IsBooleanString, IsString, IsEnum } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  IsBooleanString,
+  IsString,
+  IsEnum,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -27,4 +35,12 @@ export class QueryAlertsDto {
   @IsString()
   @IsEnum(['info', 'warning', 'critical'])
   severity?: string;
+
+  @ApiPropertyOptional({
+    description: 'Search alerts by title, message, or shipment reference',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  search?: string;
 }
