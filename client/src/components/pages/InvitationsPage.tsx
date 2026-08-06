@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/auth.store';
 import { organizationApi } from '../../api/organization.api';
+import type { OrgInvitation } from '../../types/organization.types';
 import { extractErrorMessage } from '../../api/client';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { Pagination } from '../ui/Pagination';
 import { showToast } from '../ui/Toast';
 import { InviteMemberModal } from '../invitations/InviteMemberModal';
 import {
@@ -35,45 +37,82 @@ export const InvitationsPage = () => {
   const orgName = user?.organizationName;
   const queryClient = useQueryClient();
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [page, setPage] = useState(1);
+  const limit = 20;
 
-  /* ───── Fetch all invitations (pending + accepted + expired) ───── */
+  /* ───── Invitations table (paginated) ───── */
 
   const {
-    data: invitations,
+    data: invitationsData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['org-invitations-all', orgId],
+    queryKey: ['org-invitations-all', orgId, page],
     queryFn: async () => {
-      const res = await organizationApi.getInvitations(orgId!);
+      const res = await organizationApi.getInvitations(orgId!, undefined, {
+        page,
+        limit,
+      });
       return res.data;
     },
     enabled: !!orgId,
     staleTime: 0,
   });
 
-  /* ───── Resend mutation ───── */
+  const invitations: OrgInvitation[] = Array.isArray(invitationsData?.data)
+    ? invitationsData!.data
+    : [];
+  const meta = invitationsData?.meta;
+
+  /* ───── Exact per-status counts (server-side, independent of page) ───── */
+
+  const countQuery = (status: string) => ({
+    queryKey: ['org-invitations-count', orgId, status],
+    queryFn: async () => {
+      const res = await organizationApi.getInvitations(orgId!, status, {
+        page: 1,
+        limit: 1,
+      });
+      return res.data.meta.totalItems;
+    },
+    enabled: !!orgId,
+    staleTime: 0,
+  });
+
+  const { data: pendingCount = 0 } = useQuery(countQuery('pending'));
+  const { data: acceptedCount = 0 } = useQuery(countQuery('accepted'));
+  const { data: expiredCount = 0 } = useQuery(countQuery('expired'));
+
+  /* ───── Resend / Cancel mutations ───── */
 
   const resendMutation = useMutation({
     mutationFn: (invitationId: string) =>
       organizationApi.resendInvitation(orgId!, invitationId),
     onSuccess: () => {
       showToast.success('Invitation resent successfully');
-      queryClient.invalidateQueries({ queryKey: ['org-invitations-all', orgId] });
+      queryClient.invalidateQueries({
+        queryKey: ['org-invitations-all', orgId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['org-invitations-count', orgId],
+      });
     },
     onError: (err: unknown) => {
       showToast.error(extractErrorMessage(err));
     },
   });
 
-  /* ───── Cancel mutation ───── */
-
   const cancelMutation = useMutation({
     mutationFn: (invitationId: string) =>
       organizationApi.cancelInvitation(orgId!, invitationId),
     onSuccess: () => {
       showToast.success('Invitation cancelled');
-      queryClient.invalidateQueries({ queryKey: ['org-invitations-all', orgId] });
+      queryClient.invalidateQueries({
+        queryKey: ['org-invitations-all', orgId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['org-invitations-count', orgId],
+      });
     },
     onError: (err: unknown) => {
       showToast.error(extractErrorMessage(err));
@@ -97,7 +136,7 @@ export const InvitationsPage = () => {
       <div className="space-y-6">
         <Header
           orgName={orgName}
-          pendingCount={0}
+          pendingCount={pendingCount}
           onInvite={() => setShowInviteModal(true)}
         />
         <Card variant="bordered" className="p-8 text-center">
@@ -110,19 +149,6 @@ export const InvitationsPage = () => {
       </div>
     );
   }
-
-  /* ───── Compute stats ───── */
-
-  const now = new Date();
-  const pendingCount = invitations?.filter((inv) => {
-    const expiresAt = new Date(inv.expires_at);
-    return !inv.status || inv.status === 'pending' && expiresAt > now;
-  }).length ?? 0;
-
-  const acceptedCount = invitations?.filter((inv) => inv.status === 'accepted').length ?? 0;
-
-  const expiredCount =
-    invitations?.filter((inv) => inv.status === 'expired' || new Date(inv.expires_at) <= now).length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -167,7 +193,7 @@ export const InvitationsPage = () => {
       </div>
 
       {/* Empty state */}
-      {(!invitations || invitations.length === 0) && (
+      {invitations.length === 0 && (
         <Card variant="bordered" className="p-12 text-center">
           <FaEnvelope className="mx-auto w-12 h-12 text-[#94A3B8] mb-4" />
           <h3 className="text-lg font-semibold text-[#0A2E4A] dark:text-white mb-1">
@@ -184,7 +210,7 @@ export const InvitationsPage = () => {
       )}
 
       {/* Invitations Table */}
-      {invitations && invitations.length > 0 && (
+      {invitations.length > 0 && (
         <Card variant="bordered" padding="none">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -201,7 +227,7 @@ export const InvitationsPage = () => {
               <tbody>
                 {invitations.map((inv) => {
                   const expiresAt = new Date(inv.expires_at);
-                  const isExpired = inv.status === 'expired' || expiresAt <= now;
+                  const isExpired = inv.status === 'expired' || expiresAt <= new Date();
 
                   return (
                     <tr
@@ -291,6 +317,17 @@ export const InvitationsPage = () => {
             </table>
           </div>
         </Card>
+      )}
+
+      {meta && (
+        <Pagination
+          page={meta.page}
+          totalPages={meta.totalPages}
+          totalItems={meta.totalItems}
+          limit={meta.limit}
+          onPageChange={setPage}
+          className="px-1"
+        />
       )}
 
       {/* Invite Member Modal */}

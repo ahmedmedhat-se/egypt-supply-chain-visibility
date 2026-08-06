@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
+import { Input } from '../../ui/Input';
+import { Pagination } from '../../ui/Pagination';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../../ui/Table';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { EmptyState } from '../../ui/EmptyState';
 import { Badge } from '../../ui/Badge';
-import { FaMapMarkerAlt, FaPlus, FaEdit, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaPlus, FaEdit, FaToggleOn, FaToggleOff, FaSearch } from 'react-icons/fa';
 import { useCheckpoints, useActivateCheckpoint, useDeactivateCheckpoint } from '../../../hooks/useCheckpoints';
 import { CheckpointModal } from './CheckpointModal';
 import type { Checkpoint } from '../../../types/checkpoint.types';
@@ -13,8 +15,15 @@ import type { Checkpoint } from '../../../types/checkpoint.types';
 export const CheckpointsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<Checkpoint | undefined>();
-  
-  const { data, isLoading } = useCheckpoints();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const limit = 20;
+
+  const { data, isLoading } = useCheckpoints({
+    page,
+    limit,
+    search: search || undefined,
+  });
   const { mutate: activateCheckpoint, isPending: isActivating } = useActivateCheckpoint();
   const { mutate: deactivateCheckpoint, isPending: isDeactivating } = useDeactivateCheckpoint();
 
@@ -46,9 +55,23 @@ export const CheckpointsPage = () => {
           </p>
         </div>
         
-        <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
-          <FaPlus /> New Checkpoint
-        </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="relative sm:w-64">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+            <Input
+              placeholder="Search by name or code..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-10"
+            />
+          </div>
+          <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+            <FaPlus /> New Checkpoint
+          </Button>
+        </div>
       </div>
 
       <Card variant="default">
@@ -59,12 +82,18 @@ export const CheckpointsPage = () => {
         ) : !data?.data?.length ? (
           <EmptyState
             icon={FaMapMarkerAlt}
-            title="No Checkpoints Found"
-            description="Create your first checkpoint to start mapping the supply chain network."
+            title={search ? 'No Results Found' : 'No Checkpoints Found'}
+            description={
+              search
+                ? `No checkpoints match "${search}". Try a different search.`
+                : 'Create your first checkpoint to start mapping the supply chain network.'
+            }
             action={
-              <Button onClick={() => setIsModalOpen(true)} variant="outline">
-                Create Checkpoint
-              </Button>
+              search ? undefined : (
+                <Button onClick={() => setIsModalOpen(true)} variant="outline">
+                  Create Checkpoint
+                </Button>
+              )
             }
           />
         ) : (
@@ -116,6 +145,17 @@ export const CheckpointsPage = () => {
           </Table>
         )}
       </Card>
+
+      {data && !isLoading && (
+        <Pagination
+          page={page}
+          totalPages={data.meta.totalPages}
+          totalItems={data.meta.totalItems}
+          limit={limit}
+          onPageChange={setPage}
+          className="px-1"
+        />
+      )}
 
       <CheckpointModal isOpen={isModalOpen} onClose={handleCloseModal} checkpoint={selectedCheckpoint} />
     </div>

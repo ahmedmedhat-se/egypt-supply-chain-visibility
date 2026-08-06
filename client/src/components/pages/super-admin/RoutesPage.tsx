@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
+import { Input } from '../../ui/Input';
+import { Pagination } from '../../ui/Pagination';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../../ui/Table';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { EmptyState } from '../../ui/EmptyState';
 import { Badge } from '../../ui/Badge';
-import { FaRoute, FaPlus, FaEdit, FaMapSigns, FaToggleOn, FaToggleOff, FaLayerGroup } from 'react-icons/fa';
+import { FaRoute, FaPlus, FaEdit, FaMapSigns, FaToggleOn, FaToggleOff, FaLayerGroup, FaSearch } from 'react-icons/fa';
 import { useRoutes, useActivateRoute, useDeactivateRoute } from '../../../hooks/useRoutes';
 import { RouteModal } from './RouteModal';
 import { RouteCheckpointsModal } from './RouteCheckpointsModal';
@@ -15,8 +17,15 @@ export const RoutesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<Route | undefined>();
   const [checkpointsRoute, setCheckpointsRoute] = useState<Route | null>(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const limit = 20;
 
-  const { data, isLoading } = useRoutes();
+  const { data, isLoading } = useRoutes({
+    page,
+    limit,
+    search: search || undefined,
+  });
   const { mutate: activateRoute, isPending: isActivating } = useActivateRoute();
   const { mutate: deactivateRoute, isPending: isDeactivating } = useDeactivateRoute();
 
@@ -48,9 +57,23 @@ export const RoutesPage = () => {
           </p>
         </div>
         
-        <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
-          <FaPlus /> New Route
-        </Button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          <div className="relative sm:w-64">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#94A3B8]" />
+            <Input
+              placeholder="Search by name or code..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="pl-10"
+            />
+          </div>
+          <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+            <FaPlus /> New Route
+          </Button>
+        </div>
       </div>
 
       <Card variant="default">
@@ -61,12 +84,18 @@ export const RoutesPage = () => {
         ) : !data?.data?.length ? (
           <EmptyState
             icon={FaRoute}
-            title="No Routes Found"
-            description="Create your first route to define pathways between checkpoints."
+            title={search ? 'No Results Found' : 'No Routes Found'}
+            description={
+              search
+                ? `No routes match "${search}". Try a different search.`
+                : 'Create your first route to define pathways between checkpoints.'
+            }
             action={
-              <Button onClick={() => setIsModalOpen(true)} variant="outline">
-                Create Route
-              </Button>
+              search ? undefined : (
+                <Button onClick={() => setIsModalOpen(true)} variant="outline">
+                  Create Route
+                </Button>
+              )
             }
           />
         ) : (
@@ -141,6 +170,17 @@ export const RoutesPage = () => {
           </Table>
         )}
       </Card>
+
+      {data && !isLoading && (
+        <Pagination
+          page={page}
+          totalPages={data.meta.totalPages}
+          totalItems={data.meta.totalItems}
+          limit={limit}
+          onPageChange={setPage}
+          className="px-1"
+        />
+      )}
 
       <RouteModal isOpen={isModalOpen} onClose={handleCloseModal} route={selectedRoute} />
       <RouteCheckpointsModal
