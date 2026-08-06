@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment } from 'react';
+import { useState, useMemo, useEffect, Fragment, type ReactNode } from 'react';
 import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -7,7 +7,11 @@ import { Button } from '../ui/Button';
 import { Pagination } from '../ui/Pagination';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { EmptyState } from '../ui/EmptyState';
+import { showToast } from '../ui/Toast';
 import { useAuditLogs } from '../../hooks/useAuditLogs';
+import { useAuthStore } from '../../store/auth.store';
+import { adminApi } from '../../api/admin.api';
+import { organizationApi } from '../../api/organization.api';
 import { formatDate } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 import {
@@ -26,6 +30,14 @@ import {
   FaUser,
   FaGlobe,
   FaTimes,
+  FaDownload,
+  FaUserCheck,
+  FaKey,
+  FaTruck,
+  FaRoute,
+  FaMapMarkerAlt,
+  FaBuilding,
+  FaUsers,
 } from 'react-icons/fa';
 import type { AuditLogEntry } from '../../types/admin.types';
 
@@ -38,6 +50,56 @@ interface AuditLogsPageProps {
 }
 
 const PAGE_SIZE = 25;
+const EXPORT_BATCH = 100;
+
+/** Icons per audit category — used on chips and in the table. */
+const CATEGORY_ICONS: Record<string, ReactNode> = {
+  auth: <FaKey className="w-3 h-3" />,
+  shipment: <FaTruck className="w-3 h-3" />,
+  route: <FaRoute className="w-3 h-3" />,
+  checkpoint: <FaMapMarkerAlt className="w-3 h-3" />,
+  organization: <FaBuilding className="w-3 h-3" />,
+  user: <FaUsers className="w-3 h-3" />,
+};
+
+const DATE_PRESETS = [
+  { key: 'today', label: 'Today' },
+  { key: '7d', label: 'Last 7 days' },
+  { key: '30d', label: 'Last 30 days' },
+  { key: '90d', label: 'Last 90 days' },
+  { key: 'all', label: 'All time' },
+] as const;
+
+const toDateTimeLocal = (date: Date): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+};
+
+const applyPreset = (key: string, setFrom: (v: string) => void, setTo: (v: string) => void) => {
+  const now = new Date();
+  if (key === 'today') {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    setFrom(toDateTimeLocal(start));
+    setTo(toDateTimeLocal(now));
+  } else if (key === '7d' || key === '30d' || key === '90d') {
+    const days = key === '7d' ? 7 : key === '30d' ? 30 : 90;
+    const start = new Date(now);
+    start.setDate(start.getDate() - days);
+    setFrom(toDateTimeLocal(start));
+    setTo(toDateTimeLocal(now));
+  } else {
+    setFrom('');
+    setTo('');
+  }
+};
+
+const csvCell = (value: unknown): string => {
+  const s = value === null || value === undefined ? '' : String(value);
+  return `"${s.replace(/"/g, '""')}"`;
+};
 
 const prettyJson = (value: unknown): string => {
   if (value === null || value === undefined) return '—';
@@ -70,7 +132,11 @@ export const AuditLogsPage = ({
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [ipAddress, setIpAddress] = useState('');
+  const [myActionsOnly, setMyActionsOnly] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const { user: currentUser } = useAuthStore();
 
   // Debounce free-text search
   useEffect(() => {
@@ -82,7 +148,14 @@ export const AuditLogsPage = ({
   }, [search]);
 
   const hasActiveFilters =
-    debouncedSearch || action || resourceType || category || from || to || ipAddress;
+    debouncedSearch ||
+    action ||
+    resourceType ||
+    category ||
+    from ||
+    to ||
+    ipAddress ||
+    myActionsOnly;
 
   const filters = useMemo(
     () => ({
@@ -95,8 +168,9 @@ export const AuditLogsPage = ({
       from: from || undefined,
       to: to || undefined,
       ipAddress: ipAddress || undefined,
+      userId: myActionsOnly ? currentUser?.id : undefined,
     }),
-    [page, debouncedSearch, action, category, resourceType, from, to, ipAddress],
+    [page, debouncedSearch, action, category, resourceType, from, to, ipAddress, myActionsOnly, currentUser],
   );
 
   const { data, isLoading, isError } = useAuditLogs({
@@ -116,18 +190,125 @@ export const AuditLogsPage = ({
     setFrom('');
     setTo('');
     setIpAddress('');
+    setMyActionsOnly(false);
     setPage(1);
   };
 
-  const toggleExpand = (id: string) =>
-    setExpandedId((prev) => (prev === id ? null : id));
+  const toggleExpand = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
+
+  // ── CSV export: fetch every page matching the current filters, then download ──
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const base = {
+        search: debouncedSearch || undefined,
+        action: action || undefined,
+        category: category || undefined,
+        resourceType: resourceType || undefined,
+        from: from || undefined,
+        to: to || undefined,
+        ipAddress: ipAddress || undefined,
+        userId: myActionsOnly ? currentUser?.id : undefined,
+      };
+
+      const collected: AuditLogEntry[] = [];
+      let exportPage = 1;
+      let totalPages = 1;
+      do {
+        const response = orgId
+          ? await organizationApi.getAuditLogs(orgId, {
+              ...base,
+              page: exportPage,
+              limit: EXPORT_BATCH,
+            })
+          : await adminApi.getAuditLogs({
+              ...base,
+              page: exportPage,
+              limit: EXPORT_BATCH,
+            });
+        const payload = response.data;
+        collected.push(...(payload.data ?? []));
+        totalPages = payload.meta?.totalPages ?? 1;
+        exportPage += 1;
+      } while (exportPage <= totalPages);
+
+      if (collected.length === 0) {
+        showToast.info('No audit logs match the current filters.');
+        return;
+      }
+
+      const headers = [
+        'Action',
+        'Category',
+        'Resource Type',
+        'Resource ID',
+        'Actor',
+        'Email',
+        'Organization',
+        'IP Address',
+        'Performed At',
+        'Before',
+        'After',
+        'User Agent',
+      ];
+      const rows = collected.map((log) =>
+        [
+          log.audit_action,
+          categoryForAction(log.audit_action)?.label ?? '',
+          log.audit_resource_type,
+          log.audit_resource_id,
+          log.user ? `${log.user.user_first_name} ${log.user.user_last_name}` : 'System / Anonymous',
+          log.user?.user_email ?? '',
+          log.organization?.organization_name ?? '',
+          log.audit_ip_address ?? '',
+          log.audit_performed_at,
+          prettyJson(log.audit_old_value),
+          prettyJson(log.audit_new_value),
+          log.audit_user_agent ?? '',
+        ]
+          .map(csvCell)
+          .join(','),
+      );
+      const csv = `\uFEFF${[headers.map(csvCell).join(','), ...rows].join('\n')}`;
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      showToast.success(`Exported ${collected.length} audit log entr${collected.length === 1 ? 'y' : 'ies'}.`);
+    } catch {
+      showToast.error('Failed to export audit logs. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{title}</h1>
-        <p className="mt-1 text-[#94A3B8] dark:text-[#94A3B8]">{subtitle}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{title}</h1>
+          <p className="mt-1 text-[#94A3B8] dark:text-[#94A3B8]">{subtitle}</p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleExport}
+          disabled={isExporting}
+          className="flex items-center gap-2"
+        >
+          {isExporting ? (
+            <LoadingSpinner size="sm" />
+          ) : (
+            <FaDownload className="w-3.5 h-3.5 text-[#2D9B6E]" />
+          )}
+          {isExporting ? 'Exporting…' : 'Export CSV'}
+        </Button>
       </div>
 
       {/* Filter Card */}
@@ -248,7 +429,7 @@ export const AuditLogsPage = ({
               setPage(1);
             }}
             className={cn(
-              'px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200',
+              'px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200 flex items-center gap-1.5',
               !category
                 ? 'bg-[#0A2E4A] dark:bg-[#2D9B6E] text-white border-transparent'
                 : 'bg-white dark:bg-[#1A3D5A] text-[#94A3B8] border-[#E2E8F0] dark:border-[#1A3D5A] hover:text-[#0A2E4A] dark:hover:text-white',
@@ -260,29 +441,89 @@ export const AuditLogsPage = ({
             <button
               key={cat.key}
               type="button"
-            onClick={() => {
-              setCategory(cat.key);
-              setAction('');
-              setPage(1);
-            }}
+              onClick={() => {
+                setCategory(cat.key);
+                setAction('');
+                setPage(1);
+              }}
               className={cn(
-                'px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200',
+                'px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200 flex items-center gap-1.5',
                 category === cat.key
                   ? 'bg-[#2D9B6E] text-white border-transparent'
                   : 'bg-white dark:bg-[#1A3D5A] text-[#94A3B8] border-[#E2E8F0] dark:border-[#1A3D5A] hover:text-[#0A2E4A] dark:hover:text-white',
               )}
             >
+              {CATEGORY_ICONS[cat.key]}
               {cat.label}
             </button>
           ))}
+        </div>
+
+        {/* My actions + date presets */}
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-4 pt-4 border-t border-[#E2E8F0] dark:border-[#1A3D5A]">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={myActionsOnly}
+            onClick={() => {
+              setMyActionsOnly((v) => !v);
+              setPage(1);
+            }}
+            className="flex items-center gap-2.5 group"
+          >
+            <span
+              className={cn(
+                'relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0',
+                myActionsOnly ? 'bg-[#2D9B6E]' : 'bg-[#CBD5E1] dark:bg-[#1A3D5A]',
+              )}
+            >
+              <span
+                className={cn(
+                  'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200',
+                  myActionsOnly && 'translate-x-4',
+                )}
+              />
+            </span>
+            <span className="text-sm font-medium text-[#1A2A3A] dark:text-[#E2E8F0] flex items-center gap-1.5">
+              <FaUserCheck className="w-3.5 h-3.5 text-[#94A3B8]" />
+              My actions only
+            </span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider">
+              Date:
+            </span>
+            {DATE_PRESETS.map((preset) => {
+              const isActive =
+                (preset.key === 'all' && !from && !to) ||
+                (preset.key !== 'all' && !!from);
+              return (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={() => {
+                    applyPreset(preset.key, setFrom, setTo);
+                    setPage(1);
+                  }}
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-xs font-medium border transition-all duration-200',
+                    isActive
+                      ? 'bg-[#0A2E4A] dark:bg-[#2D9B6E] text-white border-transparent'
+                      : 'bg-white dark:bg-[#1A3D5A] text-[#94A3B8] border-[#E2E8F0] dark:border-[#1A3D5A] hover:text-[#0A2E4A] dark:hover:text-white',
+                  )}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </Card>
 
       {/* Results */}
       {isLoading ? (
-        <div className="py-20 flex justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
+        <AuditTableSkeleton />
       ) : isError ? (
         <Card variant="bordered" className="p-12 text-center text-[#DC2626]">
           Failed to load audit logs. Please try again.
@@ -343,8 +584,9 @@ export const AuditLogsPage = ({
                               <Badge
                                 variant={cat?.badge ?? 'default'}
                                 size="sm"
-                                className="font-mono w-fit"
+                                className="font-mono w-fit gap-1.5"
                               >
+                                {cat && CATEGORY_ICONS[cat.key]}
                                 {log.audit_action}
                               </Badge>
                               {Boolean(
@@ -470,6 +712,61 @@ export const AuditLogsPage = ({
     </div>
   );
 };
+
+/** Pulsing table skeleton shown while audit logs load. */
+function AuditTableSkeleton() {
+  return (
+    <Card variant="bordered" className="overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wider bg-[#F8FAFC] dark:bg-[#0B2238]">
+              <th className="px-4 py-3">Action</th>
+              <th className="px-4 py-3">Resource</th>
+              <th className="px-4 py-3">Actor</th>
+              <th className="px-4 py-3">Organization</th>
+              <th className="px-4 py-3 hidden lg:table-cell">IP</th>
+              <th className="px-4 py-3">When</th>
+              <th className="px-4 py-3 w-10" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#1A3D5A]">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <tr key={i}>
+                <td className="px-4 py-3">
+                  <div className="h-5 w-40 rounded-full bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="h-4 w-24 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                  <div className="mt-1.5 h-3 w-32 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                    <div className="space-y-1.5">
+                      <div className="h-3 w-28 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                      <div className="h-3 w-36 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="h-4 w-32 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                </td>
+                <td className="px-4 py-3 hidden lg:table-cell">
+                  <div className="h-3 w-20 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="h-3 w-24 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                </td>
+                <td className="px-4 py-3" />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
 
 function DiffBlock({
   label,
