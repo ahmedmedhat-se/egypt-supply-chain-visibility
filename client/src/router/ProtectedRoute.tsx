@@ -5,6 +5,19 @@ import { authApi } from '../api/auth.api';
 import { ROUTES } from '../constants/routes';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 
+/** Best-effort JWT expiry check (payload.exp is in seconds). Malformed → expired. */
+const isTokenExpired = (token: string): boolean => {
+  try {
+    // JWT payloads use base64url — normalize to standard base64 before decoding.
+    const payload = JSON.parse(
+      atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')),
+    );
+    return typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+};
+
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRoles?: Array<
@@ -44,36 +57,62 @@ export const ProtectedRoute = ({
   const [isValid, setIsValid] = useState(false);
 
   useEffect(() => {
+    if (!accessToken) return; // no token → the render path redirects immediately
+
     let cancelled = false;
 
-    if (!accessToken) {
-      setIsVerifying(false);
-      setIsValid(false);
-      return;
-    }
+    const verify = async () => {
+      // If the stored access token is already expired, refresh it FIRST so we
+      // never fire a doomed /me request — that would log a 401 in the console
+      // that the response interceptor would only recover from afterwards.
+      // Refreshing updates the store token, which re-runs this effect with a
+      // fresh token that validates cleanly.
+      if (isTokenExpired(accessToken)) {
+        try {
+          const { data } = await authApi.refreshToken();
+          if (cancelled) return;
+          useAuthStore.getState().setAccessToken(data.accessToken);
+          if (data.accessToken === accessToken) {
+            // Token didn't actually change — don't rely on the effect
+            // re-running; validate /me directly below instead.
+          } else {
+            return; // effect re-runs with the fresh token and validates below
+          }
+        } catch {
+          if (cancelled) return;
+          clearAuth();
+          setIsValid(false);
+          setIsVerifying(false);
+          return;
+        }
+      }
 
-    authApi
-      .getCurrentUser()
-      .then((res) => {
+      try {
+        const res = await authApi.getCurrentUser();
         if (cancelled) return;
-        // Use the current token from the store (the interceptor may have
-        // refreshed it while processing the 401 from /me)
         const currentToken = useAuthStore.getState().accessToken || accessToken;
         setAuth(res.data, currentToken);
         setIsValid(true);
-        setIsVerifying(false);
-      })
-      .catch(() => {
+      } catch {
         if (cancelled) return;
         clearAuth();
         setIsValid(false);
-        setIsVerifying(false);
-      });
+      } finally {
+        if (!cancelled) setIsVerifying(false);
+      }
+    };
+
+    verify();
 
     return () => {
       cancelled = true;
     };
   }, [accessToken, setAuth, clearAuth]);
+
+  // No token at all — redirect immediately (no spinner, no wasted request)
+  if (!accessToken) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
 
   // Still checking with the server — show spinner
   if (isVerifying) {
@@ -87,8 +126,8 @@ export const ProtectedRoute = ({
     );
   }
 
-  // Not authenticated — redirect to login
-  if (!isValid || !accessToken) {
+  // Validation failed — redirect to login
+  if (!isValid) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
