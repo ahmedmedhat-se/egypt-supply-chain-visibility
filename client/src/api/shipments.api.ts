@@ -6,20 +6,9 @@ import type {
   UpdateShipmentStatusData,
   ShipmentQueryParams,
 } from "../types/shipment.types";
+import type { PaginatedResponse } from "../types/pagination.types";
 
-export interface ShipmentListMeta {
-  page: number;
-  limit: number;
-  totalItems: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
-
-export interface ShipmentListResponse {
-  data: Shipment[];
-  meta: ShipmentListMeta;
-}
+export type ShipmentListResponse = PaginatedResponse<Shipment>;
 
 export const shipmentsApi = {
   getAll: (params?: ShipmentQueryParams) =>

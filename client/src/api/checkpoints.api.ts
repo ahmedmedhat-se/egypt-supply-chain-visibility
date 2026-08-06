@@ -1,25 +1,26 @@
-import apiClient from './client';
+import apiClient from "./client";
 import type {
   Checkpoint,
   CreateCheckpointData,
   UpdateCheckpointData,
-} from '../types/checkpoint.types';
+} from "../types/checkpoint.types";
+import type { PaginatedResponse } from "../types/pagination.types";
 
 export const checkpointsApi = {
-  getAll: (params?: { isActive?: boolean }) =>
-    apiClient.get<{ data: Checkpoint[]; meta: { total: number } }>('/api/checkpoints', { params }),
+  getAll: (params?: { page?: number; limit?: number; search?: string }) =>
+    apiClient.get<PaginatedResponse<Checkpoint>>("/api/checkpoints", {
+      params,
+    }),
 
-  getById: (id: string) =>
-    apiClient.get<Checkpoint>(`/api/checkpoints/${id}`),
+  getById: (id: string) => apiClient.get<Checkpoint>(`/api/checkpoints/${id}`),
 
   create: (data: CreateCheckpointData) =>
-    apiClient.post<Checkpoint>('/api/checkpoints', data),
+    apiClient.post<Checkpoint>("/api/checkpoints", data),
 
   update: (id: string, data: UpdateCheckpointData) =>
     apiClient.put<Checkpoint>(`/api/checkpoints/${id}`, data),
 
-  remove: (id: string) =>
-    apiClient.delete(`/api/checkpoints/${id}`),
+  remove: (id: string) => apiClient.delete(`/api/checkpoints/${id}`),
 
   activate: (id: string) =>
     apiClient.patch<Checkpoint>(`/api/checkpoints/${id}/activate`),

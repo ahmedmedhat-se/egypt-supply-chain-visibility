@@ -59,6 +59,15 @@ export interface Shipment {
     route_name: string;
     route_code: string;
     estimatedDays: number | null;
+    checkpoints?: Array<{
+      id: string;
+      name: string;
+      city: string;
+      type: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      sequenceOrder: number;
+    }>;
   } | null;
   currentCheckpoint: {
     checkpoint_id: string;
@@ -68,6 +77,7 @@ export interface Shipment {
   } | null;
   createdAt: string;
   updatedAt: string;
+  events?: ShipmentEvent[];
 }
 
 export interface CreateShipmentData {
@@ -108,6 +118,18 @@ export interface UpdateShipmentStatusData {
   notes?: string;
   latitude?: number;
   longitude?: number;
+}
+
+export interface ShipmentEvent {
+  id: string;
+  type: string;
+  status: string;
+  description: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  checkpointId: string | null;
+  recordedByUserId: string | null;
+  occurredAt: string;
 }
 
 export interface ShipmentQueryParams {
