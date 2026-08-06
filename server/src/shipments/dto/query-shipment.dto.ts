@@ -20,6 +20,16 @@ export class QueryShipmentDto {
   status?: string;
 
   @ApiPropertyOptional({
+    enum: SHIPMENT_STATUSES,
+    description:
+      'Exclude shipments with this status (e.g. drafts on the live map)',
+  })
+  @IsString()
+  @IsOptional()
+  @IsIn(SHIPMENT_STATUSES)
+  excludeStatus?: string;
+
+  @ApiPropertyOptional({
     description: 'Search by reference number or description',
   })
   @IsString()

@@ -1310,8 +1310,10 @@ export class ShipmentsService {
       }
     }
 
-    if (query.status) {
-      where.shipment_status = query.status;
+    if (query.status || query.excludeStatus) {
+      where.shipment_status = query.excludeStatus
+        ? { not: query.excludeStatus }
+        : query.status;
     }
 
     if (query.search) {

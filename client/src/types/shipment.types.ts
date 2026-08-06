@@ -134,6 +134,7 @@ export interface ShipmentEvent {
 
 export interface ShipmentQueryParams {
   status?: ShipmentStatus;
+  excludeStatus?: ShipmentStatus;
   search?: string;
   page?: number;
   limit?: number;

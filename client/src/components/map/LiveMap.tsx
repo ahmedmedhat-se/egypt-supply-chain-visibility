@@ -269,11 +269,10 @@ export const LiveMap = ({
   const { data, isLoading, isError } = useShipments({
     page,
     limit: pageLimit,
+    excludeStatus: 'draft',
   });
 
-  const shipments: Shipment[] = (data?.data ?? []).filter(
-    (s) => s.status !== 'draft',
-  );
+  const shipments: Shipment[] = data?.data ?? [];
   const meta = data?.meta;
 
   const positionedCount = shipments.filter((s) => primaryPosition(s)).length;
