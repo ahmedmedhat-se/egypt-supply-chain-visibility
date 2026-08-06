@@ -11,6 +11,13 @@ interface ShipmentUpdatedPayload {
   occurred_at?: string;
 }
 
+interface AlertNewPayload {
+  alertId?: string;
+  alertTitle?: string;
+  alertSeverity?: string;
+  shipmentRef?: string | null;
+}
+
 /**
  * Mounted once inside the QueryClientProvider. Owns the socket lifecycle:
  * connects when authenticated, listens for live events, invalidates React
@@ -51,11 +58,20 @@ export function LiveSocketBridge() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     };
 
+    const handleAlertNew = (_payload: AlertNewPayload) => {
+      // Live push replaces the 15s poll as the primary notification path;
+      // the poll stays as a reconnect fallback.
+      queryClient.invalidateQueries({ queryKey: ['unread-alerts-count'] });
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+    };
+
     socket.on('shipment:updated', handleShipmentUpdated);
+    socket.on('alert:new', handleAlertNew);
     socket.on('connect', handleConnect);
 
     return () => {
       socket.off('shipment:updated', handleShipmentUpdated);
+      socket.off('alert:new', handleAlertNew);
       socket.off('connect', handleConnect);
     };
   }, [isAuthenticated, accessToken, queryClient]);
