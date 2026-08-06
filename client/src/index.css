@@ -2,23 +2,26 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --color-primary: #0A2E4A;
-  --color-primary-light: #1A3D5A;
-  --color-primary-dark: #061F33;
-  --color-secondary: #2D9B6E;
-  --color-secondary-light: #3DB87E;
-  --color-secondary-dark: #1F7A52;
+  --color-primary: #0a2e4a;
+  --color-primary-light: #1a3d5a;
+  --color-primary-dark: #061f33;
+  --color-secondary: #2d9b6e;
+  --color-secondary-light: #3db87e;
+  --color-secondary-dark: #1f7a52;
 }
 
 body {
-  background: #F8FAFC;
-  color: #1A2A3A;
-  font-family: system-ui, -apple-system, sans-serif;
+  background: #f8fafc;
+  color: #1a2a3a;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 .dark body {
-  background: #0A2E4A;
+  background: #0a2e4a;
   color: white;
 }
 
@@ -28,29 +31,29 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #E8F0F8;
+  background: #e8f0f8;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #0A2E4A;
+  background: #0a2e4a;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #1A3D5A;
+  background: #1a3d5a;
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: #1A3D5A;
+  background: #1a3d5a;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #2D9B6E;
+  background: #2d9b6e;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #3DB87E;
+  background: #3db87e;
 }
 
 @keyframes enter {
@@ -118,7 +121,10 @@ body {
 }
 
 .live-popup {
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   min-width: 190px;
 }
 
@@ -153,6 +159,34 @@ body {
 
 .live-popup-row strong {
   color: #0a2e4a;
+}
+
+/* Always-visible checkpoint badges on the live map */
+.cp-badge.leaflet-tooltip {
+  background: rgba(10, 46, 74, 0.92);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(10, 46, 74, 0.35);
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cp-badge.leaflet-tooltip::before {
+  border-top-color: rgba(10, 46, 74, 0.92);
+}
+
+.cp-badge strong {
+  display: block;
+  font-weight: 600;
+}
+
+.cp-badge-sub {
+  display: block;
+  color: #a3c9f0;
 }
 
 .leaflet-container {
@@ -201,13 +235,13 @@ body {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #2D9B6E;
+  background: #2d9b6e;
   border: 3px solid #ffffff;
   box-shadow: 0 2px 6px rgba(10, 46, 74, 0.35);
 }
 
 .pulsing-marker::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: -8px;
   border-radius: 50%;
