@@ -35,7 +35,10 @@ export const RouteCheckpointsModal = ({ isOpen, onClose, route }: RouteCheckpoin
   const [viewPage, setViewPage] = useState(1);
 
   // ── Route's current checkpoints (already loaded on the route object) ──
-  const routeCheckpoints: RouteCheckpoint[] = route?.checkpoints ?? [];
+  const routeCheckpoints: RouteCheckpoint[] = useMemo(
+    () => route?.checkpoints ?? [],
+    [route],
+  );
   const sortedRouteCheckpoints = useMemo(
     () => [...routeCheckpoints].sort((a, b) => a.sequenceOrder - b.sequenceOrder),
     [routeCheckpoints],
@@ -202,6 +205,7 @@ export const RouteCheckpointsModal = ({ isOpen, onClose, route }: RouteCheckpoin
                     value={cpSearch}
                     onChange={(e) => {
                       setCpSearch(e.target.value);
+                      setSelectedCheckpointId('');
                       setCpPage(1);
                     }}
                     placeholder="Search by name or code…"
@@ -318,7 +322,10 @@ export const RouteCheckpointsModal = ({ isOpen, onClose, route }: RouteCheckpoin
                           totalPages={checkpointsMeta.totalPages}
                           totalItems={checkpointsMeta.totalItems}
                           limit={PAGE_SIZE}
-                          onPageChange={setCpPage}
+                          onPageChange={(p) => {
+                            setSelectedCheckpointId('');
+                            setCpPage(p);
+                          }}
                         />
                       </div>
                     )}
