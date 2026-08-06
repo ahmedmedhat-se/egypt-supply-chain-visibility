@@ -21,6 +21,7 @@ export class WebsocketConsumer {
       'shipment.created',
       'shipment.accepted',
       'shipment.removed',
+      'shipment.route_assigned',
     ],
     queue: 'ws.shipment-events',
   })
