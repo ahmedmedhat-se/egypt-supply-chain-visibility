@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { toast } from 'react-hot-toast';
 import { Card } from '../../ui/Card';
 import { Input } from '../../ui/Input';
 import { Pagination } from '../../ui/Pagination';
@@ -15,13 +17,113 @@ import {
 } from '../../ui/Table';
 import { adminApi } from '../../../api/admin.api';
 import { formatDate } from '../../../lib/utils';
-import { FaBuilding, FaGlobe, FaCheckCircle, FaTimesCircle, FaBan } from 'react-icons/fa';
+import { FaBuilding, FaGlobe, FaCheckCircle, FaTimesCircle, FaBan, FaEdit } from 'react-icons/fa';
+import type { AdminOrganization } from '../../../types/admin.types';
+
+// Minimal inline modal component for editing
+const EditOrganizationModal = ({
+  organization,
+  onClose,
+  onSuccess,
+}: {
+  organization: AdminOrganization;
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: {
+      organization_name: organization.organization_name,
+      organization_email: organization.organization_email || '',
+      organization_phone: organization.organization_phone || '',
+      organization_country: organization.organization_country || '',
+      organization_address: organization.organization_address || '',
+    },
+  });
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (data: any) => adminApi.updateOrganization(organization.organization_id, data),
+    onSuccess: () => {
+      toast.success('Organization updated successfully');
+      onSuccess();
+      onClose();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to update organization');
+    },
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-[#111111] rounded-2xl p-6 w-full max-w-md border border-[#E2E8F0] dark:border-[#2A2A2A]">
+        <h2 className="text-xl font-bold text-[#0A2E4A] dark:text-white mb-4">Edit Organization</h2>
+        <form onSubmit={handleSubmit((d) => mutate(d))} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-[#1A2A3A] dark:text-white mb-1">Name</label>
+            <input
+              {...register('organization_name', { required: 'Required' })}
+              className="w-full rounded-xl border border-[#E2E8F0] dark:border-[#2A2A2A] bg-transparent px-3 py-2 text-sm text-[#0A2E4A] dark:text-white outline-none focus:border-[#3B82F6]"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1A2A3A] dark:text-white mb-1">Email</label>
+            <input
+              type="email"
+              {...register('organization_email')}
+              className="w-full rounded-xl border border-[#E2E8F0] dark:border-[#2A2A2A] bg-transparent px-3 py-2 text-sm text-[#0A2E4A] dark:text-white outline-none focus:border-[#3B82F6]"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1A2A3A] dark:text-white mb-1">Phone</label>
+            <input
+              {...register('organization_phone')}
+              className="w-full rounded-xl border border-[#E2E8F0] dark:border-[#2A2A2A] bg-transparent px-3 py-2 text-sm text-[#0A2E4A] dark:text-white outline-none focus:border-[#3B82F6]"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-[#1A2A3A] dark:text-white mb-1">Country</label>
+              <input
+                {...register('organization_country')}
+                className="w-full rounded-xl border border-[#E2E8F0] dark:border-[#2A2A2A] bg-transparent px-3 py-2 text-sm text-[#0A2E4A] dark:text-white outline-none focus:border-[#3B82F6]"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#1A2A3A] dark:text-white mb-1">Address</label>
+              <input
+                {...register('organization_address')}
+                className="w-full rounded-xl border border-[#E2E8F0] dark:border-[#2A2A2A] bg-transparent px-3 py-2 text-sm text-[#0A2E4A] dark:text-white outline-none focus:border-[#3B82F6]"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="px-4 py-2 text-sm font-medium text-[#94A3B8] hover:text-[#1A2A3A] dark:hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="flex items-center justify-center px-4 py-2 rounded-xl text-sm font-medium text-white bg-[#0A2E4A] hover:bg-[#0A2E4A]/90 dark:bg-[#3B82F6] dark:hover:bg-[#2563EB] transition-colors"
+            >
+              {isPending ? <LoadingSpinner size="sm" /> : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 export const SuperAdminOrganizationsPage = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [editingOrg, setEditingOrg] = useState<AdminOrganization | null>(null);
   const limit = 20;
 
   const { data, isLoading } = useQuery({
@@ -48,7 +150,6 @@ export const SuperAdminOrganizationsPage = () => {
   const orgs = data?.data ?? [];
   const meta = data?.meta;
 
-  // Exact active count via a tiny scoped query (isActive filter), not the current page
   const { data: activeData } = useQuery({
     queryKey: ['admin-organizations-active'],
     queryFn: async () => {
@@ -62,6 +163,16 @@ export const SuperAdminOrganizationsPage = () => {
 
   return (
     <div className="space-y-6">
+      {editingOrg && (
+        <EditOrganizationModal
+          organization={editingOrg}
+          onClose={() => setEditingOrg(null)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['admin-organizations'] });
+          }}
+        />
+      )}
+
       <div>
         <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">Organizations</h1>
         <p className="text-[#94A3B8] dark:text-[#94A3B8] mt-1">
@@ -193,6 +304,13 @@ export const SuperAdminOrganizationsPage = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setEditingOrg(o)}
+                          className="p-1.5 rounded-lg text-[#3B82F6] hover:bg-[#DBEAFE] dark:hover:bg-[#1E3A8A]/30 transition-colors"
+                          title="Edit Organization"
+                        >
+                          <FaEdit className="w-3.5 h-3.5" />
+                        </button>
                         {o.organization_is_active ? (
                           <button
                             onClick={() => {
