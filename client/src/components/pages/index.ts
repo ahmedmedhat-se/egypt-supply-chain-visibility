@@ -4,6 +4,7 @@ export { ContactPage } from './ContactPage';
 export { LoginPage } from './LoginPage';
 export { RegisterPage } from './RegisterPage';
 export { ForgotPasswordPage } from './ForgotPasswordPage';
+export { ResetPasswordPage } from './ResetPasswordPage';
 export { NotFoundPage } from './NotFoundPage';
 export { DashboardPage } from './DashboardPage';
 export { ShipmentsPage } from './ShipmentsPage';

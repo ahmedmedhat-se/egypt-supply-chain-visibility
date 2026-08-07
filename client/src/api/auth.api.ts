@@ -5,6 +5,7 @@ import type {
   AuthResponse,
   AuthRefreshResponse,
   ForgotPasswordData,
+  ResetPasswordData,
   AcceptInvitationData,
   ApiUser,
 } from "../types/auth.types";
@@ -40,13 +41,19 @@ export const authApi = {
   forgotPassword: (data: ForgotPasswordData) =>
     apiClient.post("/api/auth/forgot-password", data),
 
+  resetPassword: (data: ResetPasswordData) =>
+    apiClient.post<{ message: string }>("/api/auth/reset-password", data),
+
   acceptInvitation: (data: AcceptInvitationData) =>
     apiClient.post<AuthResponse>("/api/auth/accept-invitation", data),
 
   getCurrentUser: () => apiClient.get<ApiUser>("/api/auth/me"),
 
-  updateProfile: (data: { firstName?: string; lastName?: string; phoneNumber?: string }) =>
-    apiClient.patch<ApiUser>("/api/auth/me", data),
+  updateProfile: (data: {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+  }) => apiClient.patch<ApiUser>("/api/auth/me", data),
 
   updatePassword: (data: { currentPassword: string; newPassword: string }) =>
     apiClient.patch<{ message: string }>("/api/auth/me/password", data),

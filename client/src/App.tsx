@@ -32,6 +32,11 @@ const ForgotPasswordPage = lazy(() =>
     default: m.ForgotPasswordPage,
   })),
 );
+const ResetPasswordPage = lazy(() =>
+  import('./components/pages/ResetPasswordPage').then((m) => ({
+    default: m.ResetPasswordPage,
+  })),
+);
 const NotFoundPage = lazy(() =>
   import('./components/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 );
@@ -476,6 +481,10 @@ function App() {
             <Route
               path={ROUTES.ACCEPT_INVITATION}
               element={<PageLoader><AcceptInvitationPage /></PageLoader>}
+            />
+            <Route
+              path={ROUTES.RESET_PASSWORD}
+              element={<PageLoader><ResetPasswordPage /></PageLoader>}
             />
           </Routes>
           <Toaster
