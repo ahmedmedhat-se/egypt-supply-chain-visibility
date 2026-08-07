@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth } from '../../../hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../ui/Card';
 import { Input } from '../../ui/Input';
@@ -42,6 +43,7 @@ export const SuperAdminUsersReportPage = () => {
 /* ─── All Users Table ────────────────────────────────────────── */
 
 function AllUsersTable() {
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -166,34 +168,38 @@ function AllUsersTable() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {u.user_is_active ? (
-                          <button
-                            onClick={() => userMutate.mutate({ id: u.user_id, action: 'deactivate' })}
-                            className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
-                            title="Deactivate"
-                          >
-                            <FaBan className="w-3.5 h-3.5" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => userMutate.mutate({ id: u.user_id, action: 'activate' })}
-                            className="p-1.5 rounded-lg text-[#2D9B6E] hover:bg-[#D1FAE5] transition-colors"
-                            title="Activate"
-                          >
-                            <FaCheckCircle className="w-3.5 h-3.5" />
-                          </button>
+                        {u.user_id !== currentUser?.id && (
+                          <>
+                            {u.user_is_active ? (
+                              <button
+                                onClick={() => userMutate.mutate({ id: u.user_id, action: 'deactivate' })}
+                                className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                                title="Deactivate"
+                              >
+                                <FaBan className="w-3.5 h-3.5" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => userMutate.mutate({ id: u.user_id, action: 'activate' })}
+                                className="p-1.5 rounded-lg text-[#2D9B6E] hover:bg-[#D1FAE5] transition-colors"
+                                title="Activate"
+                              >
+                                <FaCheckCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                if (window.confirm('Are you sure you want to permanently delete this user?')) {
+                                  userMutate.mutate({ id: u.user_id, action: 'delete' });
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
+                              title="Delete"
+                            >
+                              <FaTrash className="w-3.5 h-3.5" />
+                            </button>
+                          </>
                         )}
-                        <button
-                          onClick={() => {
-                            if (window.confirm('Are you sure you want to permanently delete this user?')) {
-                              userMutate.mutate({ id: u.user_id, action: 'delete' });
-                            }
-                          }}
-                          className="p-1.5 rounded-lg text-[#DC2626] hover:bg-[#FEE2E2] transition-colors"
-                          title="Delete"
-                        >
-                          <FaTrash className="w-3.5 h-3.5" />
-                        </button>
                       </div>
                     </TableCell>
                   </TableRow>
