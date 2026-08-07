@@ -22,4 +22,22 @@ export class EmailConsumer {
     this.logger.log(`Processing invitation email for ${event.email}`);
     await this.mailService.sendInvitationEmail(event.email, event.inviteLink);
   }
+
+  @RabbitSubscribe({
+    exchange: 'escv.events',
+    routingKey: 'password.reset_requested',
+    queue: 'email.password-reset',
+  })
+  async handlePasswordResetRequested(event: {
+    email: string;
+    resetLink: string;
+    expiresInMinutes?: number;
+  }) {
+    this.logger.log(`Processing password reset email for ${event.email}`);
+    await this.mailService.sendPasswordResetEmail(
+      event.email,
+      event.resetLink,
+      event.expiresInMinutes,
+    );
+  }
 }
