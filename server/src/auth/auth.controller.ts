@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Body,
   HttpCode,
   HttpStatus,
@@ -27,6 +28,7 @@ import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
+import { UpdateProfileDto, UpdatePasswordDto } from './dto/update-profile.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -121,6 +123,49 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Returns the user profile.' })
   async getMe(@CurrentUser() user: any) {
     return this.authService.getMe(user.sub);
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Update current user profile (name, phone)' })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully.' })
+  async updateProfile(
+    @CurrentUser() user: any,
+    @Body() dto: UpdateProfileDto,
+    @Req() request: FastifyRequest,
+  ) {
+    const result = await this.authService.updateProfile(user.sub, dto);
+    this.auditService.log(
+      {
+        userId: user.sub,
+        action: 'AUTH_PROFILE_UPDATE',
+        resourceType: 'user',
+        resourceId: user.sub,
+        newValue: dto as any,
+      },
+      request,
+    );
+    return result;
+  }
+
+  @Patch('me/password')
+  @ApiOperation({ summary: 'Change user password' })
+  @ApiResponse({ status: 200, description: 'Password changed successfully.' })
+  async updatePassword(
+    @CurrentUser() user: any,
+    @Body() dto: UpdatePasswordDto,
+    @Req() request: FastifyRequest,
+  ) {
+    const result = await this.authService.updatePassword(user.sub, dto);
+    this.auditService.log(
+      {
+        userId: user.sub,
+        action: 'AUTH_PASSWORD_CHANGE',
+        resourceType: 'user',
+        resourceId: user.sub,
+      },
+      request,
+    );
+    return result;
   }
 
   @Public()
