@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { UpdateProfileDto, UpdatePasswordDto } from './dto/update-profile.dto';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { buildPaginationMeta } from '../common/pagination/pagination.helper';
 
@@ -523,5 +524,61 @@ export class AuthService {
         `Failed to publish session revocation for user ${userId}: ${(error as Error).message}`,
       );
     }
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const data: any = {};
+    if (dto.firstName !== undefined) data.user_first_name = dto.firstName;
+    if (dto.lastName !== undefined) data.user_last_name = dto.lastName;
+    if (dto.phoneNumber !== undefined) data.user_phone_number = dto.phoneNumber;
+
+    if (Object.keys(data).length === 0) {
+      return this.usersService.findById(userId);
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { user_id: userId },
+      data,
+    });
+
+    this.logger.log(`User ${userId} updated profile`);
+
+    return this.usersService.findById(userId);
+  }
+
+  async updatePassword(userId: string, dto: UpdatePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isMatch = await bcrypt.compare(
+      dto.currentPassword,
+      user.user_password_hash,
+    );
+
+    if (!isMatch) {
+      throw new BadRequestException('Incorrect current password');
+    }
+
+    const newHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { user_id: userId },
+      data: {
+        user_password_hash: newHash,
+        user_token_version: { increment: 1 },
+      },
+    });
+
+    this.logger.log(`User ${userId} changed password, revoking old sessions.`);
+
+    // Revoke all sessions since password changed
+    await this.revokeAllSessions(userId);
+
+    return { message: 'Password updated successfully. Please log in again.' };
   }
 }
