@@ -93,6 +93,7 @@ services:
       - MAIL_PASS=${MAIL_PASS}
       - MAIL_FROM=${MAIL_FROM}
       - FRONTEND_URL=http://localhost:5173
+      - BCRYPT_SALT_ROUNDS=${BCRYPT_SALT_ROUNDS:-12}
     ports:
       - "8081:8081"
     depends_on:
