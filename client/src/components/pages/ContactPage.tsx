@@ -283,7 +283,7 @@ export const ContactPage = () => {
                     <div className="relative">
                       <input
                         type="text"
-                        placeholder="Ahmed"
+                        placeholder="John"
                         disabled={isSubmitting}
                         className={cn(getFieldStyles('firstName'), 'pr-10')}
                         {...register('firstName')}
@@ -310,7 +310,7 @@ export const ContactPage = () => {
                     <div className="relative">
                       <input
                         type="text"
-                        placeholder="Medhat"
+                        placeholder="Doe"
                         disabled={isSubmitting}
                         className={cn(getFieldStyles('lastName'), 'pr-10')}
                         {...register('lastName')}

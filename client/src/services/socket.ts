@@ -5,7 +5,7 @@ import { useLiveStore } from '../store/live.store';
 import { ROUTES } from '../constants/routes';
 
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+  import.meta.env.VITE_API_BASE_URL || '';
 
 let socket: Socket | null = null;
 let clearing = false;
@@ -49,7 +49,6 @@ export function connectSocket(): Socket | null {
 
   clearing = false;
   socket = io(BASE_URL, {
-    path: '/ws',
     transports: ['websocket'],
     auth: (cb) => cb({ token: useAuthStore.getState().accessToken }),
     reconnection: true,

@@ -192,7 +192,7 @@ export const RegisterForm = ({ className, onSuccess }: RegisterFormProps) => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Ahmed"
+              placeholder="John"
               autoComplete="given-name"
               autoFocus
               disabled={registerLoading}
@@ -221,7 +221,7 @@ export const RegisterForm = ({ className, onSuccess }: RegisterFormProps) => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Medhat"
+              placeholder="Doe"
               autoComplete="family-name"
               disabled={registerLoading}
               className={cn(getFieldStyles('lastName'), 'pr-10')}

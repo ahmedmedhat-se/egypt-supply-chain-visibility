@@ -19,13 +19,13 @@ import { Transform, Type } from 'class-transformer';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
 export class AdminUpdateUserDto {
-  @ApiPropertyOptional({ example: 'Ahmed' })
+  @ApiPropertyOptional({ example: 'John' })
   @IsOptional()
   @IsString()
   @Length(1, 100)
   user_first_name?: string;
 
-  @ApiPropertyOptional({ example: 'Medhat' })
+  @ApiPropertyOptional({ example: 'Doe' })
   @IsOptional()
   @IsString()
   @Length(1, 100)
@@ -110,7 +110,7 @@ export class AdminQueryUsersDto {
   @Max(100)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ example: 'Ahmed' })
+  @ApiPropertyOptional({ example: 'John' })
   @IsOptional()
   @IsString()
   search?: string;

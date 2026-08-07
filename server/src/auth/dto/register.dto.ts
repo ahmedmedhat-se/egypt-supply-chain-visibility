@@ -13,12 +13,12 @@ export class RegisterDto {
   @IsNotEmpty()
   password: string;
 
-  @ApiProperty({ example: 'Ahmed', description: 'User first name' })
+  @ApiProperty({ example: 'John', description: 'User first name' })
   @IsString()
   @IsNotEmpty()
   firstName: string;
 
-  @ApiProperty({ example: 'Tarek', description: 'User last name' })
+  @ApiProperty({ example: 'Doe', description: 'User last name' })
   @IsString()
   @IsNotEmpty()
   lastName: string;

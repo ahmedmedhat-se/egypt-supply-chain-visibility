@@ -204,14 +204,14 @@ export const AcceptInvitationPage = () => {
           <div className="grid grid-cols-2 gap-3">
             <Input
               label="First name"
-              placeholder="Ahmed"
+              placeholder="John"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               required
             />
             <Input
               label="Last name"
-              placeholder="Tarek"
+              placeholder="Doe"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               required

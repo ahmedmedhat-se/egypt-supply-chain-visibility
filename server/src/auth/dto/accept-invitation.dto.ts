@@ -22,12 +22,12 @@ export class AcceptInvitationDto {
   @MinLength(8)
   password: string;
 
-  @ApiProperty({ example: 'Ahmed' })
+  @ApiProperty({ example: 'John' })
   @IsString()
   @IsNotEmpty()
   firstName: string;
 
-  @ApiProperty({ example: 'Tarek' })
+  @ApiProperty({ example: 'Doe' })
   @IsString()
   @IsNotEmpty()
   lastName: string;
