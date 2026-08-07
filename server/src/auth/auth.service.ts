@@ -16,6 +16,7 @@ import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { UpdateProfileDto, UpdatePasswordDto } from './dto/update-profile.dto';
+import { BCRYPT_SALT_ROUNDS } from '../common/password.helper';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { buildPaginationMeta } from '../common/pagination/pagination.helper';
 
@@ -54,7 +55,7 @@ export class AuthService {
     if (existingOrg)
       throw new ConflictException('Organization email already registered');
 
-    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
     const user = await this.prisma.user.create({
       data: {
         user_email: dto.email,
@@ -214,7 +215,7 @@ export class AuthService {
       throw new ConflictException('User already exists');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
     const [user] = await this.prisma.$transaction([
       this.prisma.user.create({
         data: {

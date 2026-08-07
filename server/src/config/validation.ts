@@ -12,4 +12,5 @@ export const validationSchema = Joi.object({
   JWT_REFRESH_EXPIRATION: Joi.string().default('7d'),
   COOKIE_SECRET: Joi.string().min(16).required(),
   CORS_ORIGIN: Joi.string().uri().default('http://localhost:5173'),
+  BCRYPT_SALT_ROUNDS: Joi.number().integer().min(4).max(31).default(12),
 });
