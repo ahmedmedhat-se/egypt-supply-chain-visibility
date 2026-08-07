@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { BCRYPT_SALT_ROUNDS } from '../common/password.helper';
 import {
   AdminUpdateUserDto,
   AdminUpdateOrganizationDto,
@@ -192,7 +193,10 @@ export class AdminService {
     if (dto.user_role) updateData.user_role = dto.user_role;
     if (dto.organization_id) updateData.organization_id = dto.organization_id;
     if (dto.user_password) {
-      updateData.user_password_hash = await bcrypt.hash(dto.user_password, 12);
+      updateData.user_password_hash = await bcrypt.hash(
+        dto.user_password,
+        BCRYPT_SALT_ROUNDS,
+      );
     }
 
     const updated = await this.prisma.user.update({
