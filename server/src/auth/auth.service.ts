@@ -547,7 +547,11 @@ export class AuthService {
     return this.usersService.findById(userId);
   }
 
-  async updatePassword(userId: string, dto: UpdatePasswordDto) {
+  async updatePassword(
+    userId: string,
+    currentSessionId: string | null,
+    dto: UpdatePasswordDto,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { user_id: userId },
     });
@@ -565,21 +569,23 @@ export class AuthService {
       throw new BadRequestException('Incorrect current password');
     }
 
-    const newHash = await bcrypt.hash(dto.newPassword, 10);
+    const newHash = await bcrypt.hash(dto.newPassword, BCRYPT_SALT_ROUNDS);
 
     await this.prisma.user.update({
       where: { user_id: userId },
-      data: {
-        user_password_hash: newHash,
-        user_token_version: { increment: 1 },
-      },
+      data: { user_password_hash: newHash },
     });
 
-    this.logger.log(`User ${userId} changed password, revoking old sessions.`);
+    this.logger.log(
+      `User ${userId} changed password; kept current session, revoked others.`,
+    );
 
-    // Revoke all sessions since password changed
-    await this.revokeAllSessions(userId);
+    // Keep the current session
+    await this.revokeAllSessions(userId, currentSessionId);
 
-    return { message: 'Password updated successfully. Please log in again.' };
+    return {
+      message:
+        'Password updated successfully. You have been signed out of your other devices.',
+    };
   }
 }

@@ -155,7 +155,12 @@ export class AuthController {
     @Body() dto: UpdatePasswordDto,
     @Req() request: FastifyRequest,
   ) {
-    const result = await this.authService.updatePassword(user.sub, dto);
+    const currentSessionId = this.resolveCurrentSessionId(user, request);
+    const result = await this.authService.updatePassword(
+      user.sub,
+      currentSessionId,
+      dto,
+    );
     this.auditService.log(
       {
         userId: user.sub,
