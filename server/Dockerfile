@@ -6,11 +6,15 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy the rest of the application
-COPY . .
+# Copy the Prisma schema before the rest of the app so this layer is cached
+# independently (only invalidated when the schema changes)
+COPY prisma ./prisma
 
 # Generate Prisma Client
 RUN npx prisma generate
+
+# Copy the rest of the application
+COPY . .
 
 # Build the application
 RUN npm run build
@@ -19,6 +23,8 @@ RUN npm run build
 FROM node:20-alpine AS production
 
 WORKDIR /app
+
+ENV NODE_ENV=production
 
 # Copy necessary files from builder
 COPY --from=builder /app/package*.json ./
@@ -32,4 +38,6 @@ USER escv
 
 EXPOSE 8081
 
-CMD ["node", "dist/src/main.js"]
+# Apply any pending schema migrations on boot, then start the API.
+# `prisma migrate deploy` is a no-op when there are no pending migrations.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
