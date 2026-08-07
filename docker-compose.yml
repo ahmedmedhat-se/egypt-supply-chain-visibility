@@ -94,6 +94,7 @@ services:
       - MAIL_FROM=${MAIL_FROM}
       - CORS_ORIGIN=http://localhost:5173
       - BCRYPT_SALT_ROUNDS=${BCRYPT_SALT_ROUNDS:-12}
+      - PASSWORD_RESET_TOKEN_TTL_MINUTES=${PASSWORD_RESET_TOKEN_TTL_MINUTES:-15}
     ports:
       - "8081:8081"
     depends_on:
