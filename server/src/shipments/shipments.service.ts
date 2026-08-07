@@ -619,16 +619,6 @@ export class ShipmentsService {
       );
     }
 
-    // Carriers may only route shipments assigned to them or org-claimed
-    // shipments with no driver yet — never an org-mate's load.
-    if (user.role === 'carrier') {
-      if (!this.canCarrierManage(shipment, dbUser.organization_id, user.sub)) {
-        throw new ForbiddenException(
-          'You can only assign routes to shipments assigned to you or not yet claimed by a driver',
-        );
-      }
-    }
-
     const route = await this.prisma.route.findUnique({
       where: { route_id: dto.routeId },
     });
@@ -765,28 +755,15 @@ export class ShipmentsService {
       isAssignedCarrier;
 
     if (user.role === 'carrier') {
-      // A carrier driver only manages their own shipments or org-claimed
-      // shipments that no driver has claimed yet — never an org-mate's load.
-      if (
-        !this.canCarrierManage(
-          shipment,
-          dbUser.organization_id,
-          dbUser.user_id,
-        )
-      ) {
+      // A carrier driver may only update shipments assigned to them.
+      if (!isAssignedCarrier) {
         throw new ForbiddenException(
-          'You can only update shipments assigned to you or not yet claimed by a driver',
+          'You can only update the status of your assigned shipments',
         );
       }
     } else if (!canManage) {
       throw new ForbiddenException(
         'You do not have permission to update this shipment status',
-      );
-    }
-
-    if (user.role === 'carrier' && !isAssignedCarrier) {
-      throw new ForbiddenException(
-        'You can only update the status of your assigned shipments',
       );
     }
 
