@@ -22,7 +22,6 @@ import {
 
 export const ProfilePage = () => {
   const user = useAuthStore((state) => state.user);
-  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -31,7 +30,7 @@ export const ProfilePage = () => {
   const { mutate: revokeAll, isPending: isRevokingAll } = useRevokeAllSessions();
 
   // Profile Form
-  const { register: registerProfile, handleSubmit: handleProfileSubmit, formState: { errors: profileErrors } } = useForm({
+  const { register: registerProfile, handleSubmit: handleProfileSubmit } = useForm({
     defaultValues: {
       firstName: user?.name?.split(' ')[0] || '',
       lastName: user?.name?.split(' ').slice(1).join(' ') || '',
@@ -43,7 +42,7 @@ export const ProfilePage = () => {
     mutationFn: authApi.updateProfile,
     onSuccess: (res) => {
       toast.success('Profile updated successfully');
-      useAuthStore.getState().setUser(res.data);
+      useAuthStore.getState().setAuth(res.data, useAuthStore.getState().accessToken!);
     },
     onError: () => {
       toast.error('Failed to update profile');
@@ -51,7 +50,7 @@ export const ProfilePage = () => {
   });
 
   // Password Form
-  const { register: registerPassword, handleSubmit: handlePasswordSubmit, reset: resetPasswordForm, formState: { errors: passwordErrors } } = useForm({
+  const { register: registerPassword, handleSubmit: handlePasswordSubmit, reset: resetPasswordForm } = useForm({
     defaultValues: {
       currentPassword: '',
       newPassword: '',

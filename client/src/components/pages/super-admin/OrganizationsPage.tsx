@@ -30,7 +30,7 @@ const EditOrganizationModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit } = useForm({
     defaultValues: {
       organization_name: organization.organization_name,
       organization_email: organization.organization_email || '',
