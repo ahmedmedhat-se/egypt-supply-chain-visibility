@@ -32,4 +32,4 @@ USER escv
 
 EXPOSE 8081
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main.js"]
