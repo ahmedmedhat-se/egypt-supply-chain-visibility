@@ -45,6 +45,12 @@ export const authApi = {
 
   getCurrentUser: () => apiClient.get<ApiUser>("/api/auth/me"),
 
+  updateProfile: (data: { firstName?: string; lastName?: string; phoneNumber?: string }) =>
+    apiClient.patch<ApiUser>("/api/auth/me", data),
+
+  updatePassword: (data: { currentPassword: string; newPassword: string }) =>
+    apiClient.patch<{ message: string }>("/api/auth/me/password", data),
+
   /** List active sessions for the current user (paginated) */
   getSessions: (params?: { page?: number; limit?: number }) =>
     apiClient.get<PaginatedResponse<AuthSession>>("/api/auth/sessions", {
