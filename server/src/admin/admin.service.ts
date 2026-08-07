@@ -155,7 +155,7 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.user_id === adminUser.user_id) {
+    if (user.user_id === adminUser.sub) {
       throw new ForbiddenException(
         'Cannot modify your own account through admin panel',
       );
@@ -216,7 +216,7 @@ export class AdminService {
   async deactivateUser(id: string, adminUser: any) {
     const user = await this.prisma.user.findUnique({ where: { user_id: id } });
     if (!user) throw new NotFoundException('User not found');
-    if (user.user_id === adminUser.user_id) {
+    if (user.user_id === adminUser.sub) {
       throw new ForbiddenException('Cannot deactivate your own account');
     }
 
@@ -259,7 +259,7 @@ export class AdminService {
   async deleteUser(id: string, adminUser: any) {
     const user = await this.prisma.user.findUnique({ where: { user_id: id } });
     if (!user) throw new NotFoundException('User not found');
-    if (user.user_id === adminUser.user_id) {
+    if (user.user_id === adminUser.sub) {
       throw new ForbiddenException('Cannot delete your own account');
     }
     if (user.user_role === 'admin') {
@@ -586,7 +586,7 @@ export class AdminService {
       this.prisma.shipmentEvent.create({
         data: {
           shipment_id: id,
-          recorded_by_user_id: adminUser.user_id,
+          recorded_by_user_id: adminUser.sub,
           event_type: 'status_change',
           event_status: status,
           event_description: `Admin manually updated status to ${status}`,
@@ -761,7 +761,7 @@ export class AdminService {
     newValue: any | null,
   ) {
     this.auditService.log({
-      userId: adminUser.user_id,
+      userId: adminUser.sub,
       action,
       resourceType,
       resourceId,
