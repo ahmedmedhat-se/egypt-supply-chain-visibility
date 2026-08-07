@@ -8,8 +8,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
     private readonly amqpConnection: AmqpConnection,
+    private readonly configService: ConfigService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -586,6 +588,110 @@ export class AuthService {
     return {
       message:
         'Password updated successfully. You have been signed out of your other devices.',
+    };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.usersService.findByEmail(email);
+
+    if (user && user.user_is_active) {
+      const token = randomBytes(32).toString('hex');
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const ttlSeconds = this.getResetTokenTtlSeconds();
+
+      await this.redisService.setJson(
+        `pr:${tokenHash}`,
+        { userId: user.user_id },
+        ttlSeconds,
+      );
+
+      const frontendUrl = this.configService.get<string>(
+        'CORS_ORIGIN',
+        'http://localhost:5173',
+      );
+      const resetLink = `${frontendUrl}/reset-password/${token}`;
+
+      await this.amqpConnection.publish(
+        'escv.events',
+        'password.reset_requested',
+        {
+          email,
+          resetLink,
+          expiresInMinutes: Math.round(ttlSeconds / 60),
+        },
+      );
+
+      this.logger.log(`Password reset link generated for ${email}`);
+    } else {
+      this.logger.log(
+        `Password reset requested for ${email} — no email sent (account not found or inactive)`,
+      );
+    }
+
+    return {
+      message:
+        'If an account exists for this email, a password reset link has been sent.',
+    };
+  }
+
+  private getResetTokenTtlSeconds(): number {
+    const raw = this.configService.get<string>(
+      'PASSWORD_RESET_TOKEN_TTL_MINUTES',
+    );
+    const minutes = Number.parseInt(raw ?? '', 10);
+    if (Number.isInteger(minutes) && minutes >= 1 && minutes <= 24 * 60) {
+      return minutes * 60;
+    }
+    return 15 * 60;
+  }
+
+  /**
+   * Completes the forgot-password flow. Consumes the token (single-use), sets
+   * the new password, and revokes every session so a stolen session cannot
+   * survive a password reset.
+   */
+  async resetPassword(token: string, newPassword: string) {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const data = await this.redisService.getJson<{ userId: string }>(
+      `pr:${tokenHash}`,
+    );
+
+    if (!data) {
+      throw new BadRequestException(
+        'This reset link is invalid or has expired. Please request a new one.',
+      );
+    }
+
+    // Single-use: consume the token before touching the account so a replayed
+    // link can never reset the password twice.
+    await this.redisService.del(`pr:${tokenHash}`);
+
+    const user = await this.prisma.user.findUnique({
+      where: { user_id: data.userId },
+    });
+
+    if (!user || !user.user_is_active) {
+      throw new BadRequestException(
+        'This reset link is invalid or has expired. Please request a new one.',
+      );
+    }
+
+    const newHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+    await this.prisma.user.update({
+      where: { user_id: user.user_id },
+      data: { user_password_hash: newHash },
+    });
+
+    // Log out everywhere — access tokens die via token_version bump and all
+    // refresh-token families are removed from Redis.
+    await this.revokeAllSessions(user.user_id);
+
+    this.logger.log(`Password reset completed for user ${user.user_id}`);
+
+    return {
+      userId: user.user_id,
+      message:
+        'Password reset successfully. Please sign in with your new password.',
     };
   }
 }

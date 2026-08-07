@@ -25,6 +25,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { ForgotPasswordDto, ResetPasswordDto } from './dto/password-reset.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
@@ -116,6 +117,61 @@ export class AuthController {
       user: result.user,
       accessToken: result.accessToken,
     };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Request a password reset link by email' })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset link sent if the account exists.',
+  })
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+    @Req() request: FastifyRequest,
+  ) {
+    const result = await this.authService.forgotPassword(dto.email);
+    this.auditService.log(
+      {
+        userId: null,
+        action: 'AUTH_FORGOT_PASSWORD_REQUESTED',
+        resourceType: 'user',
+        newValue: { email: dto.email },
+      },
+      request,
+    );
+    return result;
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Reset the password using a token from the emailed link',
+  })
+  @ApiResponse({ status: 200, description: 'Password reset successfully.' })
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Req() request: FastifyRequest,
+  ) {
+    const result = await this.authService.resetPassword(
+      dto.token,
+      dto.newPassword,
+    );
+    this.auditService.log(
+      {
+        userId: result.userId,
+        action: 'AUTH_PASSWORD_RESET',
+        resourceType: 'user',
+        resourceId: result.userId,
+        newValue: { reset: true },
+      },
+      request,
+    );
+    return { message: result.message };
   }
 
   @Get('me')
