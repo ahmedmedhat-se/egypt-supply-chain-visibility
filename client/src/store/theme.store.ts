@@ -21,6 +21,14 @@ export const useThemeStore = create<ThemeStore>()(
     }),
     {
       name: 'theme-storage',
+      // Harden against stale values (e.g. an old 'system' setting from a
+      // previous version) sitting in a user's localStorage: only ever
+      // rehydrate to 'light' or 'dark'.
+      merge: (persisted, current) => {
+        const state = (persisted ?? {}) as Partial<ThemeStore>;
+        const theme = state.theme === 'dark' ? 'dark' : 'light';
+        return { ...current, ...state, theme };
+      },
     }
   )
 );
