@@ -26,7 +26,11 @@ export class EtaScannerService implements OnModuleInit {
   onModuleInit() {
     // Catch-up run: a restart must not leave already-late shipments unflagged
     // until the next midnight.
-    setTimeout(() => {
+    // `unref()`: the timer must never keep the process alive on its own — e.g.
+    // it used to make jest's e2e suite wait 10s after the tests finished (and
+    // log "Cannot log after tests are done"). In production the server keeps
+    // the event loop alive anyway, so the scan still runs.
+    const timer = setTimeout(() => {
       this.scanForDelayedShipments()
         .then((count) =>
           this.logger.log(`Boot delay scan flagged ${count} shipment(s)`),
@@ -37,6 +41,7 @@ export class EtaScannerService implements OnModuleInit {
           ),
         );
     }, 10_000);
+    timer.unref();
   }
 
   @Cron('0 0 * * *', { name: 'eta-delay-scan', timeZone: 'Africa/Cairo' })
@@ -48,16 +53,17 @@ export class EtaScannerService implements OnModuleInit {
   async scanForDelayedShipments(): Promise<number> {
     const cutoff = new Date(Date.now());
 
+    // NOTE: the old query filtered `route: { route_estimated_days: { not: null } }`
+    // inside `OR` — that shape crashed Prisma with "Maximum call stack size
+    // exceeded" on every boot. `computeEffectiveEta` already returns null for a
+    // shipment with no ETA and no route days, so filtering that case in JS
+    // below is equivalent — same results, but a query Prisma accepts.
     const candidates = await this.prisma.shipment.findMany({
       where: {
         shipment_status: ACTIVE_STATUSES_NOT_ARRIVED,
         OR: [
           { shipment_estimated_arrival_at: { not: null } },
-          {
-            shipment_estimated_arrival_at: null,
-            shipment_actual_departure_at: { not: null },
-            route: { route_estimated_days: { not: null } },
-          },
+          { shipment_actual_departure_at: { not: null } },
         ],
       },
       select: {
