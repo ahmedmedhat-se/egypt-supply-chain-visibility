@@ -30,7 +30,9 @@ export class QueryAlertsDto {
   @IsBooleanString()
   isRead?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by alert severity (info, warning, critical)' })
+  @ApiPropertyOptional({
+    description: 'Filter by alert severity (info, warning, critical)',
+  })
   @IsOptional()
   @IsString()
   @IsEnum(['info', 'warning', 'critical'])

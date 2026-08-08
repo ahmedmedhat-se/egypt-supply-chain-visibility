@@ -16,21 +16,25 @@ export class DashboardService {
    *   organization. Shipments are counted if the org appears as either the
    *   shipper **or** the carrier.
    */
-  async getStats(role: string, organizationId: string): Promise<DashboardStatsDto> {
+  async getStats(
+    role: string,
+    organizationId: string,
+  ): Promise<DashboardStatsDto> {
     const isSuperAdmin = role === 'super_admin';
 
     const orgFilter = isSuperAdmin
       ? undefined
       : { organization_id: organizationId };
 
-    const shipmentOrgFilter = (isSuperAdmin || role === 'regulator')
-      ? undefined
-      : {
-          OR: [
-            { shipper_organization_id: organizationId },
-            { carrier_organization_id: organizationId },
-          ],
-        };
+    const shipmentOrgFilter =
+      isSuperAdmin || role === 'regulator'
+        ? undefined
+        : {
+            OR: [
+              { shipper_organization_id: organizationId },
+              { carrier_organization_id: organizationId },
+            ],
+          };
 
     const [
       totalUsers,
@@ -55,21 +59,21 @@ export class DashboardService {
           }),
 
       // Organizations (only shown for super_admin; 1 for org-scoped)
-      isSuperAdmin
-        ? this.prisma.organization.count()
-        : Promise.resolve(1),
+      isSuperAdmin ? this.prisma.organization.count() : Promise.resolve(1),
 
       isSuperAdmin
-        ? this.prisma.organization.count({ where: { organization_is_active: true } })
+        ? this.prisma.organization.count({
+            where: { organization_is_active: true },
+          })
         : Promise.resolve(1),
 
       // Shipments (org-scoped if applicable)
-      (isSuperAdmin || role === 'regulator')
+      isSuperAdmin || role === 'regulator'
         ? this.prisma.shipment.count()
         : this.prisma.shipment.count({ where: shipmentOrgFilter }),
 
       // Shipments by status
-      (isSuperAdmin || role === 'regulator')
+      isSuperAdmin || role === 'regulator'
         ? this.prisma.shipment.groupBy({
             by: ['shipment_status'],
             _count: true,
@@ -93,7 +97,7 @@ export class DashboardService {
           }),
 
       // Alerts (scoped to org's shipments)
-      (isSuperAdmin || role === 'regulator')
+      isSuperAdmin || role === 'regulator'
         ? this.prisma.alert.count()
         : this.prisma.alert.count({
             where: {
@@ -102,7 +106,7 @@ export class DashboardService {
           }),
 
       // Critical unresolved alerts
-      (isSuperAdmin || role === 'regulator')
+      isSuperAdmin || role === 'regulator'
         ? this.prisma.alert.count({
             where: {
               alert_is_resolved: false,

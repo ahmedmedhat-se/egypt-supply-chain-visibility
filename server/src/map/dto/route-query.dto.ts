@@ -9,13 +9,17 @@ export class RouteQueryDto {
     example: '30.0444,31.2357',
     description: 'Starting point as "latitude,longitude"',
   })
-  @Matches(LAT_LNG, { message: 'from must be in "lat,lng" format, e.g. 30.0444,31.2357' })
+  @Matches(LAT_LNG, {
+    message: 'from must be in "lat,lng" format, e.g. 30.0444,31.2357',
+  })
   from!: string;
 
   @ApiProperty({
     example: '31.2001,29.9187',
     description: 'Destination point as "latitude,longitude"',
   })
-  @Matches(LAT_LNG, { message: 'to must be in "lat,lng" format, e.g. 31.2001,29.9187' })
+  @Matches(LAT_LNG, {
+    message: 'to must be in "lat,lng" format, e.g. 31.2001,29.9187',
+  })
   to!: string;
 }

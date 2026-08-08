@@ -43,7 +43,10 @@ describe('ReportsService', () => {
       const mockReports = [{ id: 1 }, { id: 2 }];
       mockPrisma.$transaction.mockResolvedValue([mockReports, 2]);
 
-      const result = await service.listReports('user-1', { page: 1, limit: 10 });
+      const result = await service.listReports('user-1', {
+        page: 1,
+        limit: 10,
+      });
 
       expect(result.data).toEqual(mockReports);
       expect(result.meta.totalItems).toBe(2);
@@ -71,7 +74,7 @@ describe('ReportsService', () => {
         report_id: 'rep-1',
         requested_by_user_id: 'user-1',
         report_status: 'completed',
-        report_file_path: 'mock.pdf'
+        report_file_path: 'mock.pdf',
       });
 
       const result = await service.getReportDownload('user-1', 'rep-1');
@@ -86,7 +89,9 @@ describe('ReportsService', () => {
         requested_by_user_id: 'user-2',
       });
 
-      await expect(service.getReportDownload('user-1', 'rep-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getReportDownload('user-1', 'rep-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if report is not completed', async () => {
@@ -96,7 +101,9 @@ describe('ReportsService', () => {
         report_status: 'pending',
       });
 
-      await expect(service.getReportDownload('user-1', 'rep-1')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.getReportDownload('user-1', 'rep-1'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

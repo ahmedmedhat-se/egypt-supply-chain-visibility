@@ -1,4 +1,11 @@
-import { IsOptional, IsInt, Min, IsString, IsEnum, IsObject } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  IsString,
+  IsEnum,
+  IsObject,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -24,12 +31,16 @@ export class QueryReportsDto {
 }
 
 export class GenerateReportDto {
-  @ApiProperty({ description: 'Type of report (e.g. shipments_summary, performance)' })
+  @ApiProperty({
+    description: 'Type of report (e.g. shipments_summary, performance)',
+  })
   @IsString()
   @IsEnum(['shipments_summary', 'organizations_summary', 'performance'])
   reportType: string;
 
-  @ApiPropertyOptional({ description: 'JSON parameters for the report filters' })
+  @ApiPropertyOptional({
+    description: 'JSON parameters for the report filters',
+  })
   @IsOptional()
   @IsObject()
   parameters?: Record<string, any>;

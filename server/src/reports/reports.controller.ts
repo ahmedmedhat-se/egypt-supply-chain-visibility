@@ -18,7 +18,10 @@ export class ReportsController {
 
   @Post()
   @ApiOperation({ summary: 'Request a new report generation' })
-  async generateReport(@CurrentUser() user: any, @Body() dto: GenerateReportDto) {
+  async generateReport(
+    @CurrentUser() user: any,
+    @Body() dto: GenerateReportDto,
+  ) {
     return this.reportsService.generateReport(user.sub, dto);
   }
 

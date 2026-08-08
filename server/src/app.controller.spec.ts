@@ -18,7 +18,9 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('should return "Welcome to Egypt Supply Chain Visibilty Platform."', () => {
-      expect(appController.getHello()).toBe('Welcome to Egypt Supply Chain Visibilty Platform.');
+      expect(appController.getHello()).toBe(
+        'Welcome to Egypt Supply Chain Visibilty Platform.',
+      );
     });
   });
 });

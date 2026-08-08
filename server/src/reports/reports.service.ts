@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueryReportsDto, GenerateReportDto } from './dto/reports.dto';
 import { buildPaginationMeta } from '../common/pagination/pagination.helper';
@@ -48,7 +53,7 @@ export class ReportsService {
     });
 
     // 2. Simulate async report generation in the background
-    this.processReportAsync(report.report_id).catch(err => {
+    this.processReportAsync(report.report_id).catch((err) => {
       this.logger.error(`Async report generation failed: ${err.message}`);
     });
 

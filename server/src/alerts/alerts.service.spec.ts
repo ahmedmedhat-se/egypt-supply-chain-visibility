@@ -49,7 +49,10 @@ describe('AlertsService', () => {
       const mockAlerts = [{ id: 1 }, { id: 2 }];
       mockPrisma.$transaction.mockResolvedValue([mockAlerts, 2]);
 
-      const result = await service.getUserAlerts('user-1', { page: 1, limit: 10 });
+      const result = await service.getUserAlerts('user-1', {
+        page: 1,
+        limit: 10,
+      });
 
       expect(result.data).toEqual(mockAlerts);
       expect(result.meta.totalItems).toBe(2);
@@ -61,7 +64,10 @@ describe('AlertsService', () => {
     it('should mark an alert as read', async () => {
       const mockAlert = { user_alert_id: 'alert-1', user_id: 'user-1' };
       mockPrisma.userAlert.findUnique.mockResolvedValue(mockAlert);
-      mockPrisma.userAlert.update.mockResolvedValue({ ...mockAlert, is_read: true });
+      mockPrisma.userAlert.update.mockResolvedValue({
+        ...mockAlert,
+        is_read: true,
+      });
 
       const result = await service.markAsRead('user-1', 'alert-1');
 
@@ -72,7 +78,9 @@ describe('AlertsService', () => {
     it('should throw NotFoundException if alert not found', async () => {
       mockPrisma.userAlert.findUnique.mockResolvedValue(null);
 
-      await expect(service.markAsRead('user-1', 'alert-1')).rejects.toThrow(NotFoundException);
+      await expect(service.markAsRead('user-1', 'alert-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -100,13 +108,15 @@ describe('AlertsService', () => {
       });
 
       expect(result).toEqual(mockAlert);
-      expect(mockPrisma.alert.create).toHaveBeenCalledWith(expect.objectContaining({
-        data: expect.objectContaining({
-          user_alerts: {
-            create: [{ user_id: 'user-1' }, { user_id: 'user-2' }],
-          },
+      expect(mockPrisma.alert.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            user_alerts: {
+              create: [{ user_id: 'user-1' }, { user_id: 'user-2' }],
+            },
+          }),
         }),
-      }));
+      );
     });
   });
 });

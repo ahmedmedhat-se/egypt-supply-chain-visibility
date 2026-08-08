@@ -196,7 +196,7 @@ export class AuthController {
         action: 'AUTH_PROFILE_UPDATE',
         resourceType: 'user',
         resourceId: user.sub,
-        newValue: dto as any,
+        newValue: dto,
       },
       request,
     );
@@ -298,7 +298,7 @@ export class AuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     let logoutUserId: string | null = null;
-    let cookie = request.cookies['refresh_token'];
+    const cookie = request.cookies['refresh_token'];
     if (cookie) {
       const result = request.unsignCookie(cookie);
       if (result.valid && result.value) {
