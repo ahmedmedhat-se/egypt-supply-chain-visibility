@@ -16,10 +16,10 @@ permissions:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Server: lint (read-only), Prisma schema validation, typecheck, unit tests
+  # Server: Prisma schema validation, typecheck, unit tests
   # ---------------------------------------------------------------------------
   server:
-    name: Server · lint + typecheck + tests
+    name: Server · typecheck + tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -50,10 +50,10 @@ jobs:
         run: npm test -- --runInBand
 
   # ---------------------------------------------------------------------------
-  # Client: lint + production build
+  # Client: production build
   # ---------------------------------------------------------------------------
   client:
-    name: Client · lint + build
+    name: Client · build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
