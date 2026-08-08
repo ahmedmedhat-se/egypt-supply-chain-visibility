@@ -32,7 +32,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner.toLowerCase() }}/escv-osrm
+          images: ghcr.io/${{ github.repository_owner }}/escv-osrm
           # `nightly` is always tagged (cron AND manual runs — type=schedule
           # tags only exist on scheduled events, so a manual run would
           # otherwise produce no tags and fail); the dated tag is cron-only.

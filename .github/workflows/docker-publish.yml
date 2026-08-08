@@ -51,7 +51,7 @@ jobs:
         id: meta-server
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner.toLowerCase() }}/escv-server
+          images: ghcr.io/${{ github.repository_owner }}/escv-server
           tags: |
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,format=long
@@ -72,7 +72,7 @@ jobs:
         id: meta-client
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner.toLowerCase() }}/escv-client
+          images: ghcr.io/${{ github.repository_owner }}/escv-client
           tags: |
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,format=long
@@ -115,7 +115,7 @@ jobs:
         id: meta-osrm
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner.toLowerCase() }}/escv-osrm
+          images: ghcr.io/${{ github.repository_owner }}/escv-osrm
           tags: |
             type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,format=long

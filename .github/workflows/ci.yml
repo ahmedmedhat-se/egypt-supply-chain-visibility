@@ -152,5 +152,7 @@ jobs:
       - name: Apply migrations
         run: npx prisma migrate deploy
 
+      # --forceExit: the boot delay scan keeps a timer alive past the tests;
+      # without it jest would hang waiting for open handles after a green run.
       - name: Run e2e tests
-        run: npm run test:e2e -- --runInBand
+        run: npm run test:e2e -- --runInBand --forceExit
