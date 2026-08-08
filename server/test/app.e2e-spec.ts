@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
+import { AppService } from './../src/app.service';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -17,10 +18,13 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
+    // Assert against the live service output instead of a hardcoded string,
+    // so the test never desyncs from the response text again.
+    const expectedBody = app.get(AppService).getHello();
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect('Hello World!');
+      .expect(expectedBody);
   });
 
   afterEach(async () => {

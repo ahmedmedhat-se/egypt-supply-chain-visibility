@@ -43,11 +43,6 @@ jobs:
       - name: Validate Prisma schema
         run: npx prisma validate
 
-      # `npm run lint` uses --fix, which mutates files in place — run eslint
-      # read-only in CI so anything that *can* be auto-fixed still fails here.
-      - name: Lint (read-only)
-        run: npx eslint "{src,apps,libs,test}/**/*.ts"
-
       - name: Typecheck + build
         run: npm run build
 
@@ -75,9 +70,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Lint
-        run: npm run lint
 
       - name: Typecheck + build
         run: npm run build

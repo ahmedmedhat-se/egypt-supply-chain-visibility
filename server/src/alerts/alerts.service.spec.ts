@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AlertsService } from './alerts.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { NotFoundException } from '@nestjs/common';
 
 describe('AlertsService', () => {
@@ -29,6 +30,7 @@ describe('AlertsService', () => {
       providers: [
         AlertsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: AmqpConnection, useValue: { publish: jest.fn() } },
       ],
     }).compile();
 
