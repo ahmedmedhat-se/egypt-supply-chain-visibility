@@ -1,0 +1,194 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Server: lint (read-only), Prisma schema validation, typecheck, unit tests
+  # ---------------------------------------------------------------------------
+  server:
+    name: Server · lint + typecheck + tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      # `npm run lint` uses --fix, which mutates files in place — run eslint
+      # read-only in CI so anything that *can* be auto-fixed still fails here.
+      - name: Lint (read-only)
+        run: npx eslint "{src,apps,libs,test}/**/*.ts"
+
+      - name: Typecheck + build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test -- --runInBand
+
+  # ---------------------------------------------------------------------------
+  # Client: lint + production build
+  # ---------------------------------------------------------------------------
+  client:
+    name: Client · lint + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck + build
+        run: npm run build
+
+  # ---------------------------------------------------------------------------
+  # Docker: make sure the server & client images actually build on PRs.
+  # The OSRM image is intentionally excluded — the Egypt extract + preprocess
+  # takes ~20-30 min per run and would dominate every PR.
+  # ---------------------------------------------------------------------------
+  docker-build:
+    name: Docker · build server & client images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # Distinct cache scopes so the two images don't thrash each other's
+      # gha cache entries on every run.
+      - name: Build server image
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          push: false
+          cache-from: type=gha,scope=server-image
+          cache-to: type=gha,scope=server-image,mode=max
+
+      - name: Build client image
+        uses: docker/build-push-action@v6
+        with:
+          context: client
+          push: false
+          cache-from: type=gha,scope=client-image
+          cache-to: type=gha,scope=client-image,mode=max
+
+  # ---------------------------------------------------------------------------
+  # E2E: boot the full NestJS AppModule against real postgres/redis/rabbitmq.
+  # OSRM_URL points at the public demo server — the e2e spec doesn't exercise
+  # routing, and building the Egypt image per-PR would be wasteful.
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: E2E · server against real infra
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: server
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: escv_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d escv_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      rabbitmq:
+        # Note: the rabbitmq image refuses RABBITMQ_DEFAULT_USER=guest, so use
+        # dedicated CI credentials.
+        image: rabbitmq:3.12-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: escv
+          RABBITMQ_DEFAULT_PASS: escv
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/escv_db
+      REDIS_HOST: localhost
+      REDIS_PORT: '6379'
+      RABBITMQ_URL: amqp://escv:escv@localhost:5672
+      OSRM_URL: https://router.project-osrm.org/route/v1/driving
+      # Keep the real secrets in repo/org secrets; these defaults satisfy Joi's
+      # minimum-length validation so the workflow runs out of the box.
+      JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET || 'ci-access-secret-0123456789abcdef0123456789abcdef' }}
+      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'ci-refresh-secret-0123456789abcdef0123456789abcdef' }}
+      COOKIE_SECRET: ${{ secrets.COOKIE_SECRET || 'ci-cookie-secret-0123456789abcdef' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Run e2e tests
+        run: npm run test:e2e -- --runInBand
