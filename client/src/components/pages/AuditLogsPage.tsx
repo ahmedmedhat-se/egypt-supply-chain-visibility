@@ -1,12 +1,9 @@
 import { useState, useMemo, useEffect, Fragment, type ReactNode } from 'react';
-import { Card } from '../ui/Card';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
 import { Pagination } from '../ui/Pagination';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
-import { EmptyState } from '../ui/EmptyState';
 import { showToast } from '../ui/Toast';
 import { useAuditLogs } from '../../hooks/useAuditLogs';
 import { useAuthStore } from '../../store/auth.store';
@@ -38,13 +35,13 @@ import {
   FaMapMarkerAlt,
   FaBuilding,
   FaUsers,
+  FaClock,
+  FaShieldAlt,
 } from 'react-icons/fa';
 import type { AuditLogEntry } from '../../types/admin.types';
 
 interface AuditLogsPageProps {
-  /** When provided the view is scoped to a single organization (org admin). */
   orgId?: string;
-  /** Page title + subtitle — caller supplies role-appropriate copy. */
   title?: string;
   subtitle?: string;
 }
@@ -52,7 +49,6 @@ interface AuditLogsPageProps {
 const PAGE_SIZE = 25;
 const EXPORT_BATCH = 100;
 
-/** Icons per audit category — used on chips and in the table. */
 const CATEGORY_ICONS: Record<string, ReactNode> = {
   auth: <FaKey className="w-3 h-3" />,
   shipment: <FaTruck className="w-3 h-3" />,
@@ -122,7 +118,6 @@ export const AuditLogsPage = ({
   title = 'Audit Logs',
   subtitle = 'Track who did what, when, and from where — with full before/after details.',
 }: AuditLogsPageProps) => {
-  // ── Filters state ────────────────────────────────────────
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -139,7 +134,6 @@ export const AuditLogsPage = ({
 
   const { user: currentUser } = useAuthStore();
 
-  // Debounce free-text search
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearch(search);
@@ -198,7 +192,6 @@ export const AuditLogsPage = ({
 
   const toggleExpand = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
 
-  // ── CSV export: fetch every page matching the current filters, then download ──
   const handleExport = async () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -302,41 +295,48 @@ export const AuditLogsPage = ({
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{title}</h1>
-          <p className="mt-1 text-[#94A3B8] dark:text-[#94A3B8]">{subtitle}</p>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-1 h-8 bg-[#2D9B6E] rounded-full" />
+            <h1 className="text-2xl font-bold text-[#0A2E4A] dark:text-white">{title}</h1>
+          </div>
+          <p className="text-[#94A3B8] dark:text-[#94A3B8] text-sm pl-4">{subtitle}</p>
         </div>
-        <Button
-          variant="outline"
+        <button
           onClick={handleExport}
           disabled={isExporting}
-          className="flex items-center gap-2"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-[#111111] border-2 border-[#E2E8F0] dark:border-[#2A2A2A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E] rounded-xl font-medium text-[#0A2E4A] dark:text-white transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isExporting ? (
-            <LoadingSpinner size="sm" />
+            <>
+              <LoadingSpinner size="sm" />
+              <span>Exporting…</span>
+            </>
           ) : (
-            <FaDownload className="w-3.5 h-3.5 text-[#2D9B6E]" />
+            <>
+              <FaDownload className="w-4 h-4 text-[#2D9B6E]" />
+              <span>Export CSV</span>
+            </>
           )}
-          {isExporting ? 'Exporting…' : 'Export CSV'}
-        </Button>
+        </button>
       </div>
 
       {/* Filter Card */}
-      <Card variant="bordered" className="p-5">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <div className="flex items-center justify-between mb-5">
           <h3 className="text-sm font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider flex items-center gap-2">
-            <FaFilter className="w-4 h-4 text-[#2D9B6E]" />
+            <div className="w-8 h-8 rounded-xl bg-[#D1FAE5] dark:bg-[#1F7A52]/30 flex items-center justify-center">
+              <FaFilter className="w-4 h-4 text-[#2D9B6E]" />
+            </div>
             Filters
           </h3>
           {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={resetFilters}
-              className="text-[#94A3B8] hover:text-[#DC2626]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#94A3B8] hover:text-[#DC2626] transition-colors duration-200 rounded-lg hover:bg-[#FEE2E2] dark:hover:bg-[#991B1B]/20"
             >
-              <FaTimes className="w-3 h-3 mr-1.5" />
+              <FaTimes className="w-3 h-3" />
               Clear all
-            </Button>
+            </button>
           )}
         </div>
 
@@ -347,7 +347,7 @@ export const AuditLogsPage = ({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search action, resource, email, IP, or agent…"
-              className="pl-11"
+              className="pl-11 dark:bg-[#0A0A0A] dark:border-[#2A2A2A]"
               aria-label="Search audit logs"
             />
           </div>
@@ -394,6 +394,7 @@ export const AuditLogsPage = ({
                 setActivePreset('');
                 setPage(1);
               }}
+              className="dark:bg-[#0A0A0A] dark:border-[#2A2A2A]"
             />
           </div>
 
@@ -409,6 +410,7 @@ export const AuditLogsPage = ({
                 setActivePreset('');
                 setPage(1);
               }}
+              className="dark:bg-[#0A0A0A] dark:border-[#2A2A2A]"
             />
           </div>
 
@@ -423,14 +425,16 @@ export const AuditLogsPage = ({
                 setPage(1);
               }}
               placeholder="e.g. 41.68.12.34"
+              className="dark:bg-[#0A0A0A] dark:border-[#2A2A2A]"
             />
           </div>
         </div>
 
         {/* Category tag chips */}
-        <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-[#E2E8F0] dark:border-[#1A3D5A]">
-          <span className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider">
-            Quick tags:
+        <div className="flex flex-wrap items-center gap-2 mt-5 pt-5 border-t border-[#E2E8F0] dark:border-[#2A2A2A]">
+          <span className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
+            <FaShieldAlt className="w-3 h-3" />
+            Categories:
           </span>
           <button
             type="button"
@@ -440,10 +444,10 @@ export const AuditLogsPage = ({
               setPage(1);
             }}
             className={cn(
-              'px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200 flex items-center gap-1.5',
+              'px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all duration-200 flex items-center gap-1.5',
               !category
-                ? 'bg-[#0A2E4A] dark:bg-[#2D9B6E] text-white border-transparent'
-                : 'bg-white dark:bg-[#1A3D5A] text-[#94A3B8] border-[#E2E8F0] dark:border-[#1A3D5A] hover:text-[#0A2E4A] dark:hover:text-white',
+                ? 'bg-[#0A2E4A] dark:bg-[#2D9B6E] text-white border-transparent shadow-sm'
+                : 'bg-white dark:bg-[#111111] text-[#94A3B8] border-[#E2E8F0] dark:border-[#2A2A2A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E] hover:text-[#0A2E4A] dark:hover:text-white'
             )}
           >
             All
@@ -458,10 +462,10 @@ export const AuditLogsPage = ({
                 setPage(1);
               }}
               className={cn(
-                'px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200 flex items-center gap-1.5',
+                'px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all duration-200 flex items-center gap-1.5',
                 category === cat.key
-                  ? 'bg-[#2D9B6E] text-white border-transparent'
-                  : 'bg-white dark:bg-[#1A3D5A] text-[#94A3B8] border-[#E2E8F0] dark:border-[#1A3D5A] hover:text-[#0A2E4A] dark:hover:text-white',
+                  ? 'bg-[#2D9B6E] text-white border-transparent shadow-sm'
+                  : 'bg-white dark:bg-[#111111] text-[#94A3B8] border-[#E2E8F0] dark:border-[#2A2A2A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E] hover:text-[#0A2E4A] dark:hover:text-white'
               )}
             >
               {CATEGORY_ICONS[cat.key]}
@@ -471,7 +475,7 @@ export const AuditLogsPage = ({
         </div>
 
         {/* My actions + date presets */}
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-4 pt-4 border-t border-[#E2E8F0] dark:border-[#1A3D5A]">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-5 pt-5 border-t border-[#E2E8F0] dark:border-[#2A2A2A]">
           <button
             type="button"
             role="switch"
@@ -480,18 +484,18 @@ export const AuditLogsPage = ({
               setMyActionsOnly((v) => !v);
               setPage(1);
             }}
-            className="flex items-center gap-2.5 group"
+            className="flex items-center gap-3 group"
           >
             <span
               className={cn(
-                'relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0',
-                myActionsOnly ? 'bg-[#2D9B6E]' : 'bg-[#CBD5E1] dark:bg-[#1A3D5A]',
+                'relative w-10 h-6 rounded-full transition-all duration-300 flex-shrink-0 shadow-inner',
+                myActionsOnly ? 'bg-[#2D9B6E]' : 'bg-[#CBD5E1] dark:bg-[#2A2A2A]'
               )}
             >
               <span
                 className={cn(
-                  'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200',
-                  myActionsOnly && 'translate-x-4',
+                  'absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-all duration-300',
+                  myActionsOnly && 'translate-x-4'
                 )}
               />
             </span>
@@ -501,8 +505,9 @@ export const AuditLogsPage = ({
             </span>
           </button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-[#94A3B8] uppercase tracking-wider flex items-center gap-1.5">
+              <FaClock className="w-3 h-3" />
               Date:
             </span>
             {DATE_PRESETS.map((preset) => {
@@ -517,10 +522,10 @@ export const AuditLogsPage = ({
                     setPage(1);
                   }}
                   className={cn(
-                    'px-2.5 py-1 rounded-full text-xs font-medium border transition-all duration-200',
+                    'px-3 py-1 rounded-full text-xs font-medium border-2 transition-all duration-200',
                     isActive
-                      ? 'bg-[#0A2E4A] dark:bg-[#2D9B6E] text-white border-transparent'
-                      : 'bg-white dark:bg-[#1A3D5A] text-[#94A3B8] border-[#E2E8F0] dark:border-[#1A3D5A] hover:text-[#0A2E4A] dark:hover:text-white',
+                      ? 'bg-[#0A2E4A] dark:bg-[#2D9B6E] text-white border-transparent shadow-sm'
+                      : 'bg-white dark:bg-[#111111] text-[#94A3B8] border-[#E2E8F0] dark:border-[#2A2A2A] hover:border-[#2D9B6E] dark:hover:border-[#2D9B6E] hover:text-[#0A2E4A] dark:hover:text-white'
                   )}
                 >
                   {preset.label}
@@ -529,52 +534,66 @@ export const AuditLogsPage = ({
             })}
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Results */}
       {isLoading ? (
         <AuditTableSkeleton />
       ) : isError ? (
-        <Card variant="bordered" className="p-12 text-center text-[#DC2626]">
-          Failed to load audit logs. Please try again.
-        </Card>
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-12 text-center shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-[#FEE2E2] dark:bg-[#991B1B]/30 flex items-center justify-center mx-auto mb-4">
+            <FaTimes className="w-8 h-8 text-[#DC2626]" />
+          </div>
+          <p className="text-[#DC2626] font-medium">Failed to load audit logs</p>
+          <p className="text-sm text-[#94A3B8] mt-1">Please try again later</p>
+        </div>
       ) : logs.length === 0 ? (
-        <Card variant="bordered">
-          <EmptyState
-            icon={FaHistory}
-            title="No audit logs found"
-            description={
-              hasActiveFilters
-                ? 'No entries match your filters. Try widening the search or clearing some filters.'
-                : 'Nothing has been logged yet. Actions across the platform will appear here.'
-            }
-            action={
-              hasActiveFilters ? (
-                <Button variant="outline" onClick={resetFilters}>
-                  Clear filters
-                </Button>
-              ) : undefined
-            }
-          />
-        </Card>
+        <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] p-12 text-center shadow-sm">
+          <div className="w-20 h-20 rounded-full bg-[#E8F0F8] dark:bg-[#1A1A1A] flex items-center justify-center mx-auto mb-4">
+            <FaHistory className="w-10 h-10 text-[#94A3B8]" />
+          </div>
+          <h3 className="text-lg font-bold text-[#0A2E4A] dark:text-white mb-2">No audit logs found</h3>
+          <p className="text-[#94A3B8] dark:text-[#94A3B8] text-sm max-w-md mx-auto">
+            {hasActiveFilters
+              ? 'No entries match your filters. Try widening the search or clearing some filters.'
+              : 'Nothing has been logged yet. Actions across the platform will appear here.'}
+          </p>
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#2D9B6E] hover:bg-[#1F7A52] text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-[#2D9B6E]/20 hover:shadow-xl hover:shadow-[#2D9B6E]/30"
+            >
+              <FaTimes className="w-4 h-4" />
+              Clear filters
+            </button>
+          )}
+        </div>
       ) : (
         <>
+          {/* Results count */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-[#94A3B8] dark:text-[#94A3B8]">
+              Showing <span className="font-medium text-[#0A2E4A] dark:text-white">{logs.length}</span> of{' '}
+              <span className="font-medium text-[#0A2E4A] dark:text-white">{meta?.totalItems}</span> entries
+            </p>
+          </div>
+
           {/* Table */}
-          <Card variant="bordered" className="overflow-hidden">
+          <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wider bg-[#F8FAFC] dark:bg-[#0B2238]">
-                    <th className="px-4 py-3">Action</th>
-                    <th className="px-4 py-3">Resource</th>
-                    <th className="px-4 py-3">Actor</th>
-                    <th className="px-4 py-3">Organization</th>
-                    <th className="px-4 py-3 hidden lg:table-cell">IP</th>
-                    <th className="px-4 py-3">When</th>
-                    <th className="px-4 py-3 w-10" />
+                  <tr className="text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wider bg-[#F8FAFC] dark:bg-[#0A0A0A] border-b border-[#E2E8F0] dark:border-[#2A2A2A]">
+                    <th className="px-4 py-3.5">Action</th>
+                    <th className="px-4 py-3.5">Resource</th>
+                    <th className="px-4 py-3.5">Actor</th>
+                    <th className="px-4 py-3.5 hidden lg:table-cell">Organization</th>
+                    <th className="px-4 py-3.5 hidden xl:table-cell">IP</th>
+                    <th className="px-4 py-3.5">When</th>
+                    <th className="px-4 py-3.5 w-10" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#1A3D5A]">
+                <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2A]">
                   {logs.map((log) => {
                     const cat = categoryForAction(log.audit_action);
                     const expanded = expandedId === log.audit_log_id;
@@ -585,11 +604,14 @@ export const AuditLogsPage = ({
                         <tr
                           onClick={() => hasDiff && toggleExpand(log.audit_log_id)}
                           className={cn(
-                            'hover:bg-[#F8FAFC] dark:hover:bg-[#0B2238] transition-colors',
+                            'transition-colors duration-150',
                             hasDiff && 'cursor-pointer',
+                            expanded
+                              ? 'bg-[#F8FAFC] dark:bg-[#1A1A1A]'
+                              : 'hover:bg-[#F8FAFC] dark:hover:bg-[#1A1A1A]'
                           )}
                         >
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3.5">
                             <div className="flex flex-col gap-1">
                               <Badge
                                 variant={cat?.badge ?? 'default'}
@@ -611,24 +633,24 @@ export const AuditLogsPage = ({
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="text-[#1A2A3A] dark:text-white capitalize">
+                          <td className="px-4 py-3.5">
+                            <div className="text-[#1A2A3A] dark:text-white capitalize font-medium">
                               {log.audit_resource_type}
                             </div>
                             {log.audit_resource_id && (
-                              <div className="text-xs text-[#94A3B8] font-mono truncate max-w-[140px]">
+                              <div className="text-xs text-[#94A3B8] font-mono truncate max-w-[140px] mt-0.5">
                                 {log.audit_resource_id}
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3.5">
                             {log.user ? (
                               <div className="flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-full bg-[#E8F0F8] dark:bg-[#1A3D5A] flex items-center justify-center flex-shrink-0">
-                                  <FaUser className="w-2.5 h-2.5 text-[#94A3B8]" />
-                                </span>
+                                <div className="w-8 h-8 rounded-full bg-[#E8F0F8] dark:bg-[#1A1A1A] flex items-center justify-center flex-shrink-0">
+                                  <FaUser className="w-3.5 h-3.5 text-[#94A3B8]" />
+                                </div>
                                 <div className="min-w-0">
-                                  <div className="text-[#1A2A3A] dark:text-white truncate max-w-[160px]">
+                                  <div className="text-[#1A2A3A] dark:text-white truncate max-w-[160px] font-medium">
                                     {log.user.user_first_name} {log.user.user_last_name}
                                   </div>
                                   <div className="text-xs text-[#94A3B8] truncate max-w-[160px]">
@@ -640,11 +662,11 @@ export const AuditLogsPage = ({
                               <span className="text-xs text-[#94A3B8]">System / Anonymous</span>
                             )}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3.5 hidden lg:table-cell">
                             {log.organization ? (
                               <div className="flex items-center gap-1.5 text-[#1A2A3A] dark:text-white">
                                 <FaGlobe className="w-3 h-3 text-[#94A3B8]" />
-                                <span className="truncate max-w-[140px]">
+                                <span className="truncate max-w-[140px] font-medium">
                                   {log.organization.organization_name}
                                 </span>
                               </div>
@@ -652,17 +674,22 @@ export const AuditLogsPage = ({
                               <span className="text-xs text-[#94A3B8]">—</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 hidden lg:table-cell">
-                            <span className="text-xs font-mono text-[#94A3B8]">
+                          <td className="px-4 py-3.5 hidden xl:table-cell">
+                            <span className="text-xs font-mono text-[#94A3B8] bg-[#E8F0F8] dark:bg-[#1A1A1A] px-2 py-0.5 rounded">
                               {log.audit_ip_address ?? '—'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-[#94A3B8] whitespace-nowrap">
+                          <td className="px-4 py-3.5 text-xs text-[#94A3B8] whitespace-nowrap">
                             {formatDate(log.audit_performed_at)}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-3.5">
                             {hasDiff && (
-                              <span className="text-[#94A3B8]">
+                              <span className={cn(
+                                'flex items-center justify-center w-6 h-6 rounded-lg transition-colors duration-200',
+                                expanded
+                                  ? 'bg-[#2D9B6E]/10 text-[#2D9B6E]'
+                                  : 'text-[#94A3B8] hover:bg-[#E8F0F8] dark:hover:bg-[#1A1A1A]'
+                              )}>
                                 {expanded ? (
                                   <FaChevronUp className="w-3 h-3" />
                                 ) : (
@@ -673,7 +700,7 @@ export const AuditLogsPage = ({
                           </td>
                         </tr>
                         {expanded && hasDiff && (
-                          <tr className="bg-[#F8FAFC] dark:bg-[#0B2238]">
+                          <tr className="bg-[#F8FAFC] dark:bg-[#0A0A0A]">
                             <td colSpan={7} className="px-4 py-4">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <DiffBlock
@@ -688,12 +715,13 @@ export const AuditLogsPage = ({
                                 />
                               </div>
                               {log.audit_user_agent && (
-                                <p className="mt-3 text-xs text-[#94A3B8] break-all">
-                                  <span className="font-medium uppercase tracking-wide">
-                                    User agent:{' '}
-                                  </span>
-                                  {log.audit_user_agent}
-                                </p>
+                                <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-white dark:bg-[#111111] border border-[#E2E8F0] dark:border-[#2A2A2A]">
+                                  <FaShieldAlt className="w-3.5 h-3.5 text-[#94A3B8] mt-0.5 flex-shrink-0" />
+                                  <p className="text-xs text-[#94A3B8] break-all">
+                                    <span className="font-medium uppercase tracking-wide">User agent: </span>
+                                    {log.audit_user_agent}
+                                  </p>
+                                </div>
                               )}
                             </td>
                           </tr>
@@ -706,7 +734,7 @@ export const AuditLogsPage = ({
             </div>
 
             {meta && meta.totalItems > 0 && (
-              <div className="border-t border-[#E2E8F0] dark:border-[#1A3D5A] px-4 py-3">
+              <div className="border-t border-[#E2E8F0] dark:border-[#2A2A2A] px-4 py-3 bg-[#F8FAFC] dark:bg-[#0A0A0A]">
                 <Pagination
                   page={page}
                   totalPages={meta.totalPages}
@@ -716,65 +744,64 @@ export const AuditLogsPage = ({
                 />
               </div>
             )}
-          </Card>
+          </div>
         </>
       )}
     </div>
   );
 };
 
-/** Pulsing table skeleton shown while audit logs load. */
 function AuditTableSkeleton() {
   return (
-    <Card variant="bordered" className="overflow-hidden">
+    <div className="bg-white dark:bg-[#111111] rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A2A] overflow-hidden shadow-sm">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wider bg-[#F8FAFC] dark:bg-[#0B2238]">
-              <th className="px-4 py-3">Action</th>
-              <th className="px-4 py-3">Resource</th>
-              <th className="px-4 py-3">Actor</th>
-              <th className="px-4 py-3">Organization</th>
-              <th className="px-4 py-3 hidden lg:table-cell">IP</th>
-              <th className="px-4 py-3">When</th>
-              <th className="px-4 py-3 w-10" />
+            <tr className="text-left text-xs font-semibold text-[#94A3B8] uppercase tracking-wider bg-[#F8FAFC] dark:bg-[#0A0A0A] border-b border-[#E2E8F0] dark:border-[#2A2A2A]">
+              <th className="px-4 py-3.5">Action</th>
+              <th className="px-4 py-3.5">Resource</th>
+              <th className="px-4 py-3.5">Actor</th>
+              <th className="px-4 py-3.5 hidden lg:table-cell">Organization</th>
+              <th className="px-4 py-3.5 hidden xl:table-cell">IP</th>
+              <th className="px-4 py-3.5">When</th>
+              <th className="px-4 py-3.5 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#1A3D5A]">
+          <tbody className="divide-y divide-[#E2E8F0] dark:divide-[#2A2A2A]">
             {Array.from({ length: 8 }).map((_, i) => (
               <tr key={i}>
-                <td className="px-4 py-3">
-                  <div className="h-5 w-40 rounded-full bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                <td className="px-4 py-3.5">
+                  <div className="h-5 w-40 rounded-full bg-[#E8F0F8] dark:bg-[#1A1A1A] animate-pulse" />
                 </td>
-                <td className="px-4 py-3">
-                  <div className="h-4 w-24 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
-                  <div className="mt-1.5 h-3 w-32 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                <td className="px-4 py-3.5">
+                  <div className="h-4 w-24 rounded bg-[#E8F0F8] dark:bg-[#1A1A1A] animate-pulse" />
+                  <div className="mt-1.5 h-3 w-32 rounded bg-[#E8F0F8] dark:bg-[#1A1A1A] animate-pulse" />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3.5">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                    <div className="w-8 h-8 rounded-full bg-[#E8F0F8] dark:bg-[#1A1A1A] animate-pulse" />
                     <div className="space-y-1.5">
-                      <div className="h-3 w-28 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
-                      <div className="h-3 w-36 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                      <div className="h-3 w-28 rounded bg-[#E8F0F8] dark:bg-[#1A1A1A] animate-pulse" />
+                      <div className="h-3 w-36 rounded bg-[#E8F0F8] dark:bg-[#1A1A1A] animate-pulse" />
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="h-4 w-32 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                <td className="px-4 py-3.5 hidden lg:table-cell">
+                  <div className="h-4 w-32 rounded bg-[#E8F0F8] dark:bg-[#1A1A1A] animate-pulse" />
                 </td>
-                <td className="px-4 py-3 hidden lg:table-cell">
-                  <div className="h-3 w-20 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                <td className="px-4 py-3.5 hidden xl:table-cell">
+                  <div className="h-3 w-20 rounded bg-[#E8F0F8] dark:bg-[#1A1A1A] animate-pulse" />
                 </td>
-                <td className="px-4 py-3">
-                  <div className="h-3 w-24 rounded bg-[#E8F0F8] dark:bg-[#1A3D5A] animate-pulse" />
+                <td className="px-4 py-3.5">
+                  <div className="h-3 w-24 rounded bg-[#E8F0F8] dark:bg-[#1A1A1A] animate-pulse" />
                 </td>
-                <td className="px-4 py-3" />
+                <td className="px-4 py-3.5" />
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </Card>
+    </div>
   );
 }
 
@@ -788,14 +815,14 @@ function DiffBlock({
   emptyText: string;
 }) {
   return (
-    <div className="rounded-lg border border-[#E2E8F0] dark:border-[#1A3D5A] overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-[#1A3D5A] border-b border-[#E2E8F0] dark:border-[#1A3D5A]">
-        <FaCodeBranch className="w-3 h-3 text-[#94A3B8]" />
+    <div className="rounded-xl border border-[#E2E8F0] dark:border-[#2A2A2A] overflow-hidden bg-white dark:bg-[#111111]">
+      <div className="flex items-center gap-2 px-3.5 py-2.5 bg-[#F8FAFC] dark:bg-[#0A0A0A] border-b border-[#E2E8F0] dark:border-[#2A2A2A]">
+        <FaCodeBranch className="w-3.5 h-3.5 text-[#94A3B8]" />
         <span className="text-xs font-semibold text-[#0A2E4A] dark:text-white uppercase tracking-wider">
           {label}
         </span>
       </div>
-      <pre className="px-3 py-2 text-xs text-[#1A2A3A] dark:text-[#E2E8F0] font-mono overflow-x-auto max-h-48 whitespace-pre-wrap break-all">
+      <pre className="px-3.5 py-3 text-xs text-[#1A2A3A] dark:text-[#E2E8F0] font-mono overflow-x-auto max-h-48 whitespace-pre-wrap break-all bg-white dark:bg-[#111111]">
         {value != null ? prettyJson(value) : emptyText}
       </pre>
     </div>
