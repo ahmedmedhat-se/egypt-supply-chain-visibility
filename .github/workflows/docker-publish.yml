@@ -1,0 +1,137 @@
+name: Publish images
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      images:
+        description: 'Images to publish (comma-separated): app, osrm. Empty = all.'
+        required: false
+        default: ''
+        type: string
+
+# Don't cancel an in-progress publish — a racing push must not interrupt an
+# image that is already half-uploaded. Serialize per-ref instead.
+concurrency:
+  group: publish-${{ github.ref }}
+
+# Publishing writes to the GitHub Container Registry, so this workflow needs
+# packages: write. ghcr.io images inherit the repo's visibility (public repo
+# → public images, private repo → private images).
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # server + client app images → ghcr.io/<owner>/escv-server, escv-client
+  # Tags: main + <git-sha> on main pushes; vX.Y.Z + latest on version tags.
+  # ---------------------------------------------------------------------------
+  app:
+    name: Build & push server + client
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Push → always; manual run → only when requested (or when nothing is
+    # specified, which means "all").
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.images == '' || contains(github.event.inputs.images, 'app') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Server image tags
+        id: meta-server
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner.toLowerCase() }}/escv-server
+          tags: |
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,format=long
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build & push server image
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          push: true
+          tags: ${{ steps.meta-server.outputs.tags }}
+          labels: ${{ steps.meta-server.outputs.labels }}
+          cache-from: type=gha,scope=server-image
+          cache-to: type=gha,scope=server-image,mode=max
+
+      - name: Client image tags
+        id: meta-client
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner.toLowerCase() }}/escv-client
+          tags: |
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,format=long
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Build & push client image
+        uses: docker/build-push-action@v6
+        with:
+          context: client
+          push: true
+          tags: ${{ steps.meta-client.outputs.tags }}
+          labels: ${{ steps.meta-client.outputs.labels }}
+          cache-from: type=gha,scope=client-image
+          cache-to: type=gha,scope=client-image,mode=max
+
+  # ---------------------------------------------------------------------------
+  # OSRM image → ghcr.io/<owner>/escv-osrm. The Egypt extract + MLD preprocess
+  # (~15-30 min) are baked in. Same tagging scheme as the app images, plus a
+  # `nightly` tag when triggered manually. Data freshness comes from the
+  # separate osrm-nightly.yml cron.
+  # ---------------------------------------------------------------------------
+  osrm:
+    name: Build & push OSRM image
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.images == '' || contains(github.event.inputs.images, 'osrm') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: OSRM image tags
+        id: meta-osrm
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner.toLowerCase() }}/escv-osrm
+          tags: |
+            type=raw,value=main,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,format=long
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=nightly,enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Build & push OSRM image
+        uses: docker/build-push-action@v6
+        with:
+          context: osrm
+          push: true
+          tags: ${{ steps.meta-osrm.outputs.tags }}
+          labels: ${{ steps.meta-osrm.outputs.labels }}
+          build-args: |
+            REGION=egypt
+            PBF_URL=https://download.geofabrik.de/africa/egypt-latest.osm.pbf
+          cache-from: type=gha,scope=osrm-image
+          cache-to: type=gha,scope=osrm-image,mode=max

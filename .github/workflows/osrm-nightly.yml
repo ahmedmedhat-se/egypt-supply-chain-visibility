@@ -1,0 +1,54 @@
+name: OSRM nightly refresh
+
+on:
+  schedule:
+    # 03:00 UTC = 05:00 Cairo, every day. Geofabrik publishes a fresh Egypt
+    # extract nightly, so this keeps the routing data current without
+    # rebuilding the ~30 min OSRM image on every code push.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  osrm-nightly:
+    name: Rebuild Egypt OSRM image
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Nightly tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner.toLowerCase() }}/escv-osrm
+          # `nightly` is always tagged (cron AND manual runs — type=schedule
+          # tags only exist on scheduled events, so a manual run would
+          # otherwise produce no tags and fail); the dated tag is cron-only.
+          tags: |
+            type=raw,value=nightly
+            type=schedule,pattern=nightly-{{date 'YYYYMMDD'}}
+
+      - name: Build & push nightly OSRM image
+        uses: docker/build-push-action@v6
+        with:
+          context: osrm
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            REGION=egypt
+            PBF_URL=https://download.geofabrik.de/africa/egypt-latest.osm.pbf
+          cache-from: type=gha,scope=osrm-image
+          cache-to: type=gha,scope=osrm-image,mode=max
