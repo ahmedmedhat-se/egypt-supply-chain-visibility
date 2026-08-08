@@ -5,14 +5,14 @@ export const useTheme = () => {
   const { theme, toggleTheme, setTheme } = useThemeStore();
 
   useEffect(() => {
-    console.log('Theme changed to:', theme);
     const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-      console.log('Added dark class');
+    root.classList.remove('light', 'dark');
+    
+    if (theme === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.classList.add(systemTheme);
     } else {
-      root.classList.remove('dark');
-      console.log('Removed dark class');
+      root.classList.add(theme);
     }
   }, [theme]);
 
