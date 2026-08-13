@@ -1,8 +1,9 @@
 import { Controller, Get, Patch, Param, Query } from '@nestjs/common';
 import { AlertsService } from './alerts.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import { QueryAlertsDto } from './dto/alerts.dto';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Alerts')
 @ApiBearerAuth()
@@ -32,5 +33,14 @@ export class AlertsController {
   @ApiOperation({ summary: 'Mark specific alert as read' })
   async markAsRead(@CurrentUser() user: any, @Param('id') id: string) {
     return this.alertsService.markAsRead(user.sub, id);
+  }
+
+  @Patch(':id/resolve')
+  @Roles('admin', 'super_admin')
+  @ApiOperation({ summary: 'Mark an alert as resolved (org-scoped)' })
+  @ApiResponse({ status: 200, description: 'Alert resolved.' })
+  @ApiResponse({ status: 404, description: 'Alert not found.' })
+  async resolve(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.alertsService.resolve(user, id);
   }
 }

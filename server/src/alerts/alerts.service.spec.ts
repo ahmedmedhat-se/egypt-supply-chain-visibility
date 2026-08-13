@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AlertsService } from './alerts.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
 describe('AlertsService', () => {
   let service: AlertsService;
@@ -19,8 +19,13 @@ describe('AlertsService', () => {
     },
     alert: {
       create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
     },
     shipment: {
+      findUnique: jest.fn(),
+    },
+    user: {
       findUnique: jest.fn(),
     },
   };
@@ -119,6 +124,79 @@ describe('AlertsService', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('resolve', () => {
+    it('should resolve any alert as super_admin', async () => {
+      mockPrisma.alert.findUnique.mockResolvedValue({
+        alert_id: 'alert-1',
+        shipment: {
+          shipper_organization_id: 'org-1',
+          carrier_organization_id: null,
+        },
+      });
+      mockPrisma.alert.update.mockResolvedValue({
+        alert_id: 'alert-1',
+        alert_is_resolved: true,
+      });
+
+      const result = await service.resolve(
+        { sub: 'super-1', role: 'super_admin' },
+        'alert-1',
+      );
+
+      expect(result.success).toBe(true);
+      expect(mockPrisma.alert.update).toHaveBeenCalledWith({
+        where: { alert_id: 'alert-1' },
+        data: expect.objectContaining({ alert_is_resolved: true }),
+      });
+    });
+
+    it('should allow an org admin to resolve an alert for their org shipment', async () => {
+      mockPrisma.alert.findUnique.mockResolvedValue({
+        alert_id: 'alert-2',
+        shipment: {
+          shipper_organization_id: 'org-1',
+          carrier_organization_id: null,
+        },
+      });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        organization_id: 'org-1',
+      });
+      mockPrisma.alert.update.mockResolvedValue({ alert_id: 'alert-2' });
+
+      const result = await service.resolve(
+        { sub: 'admin-1', role: 'admin' },
+        'alert-2',
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should forbid an admin from another organization', async () => {
+      mockPrisma.alert.findUnique.mockResolvedValue({
+        alert_id: 'alert-3',
+        shipment: {
+          shipper_organization_id: 'org-1',
+          carrier_organization_id: null,
+        },
+      });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        organization_id: 'org-9',
+      });
+
+      await expect(
+        service.resolve({ sub: 'admin-2', role: 'admin' }, 'alert-3'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw NotFoundException if alert not found', async () => {
+      mockPrisma.alert.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.resolve({ sub: 'super-1', role: 'super_admin' }, 'missing'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

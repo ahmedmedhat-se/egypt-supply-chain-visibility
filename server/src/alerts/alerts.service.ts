@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueryAlertsDto } from './dto/alerts.dto';
@@ -114,6 +119,56 @@ export class AlertsService {
       where: { user_id: userId, is_read: false },
     });
     return { count };
+  }
+
+  /**
+   * Mark an alert as resolved (org-scoped admin, or super_admin). Idempotent —
+   * resolving an already-resolved alert is a no-op.
+   */
+  async resolve(user: { sub: string; role: string }, alertId: string) {
+    const alert = await this.prisma.alert.findUnique({
+      where: { alert_id: alertId },
+      include: {
+        shipment: {
+          select: {
+            shipper_organization_id: true,
+            carrier_organization_id: true,
+          },
+        },
+      },
+    });
+
+    if (!alert) {
+      throw new NotFoundException('Alert not found');
+    }
+
+    // Super admins may resolve anything; org admins only alerts tied to their
+    // own organization's shipments.
+    if (user.role !== 'super_admin') {
+      const dbUser = await this.prisma.user.findUnique({
+        where: { user_id: user.sub },
+        select: { organization_id: true },
+      });
+
+      const isInvolvedOrg =
+        !!dbUser &&
+        !!alert.shipment &&
+        (alert.shipment.shipper_organization_id === dbUser.organization_id ||
+          alert.shipment.carrier_organization_id === dbUser.organization_id);
+
+      if (!isInvolvedOrg) {
+        throw new ForbiddenException(
+          'You do not have permission to resolve this alert',
+        );
+      }
+    }
+
+    const updated = await this.prisma.alert.update({
+      where: { alert_id: alertId },
+      data: { alert_is_resolved: true, alert_resolved_at: new Date() },
+    });
+
+    return { success: true, data: updated };
   }
 
   // Internal method to create an alert and distribute to users
