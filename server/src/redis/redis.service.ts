@@ -31,6 +31,10 @@ export class RedisService implements OnModuleDestroy {
     return this.redis.expire(key, seconds);
   }
 
+  async ping(): Promise<string> {
+    return this.redis.ping();
+  }
+
   // ---------- Hashes ----------
   async hget(key: string, field: string): Promise<string | null> {
     return this.redis.hget(key, field);

@@ -27,6 +27,7 @@ import { RequestContextInterceptor } from './common/context/request-context.inte
 import { AlertsModule } from './alerts/alerts.module';
 import { ReportsModule } from './reports/reports.module';
 import { MapModule } from './map/map.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { MapModule } from './map/map.module';
     AlertsModule,
     ReportsModule,
     MapModule,
+    HealthModule,
     // The scheduler must be registered exactly once, at the root.
     ScheduleModule.forRoot(),
   ],
