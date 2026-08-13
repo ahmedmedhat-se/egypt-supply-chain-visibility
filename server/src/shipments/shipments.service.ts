@@ -1488,8 +1488,65 @@ export class ShipmentsService {
     return where;
   }
 
+  /**
+   * Full append-only timeline of a shipment's events, newest first.
+   * Visibility follows the same rules as GET /shipments/:id.
+   */
+  async getEvents(user: RequestUser, id: string, page = 1, limit = 10) {
+    const shipment = await this.prisma.shipment.findUnique({
+      where: { shipment_id: id },
+      select: {
+        shipment_id: true,
+        shipper_organization_id: true,
+        carrier_organization_id: true,
+        carrier_user_id: true,
+      },
+    });
+
+    if (!shipment) {
+      throw new NotFoundException('Shipment not found');
+    }
+
+    await this.enforceViewAccess(user, shipment);
+
+    const skip = (page - 1) * limit;
+    const [events, totalItems] = await Promise.all([
+      this.prisma.shipmentEvent.findMany({
+        where: { shipment_id: id },
+        orderBy: { event_occurred_at: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          checkpoint: {
+            select: {
+              checkpoint_id: true,
+              checkpoint_name: true,
+              checkpoint_code: true,
+              checkpoint_city: true,
+              checkpoint_type: true,
+            },
+          },
+          recorded_by: {
+            select: {
+              user_id: true,
+              user_first_name: true,
+              user_last_name: true,
+            },
+          },
+        },
+      }),
+      this.prisma.shipmentEvent.count({ where: { shipment_id: id } }),
+    ]);
+
+    return {
+      data: events,
+      meta: buildPaginationMeta(page, limit, totalItems),
+    };
+  }
+
   private async enforceViewAccess(user: RequestUser, shipment: any) {
     if (user.role === 'regulator') return;
+    if (user.role === 'super_admin') return;
 
     const dbUser = await this.prisma.user.findUnique({
       where: { user_id: user.sub },

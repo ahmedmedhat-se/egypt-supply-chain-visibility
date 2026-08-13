@@ -16,6 +16,7 @@ import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { UpdateShipmentStatusDto } from './dto/update-shipment-status.dto';
 import { QueryShipmentDto } from './dto/query-shipment.dto';
+import { PaginationDto } from '../common/dto/pagination.dto';
 import { AssignRouteDto } from './dto/assign-route.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -51,6 +52,21 @@ export class ShipmentsController {
   @ApiResponse({ status: 404, description: 'Shipment not found.' })
   async findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.shipmentsService.findOne(user, id);
+  }
+
+  @Get(':id/events')
+  @ApiOperation({ summary: 'Full append-only event timeline for a shipment' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns paginated shipment events.',
+  })
+  @ApiResponse({ status: 404, description: 'Shipment not found.' })
+  async getEvents(
+    @Param('id') id: string,
+    @Query() query: PaginationDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.shipmentsService.getEvents(user, id, query.page, query.limit);
   }
 
   @Put(':id')
