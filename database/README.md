@@ -1,340 +1,132 @@
 # Egypt Supply Chain Visibility (ESCV) Database
 
-> Production-grade PostgreSQL database designed for the Egypt Supply Chain Visibility (ESCV) platform.
+> PostgreSQL schema for the Egypt Supply Chain Visibility (ESCV) platform.
 
 <div align="center">
   <img src="../docs/assets/escv-logo.png" alt="ESCV Logo" width="800" />
 </div>
 
 ---
-# Table of Contents
+
+## Table of Contents
+
 - [Overview](#overview)
-- [Database Philosophy](#database-philosophy)
+- [Source of Truth](#source-of-truth)
 - [Design Principles](#design-principles)
 - [Why PostgreSQL?](#why-postgresql)
-- [Entity Relationship Diagram (ERD)](#entity-relationship-diagram-erd)
 - [Naming Conventions](#naming-conventions)
-  - [Tables](#tables)
-  - [Columns](#columns)
-  - [Foreign Keys](#foreign-keys)
 - [Primary Key Strategy](#primary-key-strategy)
-- [Normalization Strategy](#normalization-strategy)
-- [Database Modules](#database-modules)
-  - [Authentication](#authentication)
-  - [Organizations](#organizations)
-  - [Shipment Management](#shipment-management)
-  - [Tracking](#tracking)
-  - [Routes](#routes)
-  - [Checkpoints](#checkpoints)
-  - [Alerts](#alerts)
-  - [Audit Logs](#audit-logs)
+- [Roles](#roles)
 - [Table Overview](#table-overview)
 - [Constraints](#constraints)
 - [Indexing Strategy](#indexing-strategy)
 - [Audit Trail](#audit-trail)
 - [Soft Delete Strategy](#soft-delete-strategy)
 - [Security Considerations](#security-considerations)
-- [Future Scalability](#future-scalability)
 - [Directory Structure](#directory-structure)
 - [License](#license)
 
 ---
-# Overview
-The ESCV database is the central source of truth for the Egypt Supply Chain Visibility Platform.
 
-Its responsibility is to reliably store and maintain information about:
-- Organizations
-- Users
-- Shipments
-- Shipment Events
-- Routes
-- Checkpoints
-- Alerts
-- Audit Logs
+## Overview
 
-The schema is designed to provide a production-ready relational model that emphasizes:
+The ESCV database is the central source of truth for the platform, storing organizations, users, shipments, shipment events, routes, checkpoints, alerts, audit logs, reports, and invitations. The schema is a pragmatic, approximately-3NF relational model designed for data integrity, maintainability, and performance.
 
-- Data integrity
-- Maintainability
-- Performance
-- Scalability
-- Simplicity
+## Source of Truth
 
-The database follows modern PostgreSQL best practices while remaining suitable for a university capstone project.
+**The runtime schema is owned by Prisma** — `server/prisma/schema.prisma` plus the migrations in `server/prisma/migrations/`. All tables are created and evolved through Prisma migrations.
 
----
-# Database Philosophy
-The database follows one simple principle:
-> Store business data once. Reference it everywhere.
+The `schema.sql` file in this folder is a **legacy design artifact** kept for reference (ERD/design review). It has drifted from the Prisma schema: it still defines a `refresh_token` table (the app now stores sessions in Redis), lacks `shipment.carrier_user_id`, the `invitation` table, and `audit_log.organization_id`, and marks `shipment.created_by_user_id` as NOT NULL (it is nullable in Prisma). **Treat `server/prisma/schema.prisma` as authoritative.**
 
-The schema intentionally avoids:
-- Duplicate data
-- Unnecessary complexity
-- Over-normalization
-- Deep inheritance hierarchies
-- Excessive lookup tables
+## Design Principles
 
-Instead, it embraces:
-- Clear relationships
-- Explicit naming
-- Readable schemas
-- Maintainable structures
-- Practical normalization (approximately Third Normal Form)
+- Store business data once; reference it everywhere (no duplication).
+- Explicit relationships, consistent naming, readable schemas.
+- Practical normalization — approximately Third Normal Form, no over-normalization.
+- Data integrity enforced at the database level (PKs, FKs, UNIQUE, CHECK).
 
----
-# Design Principles
-The database was designed according to the following engineering principles:
+## Why PostgreSQL?
 
-- Keep It Simple (KISS)
-- Separation of Concerns
-- Data Integrity
-- Explicit Relationships
-- Consistent Naming
-- High Readability
-- Production Readiness
-- Easy Integration with NestJS
+Enterprise-grade relational capabilities while staying open source: ACID compliance, advanced indexing, native UUID support, JSONB, strong concurrency, and excellent Prisma integration.
 
----
-# Why PostgreSQL?
-ESCV uses PostgreSQL because it provides enterprise-grade relational database capabilities while remaining open source.
+## Naming Conventions
 
-Advantages include:
-- Excellent relational integrity
-- ACID compliance
-- Advanced indexing
-- Native UUID support
-- JSON support
-- Strong concurrency
-- High performance
-- Mature ecosystem
-- Excellent integration with Prisma
+- **Tables** use singular snake_case names mapped from Prisma models: `organization`, `user`, `shipment`, `shipment_event`, `checkpoint`, `route`, `route_checkpoint`, `alert`, `user_alert`, `audit_log`, `report`, `invitation`.
+- **Columns** are descriptive and prefixed by their table (`shipment_status`, `checkpoint_name`, `alert_severity`). Generic names like bare `id`, `name`, `status` are avoided.
+- **Foreign keys** reference the owning table (`organization_id`, `shipment_id`, `route_id`, `checkpoint_id`).
 
----
-# Entity Relationship Diagram (ERD)
-Insert the latest ERD image below.
+## Primary Key Strategy
 
-![ESCV ERD](./erd/escv-database-erd.png)
+Every table uses a **UUID primary key** — `gen_random_uuid()` (UUID v4) via the `pgcrypto` extension, expressed in Prisma as `@default(dbgenerated("gen_random_uuid()")) @db.Uuid`.
 
----
-# Naming Conventions
-The schema follows consistent enterprise naming conventions.
+UUIDs are globally unique, safe for distributed systems, and avoid enumerable sequential IDs.
 
-## Tables
-Tables use singular names.
-Example:
-```js
-organization
-user
-shipment
-shipment_event
-checkpoint
-alert
-route
-```
+## Roles
 
-## Columns
-Columns are descriptive.
-Examples:
-```js
-user_id
-organization_id
-shipment_reference_number
-shipment_status
-checkpoint_name
-route_origin
-created_at
-updated_at
-```
+The `user.user_role` column is constrained by a CHECK to five roles:
 
-Avoid generic names such as:
-```js
-id
-name
-status
-date
-```
-
-## Foreign Keys
-Every foreign key uses the referenced table name.
-Examples:
-```js
-organization_id
-shipment_id
-carrier_id
-route_id
-```
-
----
-# Primary Key Strategy
-Every table uses UUID Version 7 as its primary key.
-Reasons:
-- Globally unique identifiers
-- Safer for distributed systems
-- Better scalability
-- Better index locality than UUIDv4
-- Suitable for future microservice migration
-
-Example:
 ```sql
-shipment_id UUID PRIMARY KEY
+CHECK (user_role IN ('super_admin', 'admin', 'shipper', 'carrier', 'regulator'))
 ```
 
----
-# Normalization Strategy
-The database follows approximately Third Normal Form (3NF).
-Goals:
-- Eliminate duplicate data
-- Maintain referential integrity
-- Keep queries simple
-- Reduce update anomalies
+Organization types follow a similar pattern: `shipper`, `carrier`, `regulator`, `government`, `admin`.
 
-The schema intentionally avoids excessive normalization that would unnecessarily increase query complexity.
+## Table Overview
 
----
-# Database Modules
-The database is divided into logical business domains.
-
-## Authentication
-Stores platform users and credentials.
-
-## Organizations
-Stores companies, government agencies, and logistics providers.
-
-## Shipment Management
-Stores shipment metadata and ownership.
-
-## Tracking
-Stores shipment movement history.
-
-## Routes
-Stores transportation routes.
-
-## Checkpoints
-Stores ports, warehouses, customs facilities, and delivery locations.
-
-## Alerts
-Stores generated notifications.
-
-## Audit Logs
-Stores append-only platform activity for auditing purposes.
-
----
-# Table Overview
 | Table | Purpose |
-|---------|----------|
-| organization | Registered companies and authorities |
-| user | Platform users |
-| shipment | Shipment metadata |
-| shipment_event | Complete shipment timeline |
-| checkpoint | Physical logistics locations |
-| route | Transportation routes |
-| alert | Shipment notifications |
-| audit_log | System audit trail |
+|---|---|
+| `organization` | Companies, authorities, logistics providers |
+| `user` | Platform users with role + organization |
+| `checkpoint` | Physical logistics locations (ports, customs, warehouses, hubs, borders, depots) |
+| `route` | Transportation routes between cities |
+| `route_checkpoint` | Ordered checkpoint sequence for a route (unique per `route_id, sequence_order`) |
+| `shipment` | Shipment metadata, ownership, status, current location/checkpoint |
+| `shipment_event` | Append-only timeline of every shipment state change |
+| `alert` | Generated notifications (with severity, target role, resolved flag) |
+| `user_alert` | Per-user alert delivery + read state (unique per `alert_id, user_id`) |
+| `audit_log` | Append-only platform activity trail |
+| `report` | Async report requests and their status |
+| `invitation` | Pending/expired/accepted membership invitations |
 
----
-# Constraints
-The schema enforces data integrity through:
-- Primary Keys
-- Foreign Keys
-- NOT NULL constraints
-- UNIQUE constraints
-- CHECK constraints
-- Default values
+## Constraints
 
-This ensures invalid business data cannot be inserted into the system.
+Integrity is enforced with primary keys, foreign keys, NOT NULL, UNIQUE (e.g. `user_email`, `shipment_reference_number`, `checkpoint_code`, `route_code`, `invitation.token`), CHECK constraints (roles, statuses, severities, checkpoint types), and column defaults. Invalid business data cannot be inserted.
 
----
-# Indexing Strategy
-Indexes are created only where they provide measurable value.
+The shipment status CHECK covers: `draft`, `confirmed`, `picked_up`, `in_transit`, `at_checkpoint`, `customs_hold`, `customs_cleared`, `out_for_delivery`, `delivered`, `cancelled`, `delayed`. Legal **transitions** are enforced in the application state machine (`server/src/shipments/shipments.constants.ts`).
 
-Typical indexed columns include:
-- Primary Keys
-- Foreign Keys
-- Shipment Reference Number
-- User Email
-- Shipment Status
-- Created At
+## Indexing Strategy
 
-Indexes are selected to optimize:
-- Shipment lookup
-- Dashboard queries
-- Authentication
-- Timeline retrieval
+Indexes are created where they provide measurable value: primary/foreign keys, `shipment_reference_number`, `user_email`, `shipment_status` (including composite `(shipment_status, shipper_organization_id)` and `(shipment_status, shipment_estimated_arrival_at)` for the delay scanner), `shipment_created_at DESC`, `event_occurred_at DESC` (timeline), `route_origin_city + route_destination_city`, `user_alert (user_id, is_read)`, and `audit_performed_at DESC`.
 
----
-# Audit Trail
-Shipment history is append-only.
-Existing events are never modified.
-Every shipment state transition creates a new Shipment Event.
+## Audit Trail
 
-Benefits:
-- Complete history
-- Regulatory compliance
-- Easier debugging
-- Historical analytics
-- Full traceability
+Shipment history is append-only — every state transition creates a new `shipment_event`; existing events are never modified. Platform activity is recorded in `audit_log` (actor, organization, action, resource, old/new values, IP, user agent). Audit data is read-only through the API (`/api/admin/audit-logs`, `/api/organizations/:orgId/audit-logs`).
 
----
-# Soft Delete Strategy
-Business records should generally be archived rather than permanently removed.
+## Soft Delete Strategy
 
-Recommended strategy:
-```sql
-deleted_at TIMESTAMPTZ NULL
-```
+Business records are archived rather than destroyed: `organization_is_active`, `user_is_active`, `checkpoint_is_active`, `route_is_active`, and `alert_is_resolved` flags, toggled through the `*/deactivate`, `*/activate`, and `*/resolve` endpoints. Critical entities such as shipments are never permanently deleted (only `draft` shipments can be removed).
 
-This allows:
-- Data recovery
-- Historical reporting
-- Audit preservation
+## Security Considerations
 
-Critical business entities such as shipments should never be permanently deleted.
+- Passwords are stored only as bcrypt hashes (`user_password_hash`).
+- Refresh tokens are **not** stored in the database — they live in Redis as rotating families with reuse detection.
+- Referential integrity, unique accounts/emails, and strict CHECK constraints prevent malformed data.
+- UUID identifiers avoid enumerable IDs.
 
----
-# Security Considerations
-The database contributes to platform security by enforcing:
-- Referential integrity
-- Unique user accounts
-- Strong constraints
-- UUID identifiers
-- Minimal redundant data
+## Directory Structure
 
-Sensitive information such as passwords is stored only as secure bcrypt hashes.
-
----
-# Future Scalability
-The schema is designed to evolve alongside the platform.
-Potential future improvements include:
-- Multi-country support
-- Customs integration
-- Fleet management
-- Driver management
-- Warehouse management
-- IoT tracking devices
-- External logistics APIs
-- Advanced analytics
-
-The current relational model supports these future enhancements with minimal structural changes.
-
----
-# Directory Structure
-```js
+```text
 database/
 ├── erd/
 │   └── escv-database-erd.png
-├── schema.sql
+├── schema.sql        # Legacy design artifact — see "Source of Truth" above
 └── README.md
 ```
 
----
+The live schema lives in `server/prisma/` (`schema.prisma` + `migrations/`).
+
 ## License
-**PROPRIETARY LICENSE**  
-© 2026 Egypt Supply Chain Visibility Team. All Rights Reserved.
-This project is a university capstone project developed to demonstrate full-stack engineering skills applied to a real national infrastructure problem.
 
-This software and associated documentation are proprietary and confidential. No part of this project may be reproduced, distributed, or transmitted in any form without prior written permission from the authors.
+**PROPRIETARY LICENSE** — © 2026 Egypt Supply Chain Visibility Team. All Rights Reserved.
 
----
-<div align="center">
-  <strong>Bringing visibility to Egypt's supply chains.</strong>
-</div>
+This project is a university capstone project developed to demonstrate full-stack engineering skills applied to a real national infrastructure problem. This software and associated documentation are proprietary and confidential.

@@ -10,10 +10,12 @@
 **License:** Proprietary — All rights reserved
 
 ---
+
 ## Table of Contents
+
 - [Overview](#overview)
 - [What ESCV Does](#what-escv-does)
-- [How the System Is Structured](#how-the-system-is-structured)
+- [System Structure](#system-structure)
 - [Repository Structure](#repository-structure)
 - [Technology Stack](#technology-stack)
 - [Role-Based Access Control](#role-based-access-control)
@@ -23,229 +25,232 @@
 - [Getting Started](#getting-started)
 - [Development Workflow](#development-workflow)
 - [API Documentation](#api-documentation)
+- [CI/CD](#cicd)
 - [Project Documentation](#project-documentation)
-- [Important Configuration Notes](#important-configuration-notes)
 - [License](#license)
 
 ---
+
 ## Overview
-ESCV is a supply chain visibility platform focused on giving shippers, carriers, regulators, and administrators visibility into shipment movement across Egypt's logistics ecosystem. It was built as a university capstone project.
 
----
+ESCV is a supply chain visibility platform that gives shippers, carriers, regulators, and platform administrators real-time visibility into shipment movement across Egypt's logistics ecosystem. It was built as a university capstone project.
+
+The backend is a **NestJS modular monolith** on **Fastify** with **RabbitMQ** as the inter-module event bus, **Redis** for refresh-token/session state, a **Socket.IO** gateway for live updates, and a self-hosted **OSRM** instance for driving routes. The frontend is a **React + TypeScript** SPA with role-based dashboards and a live map.
+
 ## What ESCV Does
-Most shipment tracking in Egypt's logistics chain still depends on manual coordination — phone calls, paper forms, and disconnected spreadsheets. When a shipment is delayed or held, the people who need to know (the shipper, the carrier, the regulator) often find out late, or not at all.
 
-ESCV addresses this by giving every party a shared, real-time view of shipment state:
-- **Shippers** create shipments and track their cargo
-- **Carriers** update shipment status and location for shipments assigned to them
-- **Regulators** get a read-only, organization-wide view of shipment and checkpoint activity
-- **Administrators** manage users, organizations, and platform configuration
+Most shipment tracking in Egypt's logistics chain depends on manual coordination. ESCV gives every party a shared, real-time view of shipment state:
 
----
-## How the System Is Structured
+- **Shippers** create shipments and track their cargo through its lifecycle.
+- **Carriers** claim shipments, update status/location, and get assigned-route guidance.
+- **Regulators** get a read-only, organization-wide view of shipment and checkpoint activity.
+- **Org Admins** manage their organization's members, invitations, and audit logs.
+- **Super Admins** (platform) manage users, organizations, shipments, routes, checkpoints, and the platform-wide audit log.
+
+## System Structure
+
+```text
+Client (React SPA)
+   │  REST (axios)                    WebSocket (socket.io)
+   ▼                                       ▼
+NestJS API ─────────────────────► Socket.IO Gateway (user:/page: rooms)
+   │
+   ├── Controllers → Guards (JWT + Roles) → Pipes → Services → Prisma → PostgreSQL
+   ├── RabbitMQ event bus ("escv.events") — shipments, alerts, audit, email,
+   │   session revocation, and WebSocket fan-out all flow through it
+   ├── Redis — refresh-token families, sessions, password-reset tokens
+   ├── BullMQ-free: all async work is RabbitMQ consumers
+   └── @nestjs/schedule — midnight (Africa/Cairo) ETA-delay scanner + boot catch-up
+```
+
 ### Authentication
-The backend uses JWT-based authentication with `bcrypt` for password hashing. Access and refresh tokens are issued separately, using distinct secrets and expirations (`JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`), which are configured through environment variables rather than hardcoded.
+
+JWT-based authentication with bcrypt password hashing. Access and refresh tokens use independent secrets and expirations (`JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`). The refresh token is a random UUID delivered in a **signed, httpOnly cookie** (`path=/api/auth`) and stored in **Redis as a rotating "family"** — every refresh rotates the token, old tokens are marked consumed, and reuse is detected and revoked. Sessions can be listed and revoked (individually or all at once).
 
 ![Authentication Flow](./docs/assets/designs/authentication-flow.png)
 
----
 ### Request Handling
-The backend is a NestJS application running on Fastify. Requests pass through NestJS's standard pipeline of middleware, guards, and validation pipes (via `class-validator` / `class-transformer`) before reaching a controller. `Helmet` and `@nestjs/throttler` are used for HTTP security headers and rate limiting.
+
+Requests pass through NestJS's standard pipeline: `@fastify/helmet` security headers, the global `ThrottlerGuard` (100 req / 60 s per IP; stricter on auth endpoints), the global `JwtAuthGuard` + `RolesGuard`, and a whitelisting `ValidationPipe` (`class-validator` / `class-transformer`). An async-local-storage interceptor binds the Fastify request for audit logging. Fastify's built-in (pino-based) logger produces structured JSON logs.
 
 ![Request and Response Lifecycle](./docs/assets/designs/request-response-lifecycle.png)
 
----
 ### Real-Time Updates
-Socket.IO is used for real-time, bidirectional communication between the backend and connected clients, allowing status changes to be pushed to the frontend instead of requiring polling.
 
-### Background Processing
-The backend uses Redis via `ioredis` together with `BullMQ` for background job processing, and RabbitMQ (via `@golevelup/nestjs-rabbitmq`) as a message broker. Specific job types are implementation details that live in the server codebase rather than this document.
+Socket.IO pushes events instead of polling. Clients authenticate with the access token (`auth.token` handshake or Bearer header); the gateway verifies the session is still alive in Redis. Clients join `page:<name>` rooms, and the gateway fans out `shipment:updated`, `alert:new`, `auth_required`, and `force_logout` events with per-role visibility checks.
 
 ![WebSocket Events](./docs/assets/designs/websocket-events.png)
 
----
+### Background Processing
+
+RabbitMQ (via `@golevelup/nestjs-rabbitmq`, topic exchange `escv.events`) is the event backbone: invitation/password-reset emails, alerts, audit-log writes, and WebSocket broadcasts are all published as events and consumed asynchronously. `@nestjs/schedule` runs the ETA delay scanner daily at midnight (Africa/Cairo) plus a catch-up scan 10 s after boot.
+
 ## Repository Structure
-```js
+
+```text
 egypt-supply-chain-visibility/
-|
-|-- client/              React + TypeScript frontend application
-|   `-- README.md        Setup, structure, and development guide
-|
-|-- server/               NestJS backend application
-|   `-- README.md        Setup, API reference, and module documentation
-|
-|-- database/             Database design artifacts
-|   |-- erd/              Entity relationship diagrams
-|   |-- schema.sql        PostgreSQL DDL
-|   `-- README.md         Schema documentation and design decisions
-|
-|-- docs/                 Project-wide documentation and design assets
-|   |-- assets/           Diagrams, logo, and other static documentation assets
-|   `-- presentations/    Presentation materials
-|
-|-- docker-compose.yml    Runs the full stack locally with one command
-|-- .env.example          Root environment variable template
-`-- README.md             This file
+│
+├── client/                  React + TypeScript SPA (Vite)
+│   └── README.md            Client setup, structure, and features
+│
+├── server/                  NestJS backend (Fastify)
+│   └── README.md            Server setup, API reference, module docs
+│
+├── database/                Schema design artifacts (ERD, legacy schema.sql)
+│   └── README.md            Database documentation
+│   └── The runtime schema is owned by Prisma migrations in server/prisma/
+│
+├── osrm/                    Dockerfile building a self-hosted OSRM (Egypt MLD)
+│
+├── docs/                    Engineering audit, design assets, presentations
+│
+├── .github/workflows/       CI, Docker publishing, nightly OSRM refresh
+├── docker-compose.yml       Full local stack in one command
+├── .env.example             Root environment template
+└── README.md                This file
 ```
 
-`client/` and `server/` are independent applications, each with its own `package.json` and its own `.env` file. `database/` holds schema **design artifacts** (ERDs, raw SQL) — the actual runtime schema is owned by Prisma migrations inside `server/prisma/`, independently of this folder. `docs/` holds non-code project material such as diagrams and presentations.
+`client/` and `server/` are independent applications, each with its own `package.json` and `.env`. `database/` holds **design artifacts** — the actual runtime schema is owned by **Prisma migrations** inside `server/prisma/`.
 
----
 ## Technology Stack
+
 ### Backend
+
 | Technology | Role |
 |---|---|
-| NestJS | Backend application framework |
-| TypeScript | Language |
-| Fastify | HTTP server, via `@nestjs/platform-fastify` |
-| PostgreSQL | Primary relational database |
-| Prisma (`@prisma/client`, `@prisma/adapter-pg`) | ORM, migrations, typed database client |
-| Redis + ioredis | In-memory store, used as the queue backend |
-| BullMQ | Background job queue |
-| RabbitMQ + `@golevelup/nestjs-rabbitmq` | Message broker |
-| Socket.IO | Real-time WebSocket communication |
-| JWT + bcrypt | Authentication and password hashing |
-| class-validator / class-transformer | Request validation and shaping |
-| Joi | Configuration/environment schema validation |
-| Helmet | HTTP security headers |
-| `@nestjs/throttler` | Rate limiting |
-| Swagger (`@nestjs/swagger`) | API documentation generation |
-| Pino / nestjs-pino | Structured JSON logging |
-| Nodemailer | Outbound email delivery |
-| Jest + Supertest | Unit and end-to-end testing |
-| tsx | TypeScript execution (used by scripts such as seeding) |
+| NestJS 11 + TypeScript 5 | Application framework |
+| Fastify 5 (`@nestjs/platform-fastify`) | HTTP server |
+| PostgreSQL 16 | Primary relational database |
+| Prisma 7 (`@prisma/client`, `@prisma/adapter-pg`) | ORM, migrations, typed client |
+| RabbitMQ (`@golevelup/nestjs-rabbitmq`) | Inter-module event bus / async processing |
+| Redis + ioredis | Refresh-token sessions, reset tokens, caching |
+| Socket.IO (`@nestjs/websockets`) | Real-time WebSocket updates |
+| `@nestjs/jwt` + bcrypt | Authentication (access/refresh tokens, password hashing) |
+| `class-validator` / `class-transformer` | Request validation and shaping |
+| Joi | Environment schema validation |
+| `@fastify/helmet` | HTTP security headers |
+| `@nestjs/throttler` | Rate limiting (100 req/60 s global) |
+| `@nestjs/schedule` | Cron: midnight ETA delay scanner |
+| Swagger (`@nestjs/swagger`) | API documentation at `/api/docs` |
+| Nodemailer | Outbound email (invitations, password reset) |
+| Jest + Supertest | Unit and end-to-end tests |
+| tsx | TypeScript execution (Prisma seed) |
 
 ### Frontend
+
 | Technology | Role |
 |---|---|
-| React + React DOM | UI library |
-| TypeScript | Language |
-| Vite | Build tool and dev server |
-| React Router | Client-side routing |
-| Redux Toolkit + React Redux | Global state management |
-| Zustand | Additional lightweight client state |
-| TanStack Query | Server-state fetching and caching |
-| TanStack Table | Data table rendering |
-| Axios | HTTP client |
-| React Hook Form + Zod + `@hookform/resolvers` | Form handling and schema validation |
-| Socket.IO Client | Real-time WebSocket connection to the backend |
-| Leaflet, React Leaflet, Leaflet MarkerCluster | Interactive maps |
-| Recharts | Charts and analytics |
-| Bootstrap + Tailwind CSS (+ `@tailwindcss/vite`) | Styling |
-| Font Awesome + React Icons | Icon sets |
-| React Hot Toast | Toast notifications |
-| React Spinners | Loading indicators |
-| clsx + tailwind-merge | Conditional/merged class name utilities |
-| dayjs | Date handling |
+| React 19 + React DOM | UI library |
+| TypeScript 6 | Language |
+| Vite 8 | Build tool and dev server |
+| React Router 7 | Client-side routing |
+| TanStack Query 5 | Server-state fetching and caching |
+| Zustand 5 | Client state: auth session, theme, live-socket feed |
+| Axios | HTTP client (silent token refresh interceptor) |
+| React Hook Form 7 + Zod 4 + `@hookform/resolvers` | Forms and validation |
+| Socket.IO Client 4 | WebSocket connection (`src/services/socket.ts`) |
+| Leaflet + React Leaflet + Leaflet MarkerCluster | Live map and map pickers |
+| Tailwind CSS 4 (`@tailwindcss/vite`) | Styling |
+| React Icons (Font Awesome set) | Iconography |
+| React Hot Toast | Notifications |
+| clsx + tailwind-merge | Conditional class merging (`cn()`) |
 
 ### Infrastructure
+
 | Technology | Role |
 |---|---|
 | PostgreSQL 16 (Alpine) | Database container |
-| Redis 7 (Alpine) | Cache / queue backend container |
-| RabbitMQ 3.12 Management (Alpine) | Message broker container, with management UI |
+| Redis 7 (Alpine) | Cache / session container |
+| RabbitMQ 3.12 Management (Alpine) | Message broker with management UI |
+| OSRM (self-built, Egypt extract, MLD) | Routing engine for `/api/map/route` |
 | pgAdmin | Web-based PostgreSQL administration |
-| Docker + Docker Compose | Local orchestration for the full stack, including the backend and frontend as built services |
+| Docker + Docker Compose | Local orchestration of the full stack |
 
----
 ## Role-Based Access Control
-Access control is enforced server-side. Four roles exist:
+
+Access control is enforced server-side by a global `RolesGuard`. **Five roles** exist:
+
 | Role | Capabilities |
 |---|---|
-| **Admin** | Full platform administration |
-| **Shipper** | Create and view own shipments |
-| **Carrier** | Update status/location for assigned shipments |
-| **Regulator** | Read-only, organization-wide visibility |
+| **super_admin** | Platform-wide administration — users, organizations, shipments, routes, checkpoints, invitations, audit logs (`/api/admin/*`) |
+| **admin** | Organization administration — members, invitations, org audit logs, and shipment management for their org |
+| **shipper** | Create and track own shipments |
+| **carrier** | Claim and update assigned shipments (status, route) |
+| **regulator** | Read-only, organization-wide visibility |
 
----
+Self-registration (`POST /api/auth/register`) creates a new organization and makes the registering user its **admin**.
+
 ## Key Technical Decisions
+
 | Area | Decision |
 |---|---|
-| Backend framework | NestJS on Fastify, structured as modules |
-| Real-time updates | Socket.IO, so status changes are pushed rather than polled |
-| Background work | BullMQ (backed by Redis) and RabbitMQ for asynchronous/queued processing |
-| Token strategy | Separate access and refresh tokens with independent secrets and expirations |
-| API docs | Generated from code via `@nestjs/swagger`, rather than hand-maintained |
+| Backend framework | NestJS 11 on Fastify, organized as feature modules |
+| Inter-module communication | RabbitMQ topic exchange (`escv.events`) — durable, decoupled, async |
+| Real-time updates | Socket.IO with per-role visibility and live session checks |
+| Token strategy | Access JWT (15 m) + refresh token in an httpOnly signed cookie, rotated in Redis with reuse detection |
+| Session management | Redis-backed session families — list, revoke one, revoke all |
+| Database | PostgreSQL via Prisma, UUID primary keys, snake_case naming |
+| Routing | Self-hosted OSRM with Egypt OSM extract (MLD), cached + retried in `MapService` |
+| API docs | Generated from code via `@nestjs/swagger` |
 
----
 ## Docker Environment
-`docker-compose.yml` defines six services: `postgres`, `redis`, `rabbitmq`, `pgadmin`, `server`, and `client`. Docker Compose creates an internal network in which these services reach each other by **service name**, not `localhost`.
+
+`docker-compose.yml` defines **seven services**: `postgres`, `redis`, `rabbitmq`, `pgadmin`, `osrm`, `server`, and `client`. Compose creates an internal network where services reach each other by **service name**, not `localhost`.
 
 ### Docker Services
-**PostgreSQL** (`postgres:16-alpine`, container `escv-postgres`)
-Runs on its standard port `5432` inside the Docker network. The host-side port is configurable via `POSTGRES_PORT` (Compose default: `5433`), so the mapping is `host:POSTGRES_PORT -> container:5432`. Other containers reach it at `postgres:5432`.
 
-**Redis** (`redis:7-alpine`, container `escv-redis`)
-Reachable from other services at `redis:6379`. The host-side port is configurable via `REDIS_PORT`. The backend's Redis-related tooling (`ioredis`, `BullMQ`) connects through this service.
-
-**RabbitMQ** (`rabbitmq:3.12-management-alpine`, container `escv-rabbitmq`)
-Exposes `5672` for AMQP and `15672` for the management UI inside the network. Host-side ports are configurable via `RABBITMQ_AMQP_PORT` and `RABBITMQ_MANAGEMENT_PORT`. The backend connects internally at `rabbitmq:5672`.
-
-**pgAdmin** (`dpage/pgadmin4:latest`, container `escv-pgadmin`)
-A web UI for administering PostgreSQL. The container listens on port `80` internally; the host-side port is configurable via `PGADMIN_PORT`. Compose starts pgAdmin only after PostgreSQL reports healthy.
-
-**Server** (built from `./server/Dockerfile`, container `escv-server`)
-The NestJS backend, listening on `8081`. Docker Compose supplies its configuration through environment variables (see [Environment Variables](#environment-variables)).
-
-**Client** (built from `./client/Dockerfile`, container `escv-client`)
-The built frontend, served from the container on port `80`, mapped to host port `5173`. This is a **built** artifact served by the container — it is not the Vite development server (that only runs during local `npm run dev`).
+| Service | Image / Build | Container Port | Host Port (via) | Volume |
+|---|---|---|---|---|
+| postgres | `postgres:16-alpine` | 5432 | `POSTGRES_PORT` (5432) | `postgres_data` |
+| redis | `redis:7-alpine` | 6379 | `REDIS_PORT` | `redis_data` |
+| rabbitmq | `rabbitmq:3.12-management-alpine` | 5672 / 15672 | `RABBITMQ_AMQP_PORT` / `RABBITMQ_MANAGEMENT_PORT` | `rabbitmq_data` |
+| pgadmin | `dpage/pgadmin4:latest` | 80 | `PGADMIN_PORT` | `pgadmin_data` |
+| osrm | built from `./osrm` (Egypt extract, MLD) | 5000 | `OSRM_PORT` (5000) | — (data baked into image) |
+| server | built from `./server/Dockerfile` | 8081 | 8081 | — |
+| client | built from `./client/Dockerfile` (nginx) | 80 | 5173 | — |
 
 ### Service Networking
-Inside the Docker network, services address each other by name and internal port:
-```bash
-server -> postgres:5432
-server -> redis:6379
-server -> rabbitmq:5672
+
+```text
+server → postgres:5432
+server → redis:6379
+server → rabbitmq:5672
+server → osrm:5000
+client → server:8081   (nginx proxies /api/ and /socket.io/)
 ```
 
-From the host machine (your browser or terminal), you instead use `localhost` with the **host-mapped** ports. Note that `localhost` means something different depending on where a process runs: inside the `server` container, `localhost` refers to the server container itself — not PostgreSQL, Redis, or RabbitMQ.
-
-### Exposed Ports
-| Service | Container Port | Host Port (via) |
-|---|---|---|
-| PostgreSQL | 5432 | `POSTGRES_PORT` (default `5433`) |
-| Redis | 6379 | `REDIS_PORT` |
-| RabbitMQ (AMQP) | 5672 | `RABBITMQ_AMQP_PORT` |
-| RabbitMQ (Management UI) | 15672 | `RABBITMQ_MANAGEMENT_PORT` |
-| pgAdmin | 80 | `PGADMIN_PORT` |
-| Server (backend) | 8081 | 8081 |
-| Client (frontend) | 80 | 5173 |
-
-### Persistent Volumes
-Data survives container restarts through named volumes: `postgres_data`, `redis_data`, `rabbitmq_data`, and `pgadmin_data`.
+From the host (browser or terminal), use `localhost` with the **host-mapped** ports. Inside the `server` container, `localhost` refers to the container itself.
 
 ### Health Checks
-- PostgreSQL: `pg_isready`
-- Redis: `redis-cli ping`
-- RabbitMQ: `rabbitmq-diagnostics ping`
 
-The backend's `depends_on` configuration waits for PostgreSQL, Redis, and RabbitMQ to report healthy before starting, and the client service depends on the server.
+- PostgreSQL: `pg_isready` · Redis: `redis-cli ping` · RabbitMQ: `rabbitmq-diagnostics ping` · OSRM: TCP connect to port 5000
+- **Server: `GET /api/health`** (Node fetch) — the `client` service starts only after the server reports healthy.
 
----
 ## Environment Variables
-Three `.env` files are relevant, and each has a distinct role. None are committed — only `.example` templates are tracked.
 
-```js
+Three `.env` files exist, each with a distinct role. None are committed — only `.env.example` templates are tracked.
+
+```text
 Root
-├── .env
-├── server/.env
-└── client/.env
+├── .env                → read by Docker Compose (infra + app secrets)
+├── server/.env         → used when running the backend directly on the host
+└── client/.env         → frontend build-time config (VITE_* only)
 ```
 
-### Root Environment File
-Read by **Docker Compose**. It provides infrastructure credentials/ports and the application secrets Compose injects into the `server` container:
+### Root `.env` (Docker Compose)
 
 ```bash
 # PostgreSQL
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=escv_db
-POSTGRES_PORT=5433
+POSTGRES_PORT=5432          # host-side; container is always 5432
 
 # Redis
 REDIS_PORT=6379
 
 # RabbitMQ
+# NOTE: the official rabbitmq image refuses "guest" as RABBITMQ_DEFAULT_USER.
 RABBITMQ_USER=guest
 RABBITMQ_PASS=guest
 RABBITMQ_AMQP_PORT=5672
@@ -256,8 +261,14 @@ PGADMIN_EMAIL=admin@escv.com
 PGADMIN_PASSWORD=admin
 PGADMIN_PORT=5050
 
+# OSRM (self-hosted routing)
+OSRM_PORT=5000
+# OSRM_REGION=egypt
+# OSRM_PBF_URL=https://download.geofabrik.de/africa/egypt-latest.osm.pbf
+# OSRM_IMAGE_TAG=latest
+
 # Backend application secrets (injected into the server container by Compose)
-JWT_ACCESS_SECRET=
+JWT_ACCESS_SECRET=          # node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 JWT_ACCESS_EXPIRATION=15m
 JWT_REFRESH_SECRET=
 JWT_REFRESH_EXPIRATION=7d
@@ -265,23 +276,21 @@ COOKIE_SECRET=
 CORS_ORIGIN=http://localhost:5173
 BCRYPT_SALT_ROUNDS=12
 PASSWORD_RESET_TOKEN_TTL_MINUTES=15
+
+# Mail (SMTP)
 MAIL_HOST=smtp.mailgun.org
 MAIL_PORT=587
 MAIL_SECURE=false
-MAIL_USER=mail@example.com
-MAIL_PASS=your-api-key
+MAIL_USER=
+MAIL_PASS=
 MAIL_FROM="ESCV <noreply@escv.com>"
 ```
 
-Generate secure secret values with:
-```bash
-node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-```
+Compose derives `NODE_ENV`, `PORT`, `DATABASE_URL`, `REDIS_HOST`, `RABBITMQ_URL`, and `OSRM_URL` from the service names — no need to set them manually under Docker.
 
-Compose derives `NODE_ENV`, `PORT`, `DATABASE_URL`, `REDIS_HOST`, and `RABBITMQ_URL` for the `server` container using the Docker service names (`postgres`, `redis`, `rabbitmq`) — these do not need to be set manually when running under Docker.
+### Server `.env` (manual host development)
 
-### Server Environment Variables
-`server/.env` is used only when running the backend **directly on the host**, outside Docker (see [Running the Backend Manually](#running-the-backend-manually)). It mirrors the same variable names as the root file, but with host-appropriate connection values, since PostgreSQL, Redis, and RabbitMQ are reached through their **host-mapped** ports rather than their Docker service names:
+Used only when running the backend directly on the host. Mirrors the same variable names with host-appropriate values (services reached via host-mapped ports):
 
 ```bash
 NODE_ENV=development
@@ -291,7 +300,7 @@ CORS_ORIGIN=http://localhost:5173
 BCRYPT_SALT_ROUNDS=12
 PASSWORD_RESET_TOKEN_TTL_MINUTES=15
 
-DATABASE_URL="postgresql://postgres:postgres@localhost:5433/escv_db"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/escv_db"
 
 JWT_ACCESS_SECRET=
 JWT_ACCESS_EXPIRATION=15m
@@ -306,156 +315,156 @@ RABBITMQ_URL=amqp://guest:guest@localhost:5672
 MAIL_HOST=smtp.mailgun.org
 MAIL_PORT=587
 MAIL_SECURE=false
-MAIL_USER=mail@example.com
-MAIL_PASS=your-api-key
+MAIL_USER=
+MAIL_PASS=
 MAIL_FROM="ESCV <noreply@escv.com>"
-FRONTEND_URL=http://localhost:5173
+
+OSRM_URL=http://localhost:5000/route/v1/driving
+OSRM_TIMEOUT_MS=8000
 ```
 
-### Client Environment Variables
-`client/.env` holds only the frontend's own configuration:
+### Client `.env`
+
+Only `VITE_`-prefixed variables are exposed to the browser:
 
 ```bash
+# Empty = same-origin (Vite dev proxy / nginx), or set the backend directly:
 VITE_API_BASE_URL=
 ```
 
-Any variable prefixed `VITE_` is exposed to the browser at build time. Never put server secrets in this file.
-
 ### Docker vs Local Development
+
 | Context | PostgreSQL | Redis | RabbitMQ |
 |---|---|---|---|
 | Inside Docker (server container) | `postgres:5432` | `redis:6379` | `rabbitmq:5672` |
-| On the host (manual `npm run start:dev`) | `localhost:<POSTGRES_PORT>` | `localhost:<REDIS_PORT>` | `localhost:<RABBITMQ_AMQP_PORT>` |
+| On the host (manual `npm run start:dev`) | `localhost:5432` | `localhost:6379` | `localhost:5672` |
 
----
 ## Getting Started
+
 ### Prerequisites
+
 | Tool | Notes |
 |---|---|
-| Node.js | Required for both `client/` and `server/` |
-| npm | Package manager used by both applications |
-| Docker + Docker Compose | Recommended path — provides PostgreSQL, Redis, RabbitMQ, and pgAdmin |
-| Git | To clone the repository |
+| Node.js 20.x LTS | Required for both `client/` and `server/` |
+| npm 10.x | Package manager for both applications |
+| Docker + Docker Compose | Recommended path — provides PostgreSQL, Redis, RabbitMQ, pgAdmin, and OSRM |
 
 ### Quick Start with Docker
+
 ```bash
 git clone <repository-url>
 cd egypt-supply-chain-visibility
 
 cp .env.example .env
-# fill in the values in .env
+# fill in the secrets (JWT_ACCESS_SECRET, JWT_REFRESH_SECRET, COOKIE_SECRET, MAIL_*)
 
 docker compose up --build
 ```
 
 Once running:
-```
+
+```text
 Frontend:  http://localhost:5173
-Backend:   http://localhost:8081
+Backend:   http://localhost:8081/api
+Swagger:   http://localhost:8081/api/docs
+pgAdmin:   http://localhost:5050
+RabbitMQ:  http://localhost:15672
 ```
 
-Stop the stack with:
-```bash
-docker compose down
-```
-
-Rebuild after dependency or Dockerfile changes with:
-```bash
-docker compose up --build
-```
+Stop with `docker compose down`. Rebuild after dependency/Dockerfile changes with `docker compose up --build`.
 
 ### Running the Backend Manually
-Start only the infrastructure containers, then run the backend on the host:
+
 ```bash
-docker compose up postgres redis rabbitmq -d
+docker compose up postgres redis rabbitmq osrm -d
 
 cd server
 cp .env.example .env
-# fill in server/.env, pointing DATABASE_URL / REDIS_HOST / RABBITMQ_URL at localhost
+# fill in server/.env (DATABASE_URL / REDIS_HOST / RABBITMQ_URL point at localhost)
 
 npm install
+npx prisma migrate dev      # apply migrations
+npm run seed                # creates super_admin (admin@escv.com / Admin@123)
 npm run start:dev
 ```
 
 ### Running the Frontend Manually
+
 ```bash
 cd client
 cp .env.example .env
-# fill in client/.env
+# fill in client/.env (leave VITE_API_BASE_URL empty to use the Vite dev proxy)
 
 npm install
 npm run dev
 ```
 
-### Verifying the Application
-With both the backend and frontend running, open `http://localhost:5173` in a browser. The frontend's Vite dev server proxies API and WebSocket calls to the backend (see [Important Configuration Notes](#important-configuration-notes)).
+The Vite dev server proxies `/api` and `/socket.io` to `http://localhost:8081`, so the frontend and backend can run on different ports without CORS friction. In Docker, the nginx container performs the same proxying for the built SPA.
 
----
 ## Development Workflow
+
 ### Server Scripts
+
 | Script | Purpose |
 |---|---|
-| `npm run build` | Compile the NestJS application |
-| `npm run start` | Run the compiled application |
-| `npm run start:dev` | Run in watch mode for local development |
-| `npm run start:debug` | Run in watch mode with the debugger attached |
-| `npm run start:prod` | Run the production build |
-| `npm run lint` | Lint the codebase |
-| `npm run test` | Run unit tests (Jest) |
-| `npm run test:watch` | Run unit tests in watch mode |
-| `npm run test:cov` | Run unit tests with coverage |
-| `npm run test:debug` | Run unit tests with the debugger attached |
-| `npm run test:e2e` | Run end-to-end tests (Supertest) |
-| `npm run seed` / `npm run seed:run` | Seed the database |
+| `npm run build` | Compile the NestJS application (`dist/src/main.js`) |
+| `npm run start` | Run from source |
+| `npm run start:dev` | Watch mode for local development |
+| `npm run start:debug` | Watch mode with debugger attached |
+| `npm run start:prod` | Run the production build (`node dist/src/main.js`) |
+| `npm run lint` | Lint and auto-fix |
+| `npm run test` / `test:watch` / `test:cov` | Unit tests (Jest) |
+| `npm run test:e2e` | End-to-end tests (Supertest) |
+| `npm run seed` / `npm run seed:run` | Seed the database (tsx) |
 
-Prisma itself is used directly for schema/migration commands, e.g. `npx prisma db seed`.
+Prisma commands run directly, e.g. `npx prisma migrate dev`, `npx prisma generate`, `npx prisma db seed`, `npx prisma studio`.
 
 ### Client Scripts
+
 | Script | Purpose |
 |---|---|
-| `npm run dev` | Start the Vite development server |
-| `npm run build` | Produce a production build |
-| `npm run lint` | Lint the codebase |
-| `npm run preview` | Preview the production build locally |
+| `npm run dev` | Vite dev server (port 5173) |
+| `npm run build` | Type-check (`tsc -b`) + production build |
+| `npm run lint` | Lint |
+| `npm run preview` | Preview the production build |
 
----
 ## API Documentation
-The backend has `@nestjs/swagger` installed for generating API documentation from code. The exact path the documentation is served on is defined in the server's bootstrap configuration — check `server/README.md` or the server source for the current URL.
 
-Detailed endpoint-level documentation (routes, request/response schemas, auth requirements) belongs in the generated Swagger output and the server's own README, rather than being duplicated here.
+The backend uses `@nestjs/swagger` to generate API documentation from code. Swagger UI is served at **`http://localhost:8081/api/docs`**. Detailed endpoint-level documentation lives in the generated Swagger output and in [`server/README.md`](./server/README.md).
 
----
+## CI/CD
+
+Three GitHub Actions workflows live in `.github/workflows/`:
+
+| Workflow | Purpose |
+|---|---|
+| `ci.yml` | On every push/PR: server Prisma validation + typecheck + unit tests, client production build, and e2e tests booting the full `AppModule` against real PostgreSQL/Redis/RabbitMQ |
+| `docker-publish.yml` | Builds and pushes `escv-server`, `escv-client`, and `escv-osrm` images to GHCR on main pushes and version tags |
+| `osrm-nightly.yml` | Nightly (03:00 UTC) rebuild of the OSRM image from the latest Geofabrik Egypt extract |
+
+See [`CI-CD.md`](./CI-CD.md) for the full pipeline walkthrough.
+
 ## Project Documentation
+
 | Document | Location | Contents |
 |---|---|---|
-| Server | `server/README.md` | NestJS setup, API details, module documentation |
-| Client | `client/README.md` | React setup, project structure, state management |
-| Database | `database/README.md` | Schema design, ERD, naming conventions |
+| Server | `server/README.md` | NestJS setup, API reference, module documentation |
+| Client | `client/README.md` | React setup, structure, state management, features |
+| Database | `database/README.md` | Schema documentation, naming conventions, design decisions |
+| Engineering Audit | `docs/ESCV — Full Engineering Audit.md` | Deep architectural and security audit of the system |
+| Audit Guide | `docs/Using the engineering audit.md` | How to work through the audit findings |
+| CI/CD | `CI-CD.md` | CI/CD pipeline documentation |
+| Git/GitHub | `GIT-GITHUB.md` | Git workflow and GitHub usage guide |
+| Workflow | `WORKFLOW.md` | Team development workflow |
 
-Additional implementation details are documented in the corresponding service README.
-
----
-## Important Configuration Notes
-- **`localhost` is context-dependent.** Inside the `server` container, `localhost` refers to the server container itself — not `postgres`, `redis`, or `rabbitmq`. Use Docker service names for inter-container communication, and host-mapped ports (e.g. `localhost:5433` for PostgreSQL) only from the host machine.
-- **`POSTGRES_PORT` defaults to `5433`** on the host side, while PostgreSQL always listens on `5432` inside the container.
-- **The Vite dev proxy is a development-only convenience.** In `vite.config.ts`, the paths `/api` and `/socket.io` are proxied to `http://localhost:8081` so the frontend dev server and backend can run on different ports without CORS friction:
-
-```bash
-Browser -> /api          -> Vite dev server -> NestJS backend :8081
-Browser -> /socket.io    -> Vite dev server -> NestJS Socket.IO :8081
-```
-
-The Dockerized frontend serves a production build from its own container on port 80 — it does not use this dev proxy.
-- **Root `.env` vs `server/.env` are not redundant.** They express the same configuration for two different execution contexts: containers on the Docker network, versus a process running directly on the host.
-
----
 ## License
-**PROPRIETARY LICENSE**
-© 2026 Egypt Supply Chain Visibility Team. All Rights Reserved.
+
+**PROPRIETARY LICENSE** — © 2026 Egypt Supply Chain Visibility Team. All Rights Reserved.
 
 This project is a university capstone project. This software and associated documentation are proprietary and confidential. No part may be reproduced, distributed, or transmitted in any form without prior written permission from the authors.
 
 ---
+
 <div align="center">
   <strong>Bringing visibility to Egypt's supply chains.</strong>
 </div>
