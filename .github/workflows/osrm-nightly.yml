@@ -3,8 +3,6 @@ name: OSRM nightly refresh
 on:
   schedule:
     # 03:00 UTC = 05:00 Cairo, every day. Geofabrik publishes a fresh Egypt
-    # extract nightly, so this keeps the routing data current without
-    # rebuilding the ~30 min OSRM image on every code push.
     - cron: '0 3 * * *'
   workflow_dispatch:
 
@@ -33,9 +31,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/escv-osrm
-          # `nightly` is always tagged (cron AND manual runs — type=schedule
-          # tags only exist on scheduled events, so a manual run would
-          # otherwise produce no tags and fail); the dated tag is cron-only.
           tags: |
             type=raw,value=nightly
             type=schedule,pattern=nightly-{{date 'YYYYMMDD'}}

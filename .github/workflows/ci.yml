@@ -2,8 +2,6 @@ name: CI
 
 on:
   # Fast checks only — run on every push to ANY branch and on every PR.
-  # Heavy image builds + publishing live in docker-publish.yml, so pushing
-  # a branch never burns ~30 minutes on an OSRM preprocess.
   push:
   pull_request:
 
@@ -19,7 +17,7 @@ jobs:
   # Server: Prisma schema validation, typecheck, unit tests
   # ---------------------------------------------------------------------------
   server:
-    name: Server · typecheck + tests
+    name: Server: typecheck + tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -53,7 +51,7 @@ jobs:
   # Client: production build
   # ---------------------------------------------------------------------------
   client:
-    name: Client · build
+    name: Client: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -76,11 +74,9 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # E2E: boot the full NestJS AppModule against real postgres/redis/rabbitmq.
-  # The DB is created fresh from migrations — no seed data needed. OSRM_URL
-  # points at the public demo server; the e2e spec doesn't exercise routing.
   # ---------------------------------------------------------------------------
   e2e:
-    name: E2E · server against real infra
+    name: E2E: run server against real infra
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -110,8 +106,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
       rabbitmq:
-        # Note: the rabbitmq image refuses RABBITMQ_DEFAULT_USER=guest, so use
-        # dedicated CI credentials.
+        # the rabbitmq image refuses RABBITMQ_DEFAULT_USER=guest
         image: rabbitmq:3.12-management-alpine
         env:
           RABBITMQ_DEFAULT_USER: escv
@@ -129,8 +124,6 @@ jobs:
       REDIS_PORT: '6379'
       RABBITMQ_URL: amqp://escv:escv@localhost:5672
       OSRM_URL: https://router.project-osrm.org/route/v1/driving
-      # Keep the real secrets in repo/org secrets; these defaults satisfy Joi's
-      # minimum-length validation so the workflow runs out of the box.
       JWT_ACCESS_SECRET: ${{ secrets.JWT_ACCESS_SECRET || 'ci-access-secret-0123456789abcdef0123456789abcdef' }}
       JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET || 'ci-refresh-secret-0123456789abcdef0123456789abcdef' }}
       COOKIE_SECRET: ${{ secrets.COOKIE_SECRET || 'ci-cookie-secret-0123456789abcdef' }}
