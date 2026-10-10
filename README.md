@@ -3,7 +3,7 @@
 > Developed by **Ahmed Medhat**, **Ahmed Tarek** & **Lucas Monir**
 
 <div align="center">
-  <img src="./docs/assets/escv-logo.png" alt="ESCV Logo" width="800" />
+  <img src="./public/assets/escv-logo.png" alt="ESCV Logo" width="800" />
 </div>
 
 **Project type:** Full-Stack Web Application
